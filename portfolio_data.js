@@ -24,9 +24,9 @@ const portfolioData = {
         },
         {
             id: 'proj4',
-            title: 'Flux',
-            category: 'Design',
-            description: 'Experimental typography and motion design system.',
+            title: 'Skills',
+            category: 'Tech Stack',
+            description: 'JavaScript, WebGL, Creative Coding, UI/UX, React, Node.js, Spresense, Gemini API, Python, HTML/CSS, Git, VS Code, and always learning more!',
             link: '#'
         }
     ],
