@@ -10,6 +10,21 @@ const modalDescription = document.getElementById('modal-description');
 const modalLink = document.getElementById('modal-link');
 const modalImage = document.getElementById('modal-image');
 const closeModal = document.getElementById('close-modal');
+const defaultModalImageSrc = (modalImage && modalImage.dataset.defaultImage) || 'profile.png';
+
+function resolveImagePath(path) {
+    if (!path) return null;
+    try {
+        return new URL(path, window.location.href).href;
+    } catch (error) {
+        return path;
+    }
+}
+
+if (defaultModalImageSrc) {
+    const preloadImage = new Image();
+    preloadImage.src = resolveImagePath(defaultModalImageSrc);
+}
 
 // ===========================
 // Configuration Constants
@@ -347,11 +362,23 @@ function openModal(data) {
     modalDescription.innerText = data.description;
     
     // Handle profile image
-    if (data.image) {
-        modalImage.src = data.image;
+    const imageSource = data.image || defaultModalImageSrc;
+    if (imageSource) {
+        const resolvedSrc = resolveImagePath(imageSource);
+        modalImage.onerror = () => {
+            modalImage.onerror = null;
+            const fallbackSrc = resolveImagePath(defaultModalImageSrc);
+            if (fallbackSrc && modalImage.src !== fallbackSrc) {
+                modalImage.src = fallbackSrc;
+            } else {
+                modalImage.classList.add('hidden');
+            }
+        };
+        modalImage.src = resolvedSrc;
         modalImage.alt = data.title;
         modalImage.classList.remove('hidden');
     } else {
+        modalImage.onerror = null;
         modalImage.classList.add('hidden');
     }
     

@@ -6,7 +6,7 @@ const portfolioData = {
             category: 'Creator',
             description: "I'm a trainee science teacher from Kansai who loves blending education with hands-on technology. Whether it's building pixel-art cameras with Spresense, crafting storytelling AI with Gemini, or launching creative apps for students, I enjoy turning ideas into reality. I believe in learning by doing, and sharing that spirit with others. Let's build something meaningful together.",
             link: '#',
-            image: 'profile.jpg'
+            image: './profile.png'
         },
         {
             id: 'proj2',
