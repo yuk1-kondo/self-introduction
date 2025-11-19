@@ -1,7 +1,8 @@
+// ===========================
+// DOM Elements
+// ===========================
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-
-// Modal Elements
 const modal = document.getElementById('project-modal');
 const modalTitle = document.getElementById('modal-title');
 const modalCategory = document.getElementById('modal-category');
@@ -10,22 +11,19 @@ const modalLink = document.getElementById('modal-link');
 const modalImage = document.getElementById('modal-image');
 const closeModal = document.getElementById('close-modal');
 
-let width, height;
-let particles = [];
-let projectNodes = [];
-const particleCount = 80; // Reduced slightly to make room for projects
-const connectionDistance = 150;
-const mouseDistance = 200;
+// ===========================
+// Configuration Constants
+// ===========================
+const PARTICLE_COUNT = 80;
+const CONNECTION_DISTANCE = 150;
+const MOUSE_DISTANCE = 200;
+const PARTICLE_BASE_VELOCITY = 1.5;
+const SHOCKWAVE_FORCE = 1500;
+const DOUBLE_TAP_DELAY = 300;
+const TOUCH_RESET_DELAY = 300;
+const PROJECT_NODE_HIT_AREA = 40;
 
-// Mouse state
-const mouse = {
-    x: undefined,
-    y: undefined,
-    isPressed: false
-};
-
-// Colors - Monochrome Palette
-const colors = [
+const COLORS = [
     '#000000', // Black
     '#333333', // Dark Gray
     '#666666', // Medium Gray
@@ -33,18 +31,36 @@ const colors = [
     '#cccccc'  // Very Light Gray
 ];
 
+// ===========================
+// State Variables
+// ===========================
+let width, height;
+let particles = [];
+let projectNodes = [];
+let tapStartX, tapStartY;
+let lastTap = 0;
+
+const mouse = {
+    x: undefined,
+    y: undefined,
+    isPressed: false
+};
+
+// ===========================
+// Particle Class
+// ===========================
 class Particle {
     constructor() {
         this.x = Math.random() * width;
         this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 1.5;
-        this.vy = (Math.random() - 0.5) * 1.5;
-        this.baseVelocity = 1.5; // Store base velocity for normalization
+        this.vx = (Math.random() - 0.5) * PARTICLE_BASE_VELOCITY;
+        this.vy = (Math.random() - 0.5) * PARTICLE_BASE_VELOCITY;
+        this.baseVelocity = PARTICLE_BASE_VELOCITY;
         this.size = Math.random() * 3 + 1;
-        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
         this.baseSize = this.size;
         this.shape = Math.random() > 0.5 ? 'circle' : 'square';
-        this.dampingActive = false; // Only apply damping after shockwave
+        this.dampingActive = false;
     }
 
     update() {
@@ -71,15 +87,15 @@ class Particle {
         if (this.y < 0 || this.y > height) this.vy *= -1;
 
         // Mouse interaction (Repel/Attract)
-        if (mouse.x != undefined && mouse.y != undefined) {
-            let dx = mouse.x - this.x;
-            let dy = mouse.y - this.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
+        if (mouse.x !== undefined && mouse.y !== undefined) {
+            const dx = mouse.x - this.x;
+            const dy = mouse.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < mouseDistance) {
+            if (distance < MOUSE_DISTANCE) {
                 const forceDirectionX = dx / distance;
                 const forceDirectionY = dy / distance;
-                const force = (mouseDistance - distance) / mouseDistance;
+                const force = (MOUSE_DISTANCE - distance) / MOUSE_DISTANCE;
                 const directionX = forceDirectionX * force * 2;
                 const directionY = forceDirectionY * force * 2;
 
@@ -106,6 +122,9 @@ class Particle {
     }
 }
 
+// ===========================
+// ProjectNode Class
+// ===========================
 class ProjectNode {
     constructor(data) {
         this.data = data;
@@ -170,10 +189,10 @@ class ProjectNode {
     checkClick(x, y) {
         // If x, y are provided (from touch), check distance directly
         if (x !== undefined && y !== undefined) {
-            let dx = x - this.x;
-            let dy = y - this.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < 40) { // Larger hit area for mobile
+            const dx = x - this.x;
+            const dy = y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < PROJECT_NODE_HIT_AREA) {
                 openModal(this.data);
                 return true;
             }
@@ -186,17 +205,20 @@ class ProjectNode {
     }
 }
 
+// ===========================
+// Core Functions
+// ===========================
 function init() {
     resize();
     particles = [];
     projectNodes = [];
 
     // Create background particles
-    for (let i = 0; i < particleCount; i++) {
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
         particles.push(new Particle());
     }
 
-    // Create Project Nodes
+    // Create project nodes from portfolio data
     if (typeof portfolioData !== 'undefined') {
         portfolioData.projects.forEach(project => {
             projectNodes.push(new ProjectNode(project));
@@ -216,16 +238,16 @@ function animate() {
 
     let allNodes = [...particles, ...projectNodes];
 
-    // Draw connections
+    // Draw connections between nodes
     for (let a = 0; a < allNodes.length; a++) {
         for (let b = a; b < allNodes.length; b++) {
-            let dx = allNodes[a].x - allNodes[b].x;
-            let dy = allNodes[a].y - allNodes[b].y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
+            const dx = allNodes[a].x - allNodes[b].x;
+            const dy = allNodes[a].y - allNodes[b].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < connectionDistance) {
-                let opacityValue = 1 - (distance / connectionDistance);
-                ctx.strokeStyle = 'rgba(0, 0, 0,' + opacityValue * 0.1 + ')';
+            if (distance < CONNECTION_DISTANCE) {
+                const opacityValue = 1 - (distance / CONNECTION_DISTANCE);
+                ctx.strokeStyle = `rgba(0, 0, 0, ${opacityValue * 0.1})`;
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(allNodes[a].x, allNodes[a].y);
@@ -253,16 +275,16 @@ function animate() {
         document.body.style.cursor = 'default';
     }
 
-    // Mouse connections
-    if (mouse.x != undefined && mouse.y != undefined) {
+    // Draw connections to mouse
+    if (mouse.x !== undefined && mouse.y !== undefined) {
         allNodes.forEach(node => {
-            let dx = mouse.x - node.x;
-            let dy = mouse.y - node.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
+            const dx = mouse.x - node.x;
+            const dy = mouse.y - node.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < mouseDistance) {
-                let opacityValue = 1 - (distance / mouseDistance);
-                ctx.strokeStyle = 'rgba(50, 50, 50,' + opacityValue * 0.2 + ')';
+            if (distance < MOUSE_DISTANCE) {
+                const opacityValue = 1 - (distance / MOUSE_DISTANCE);
+                ctx.strokeStyle = `rgba(50, 50, 50, ${opacityValue * 0.2})`;
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(mouse.x, mouse.y);
@@ -275,7 +297,9 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-// Modal Logic
+// ===========================
+// Modal Functions
+// ===========================
 function openModal(data) {
     modalTitle.innerText = data.title;
     modalCategory.innerText = data.category;
@@ -315,6 +339,11 @@ function openModal(data) {
     modal.classList.remove('hidden');
 }
 
+// ===========================
+// Event Listeners
+// ===========================
+
+// Modal event listeners
 closeModal.addEventListener('click', () => {
     modal.classList.add('hidden');
 });
@@ -325,7 +354,7 @@ window.addEventListener('click', (e) => {
     }
 });
 
-// Event Listeners
+// Window and canvas event listeners
 window.addEventListener('resize', resize);
 
 window.addEventListener('mousemove', (e) => {
@@ -350,26 +379,21 @@ function handleProjectNodeInteraction() {
 
 window.addEventListener('click', handleProjectNodeInteraction);
 
-// Track tap position for modal opening
-let tapStartX, tapStartY;
-
 window.addEventListener('dblclick', (e) => {
-    // Shockwave effect on double-click
-    // Only affect particles, not projectNodes
     if (modal.classList.contains('hidden')) {
         const clickX = e.clientX;
         const clickY = e.clientY;
-        
+
         particles.forEach(p => {
             const dx = p.x - clickX;
             const dy = p.y - clickY;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = 1500 / (dist + 10); // Stronger repulsive force
-            
+            const force = SHOCKWAVE_FORCE / (dist + 10);
+
             const angle = Math.atan2(dy, dx);
             p.vx += Math.cos(angle) * force;
             p.vy += Math.sin(angle) * force;
-            p.dampingActive = true; // Enable damping after shockwave
+            p.dampingActive = true;
         });
     }
 });
@@ -380,9 +404,13 @@ window.addEventListener('mouseout', () => {
     mouse.isPressed = false;
 });
 
-// Touch support for mobile
+// Touch event listeners
 window.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTap;
+
+    // Update mouse position and interaction state
     mouse.x = touch.clientX;
     mouse.y = touch.clientY;
     mouse.isPressed = true;
@@ -390,6 +418,23 @@ window.addEventListener('touchstart', (e) => {
     // Store tap position for modal opening
     tapStartX = touch.clientX;
     tapStartY = touch.clientY;
+
+    // Check for double-tap (shockwave effect)
+    if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0 && modal.classList.contains('hidden')) {
+        particles.forEach(p => {
+            const dx = p.x - touch.clientX;
+            const dy = p.y - touch.clientY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const force = SHOCKWAVE_FORCE / (dist + 10);
+
+            const angle = Math.atan2(dy, dx);
+            p.vx += Math.cos(angle) * force;
+            p.vy += Math.sin(angle) * force;
+            p.dampingActive = true;
+        });
+    }
+
+    lastTap = currentTime;
 });
 
 window.addEventListener('touchmove', (e) => {
@@ -411,150 +456,17 @@ window.addEventListener('touchend', () => {
         }
     }
 
+    // Reset mouse and tap position after delay
     setTimeout(() => {
         mouse.x = undefined;
         mouse.y = undefined;
         tapStartX = undefined;
         tapStartY = undefined;
-    }, 300);
+    }, TOUCH_RESET_DELAY);
 });
 
-// Double-tap for shockwave on mobile
-let lastTap = 0;
-window.addEventListener('touchstart', (e) => {
-    const currentTime = new Date().getTime();
-    const tapLength = currentTime - lastTap;
-    
-    if (tapLength < 300 && tapLength > 0) {
-        // Double tap detected
-        const touch = e.touches[0];
-        const clickX = touch.clientX;
-        const clickY = touch.clientY;
-        
-        particles.forEach(p => {
-            const dx = p.x - clickX;
-            const dy = p.y - clickY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = 1500 / (dist + 10); // Stronger force
-            
-            const angle = Math.atan2(dy, dx);
-            p.vx += Math.cos(angle) * force;
-            p.vy += Math.sin(angle) * force;
-            p.dampingActive = true; // Enable damping after shockwave
-        });
-    }
-    lastTap = currentTime;
-});
-
+// ===========================
+// Initialize and Start
+// ===========================
 init();
 animate();
-
-// Mobile Access Log System
-const logContainer = document.getElementById('mobile-log-content');
-let logCount = 0;
-const maxLogs = 20;
-
-function addLog(message, type = 'info') {
-    const logEntry = document.createElement('div');
-    logEntry.className = `log-entry ${type}`;
-
-    const timestamp = new Date().toLocaleTimeString('ja-JP');
-    logEntry.innerHTML = `
-        <div class="log-timestamp">[${timestamp}]</div>
-        <div>${message}</div>
-    `;
-
-    logContainer.insertBefore(logEntry, logContainer.firstChild);
-    logCount++;
-
-    // Remove old logs if exceeding max
-    if (logCount > maxLogs) {
-        logContainer.removeChild(logContainer.lastChild);
-        logCount--;
-    }
-}
-
-// Detect device and browser info
-function detectDevice() {
-    const ua = navigator.userAgent;
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    const isTablet = /iPad|Android(?!.*Mobile)/i.test(ua);
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const isAndroid = /Android/i.test(ua);
-
-    let deviceType = 'Desktop';
-    if (isTablet) deviceType = 'Tablet';
-    else if (isMobile) deviceType = 'Mobile';
-
-    const touchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-    return {
-        isMobile,
-        isTablet,
-        isIOS,
-        isAndroid,
-        deviceType,
-        touchSupport,
-        screenWidth: window.innerWidth,
-        screenHeight: window.innerHeight,
-        userAgent: ua
-    };
-}
-
-// Initialize mobile logging
-function initMobileLog() {
-    const device = detectDevice();
-
-    addLog('🌐 Access Log Initialized', 'info');
-    addLog(`📱 Device: ${device.deviceType}`, 'info');
-    addLog(`📐 Screen: ${device.screenWidth}x${device.screenHeight}`, 'info');
-    addLog(`👆 Touch: ${device.touchSupport ? 'Supported ✓' : 'Not Supported ✗'}`, device.touchSupport ? 'info' : 'warning');
-
-    if (device.isIOS) {
-        addLog('🍎 iOS Device Detected', 'info');
-    } else if (device.isAndroid) {
-        addLog('🤖 Android Device Detected', 'info');
-    }
-
-    if (device.isMobile || device.isTablet) {
-        addLog('✅ Mobile Access Confirmed!', 'event');
-    } else {
-        addLog('💻 Desktop Access', 'info');
-    }
-
-    // Log user agent (truncated)
-    const shortUA = device.userAgent.substring(0, 50) + '...';
-    addLog(`UA: ${shortUA}`, 'info');
-}
-
-// Log touch events
-let touchEventCount = 0;
-window.addEventListener('touchstart', (e) => {
-    touchEventCount++;
-    if (touchEventCount <= 3) { // Only log first 3 touches to avoid spam
-        addLog(`👆 Touch Event #${touchEventCount} (${e.touches.length} finger${e.touches.length > 1 ? 's' : ''})`, 'event');
-    } else if (touchEventCount === 4) {
-        addLog('👆 Touch events continue...', 'info');
-    }
-});
-
-// Log orientation changes
-window.addEventListener('orientationchange', () => {
-    const orientation = window.orientation === 0 || window.orientation === 180 ? 'Portrait' : 'Landscape';
-    addLog(`📱 Orientation: ${orientation}`, 'event');
-    setTimeout(() => {
-        addLog(`📐 New Size: ${window.innerWidth}x${window.innerHeight}`, 'info');
-    }, 100);
-});
-
-// Log resize events (throttled)
-let resizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        addLog(`📐 Resize: ${window.innerWidth}x${window.innerHeight}`, 'info');
-    }, 500);
-});
-
-// Initialize the mobile log system
-initMobileLog();

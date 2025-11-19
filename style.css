@@ -160,70 +160,6 @@ p {
     color: var(--bg-color);
 }
 
-/* Mobile Access Log */
-#mobile-log {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.9);
-    color: #00ff00;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    padding: 15px;
-    border-radius: 8px;
-    max-width: 400px;
-    max-height: 500px;
-    min-width: 300px;
-    overflow-y: auto;
-    z-index: 100;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
-    border: 2px solid #00ff00;
-}
-
-#mobile-log-header {
-    font-weight: bold;
-    color: #ffffff;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #00ff00;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    font-size: 1rem;
-}
-
-#mobile-log-content {
-    line-height: 1.8;
-}
-
-.log-entry {
-    margin-bottom: 12px;
-    padding: 8px;
-    border-left: 3px solid #00ff00;
-    padding-left: 12px;
-    background: rgba(0, 255, 0, 0.05);
-}
-
-.log-entry.info {
-    border-left-color: #00aaff;
-    background: rgba(0, 170, 255, 0.05);
-}
-
-.log-entry.event {
-    border-left-color: #ff00ff;
-    background: rgba(255, 0, 255, 0.05);
-}
-
-.log-entry.warning {
-    border-left-color: #ffaa00;
-    background: rgba(255, 170, 0, 0.05);
-}
-
-.log-timestamp {
-    color: #aaa;
-    font-size: 0.8rem;
-    margin-bottom: 4px;
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
     h1 {
@@ -253,24 +189,5 @@ p {
 
     .close-btn {
         font-size: 1.5rem;
-    }
-
-    #mobile-log {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: none;
-        min-width: 0;
-        max-height: 350px;
-        font-size: 0.85rem;
-        padding: 12px;
-    }
-
-    #mobile-log-header {
-        font-size: 0.9rem;
-    }
-
-    .log-timestamp {
-        font-size: 0.75rem;
     }
 }
