@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YUKI KONDO | Portfolio</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="ui-layer">
+        <h1>YUKI KONDO</h1>
+        <p>Creative Developer & Designer</p>
+        <div id="instructions">Explore the constellation</div>
+    </div>
+
+    <div id="project-modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="close-modal" class="close-btn">&times;</button>
+            <h2 id="modal-title">Project Title</h2>
+            <p id="modal-category" class="subtitle">Category</p>
+            <p id="modal-description">Description goes here.</p>
+            <a id="modal-link" href="#" target="_blank" class="btn">View Project</a>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script src="portfolio_data.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

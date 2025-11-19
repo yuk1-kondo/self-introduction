@@ -1,0 +1,35 @@
+const portfolioData = {
+    projects: [
+        {
+            id: 'proj1',
+            title: 'Neon Dreams',
+            category: 'Web Art',
+            description: 'An interactive WebGL experience exploring light and shadow.',
+            link: '#'
+        },
+        {
+            id: 'proj2',
+            title: 'Data Scape',
+            category: 'Visualization',
+            description: 'Real-time data visualization of global weather patterns.',
+            link: '#'
+        },
+        {
+            id: 'proj3',
+            title: 'Echo',
+            category: 'Audio',
+            description: 'Generative music experiment using Web Audio API.',
+            link: '#'
+        },
+        {
+            id: 'proj4',
+            title: 'Flux',
+            category: 'Design',
+            description: 'Experimental typography and motion design system.',
+            link: '#'
+        }
+    ],
+    skills: [
+        'JavaScript', 'WebGL', 'Creative Coding', 'UI/UX', 'React', 'Node.js'
+    ]
+};
