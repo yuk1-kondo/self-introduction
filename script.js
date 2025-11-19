@@ -119,12 +119,16 @@ class Particle {
     }
 
     draw() {
+        // Round coordinates to prevent sub-pixel rendering
+        const roundX = Math.round(this.x);
+        const roundY = Math.round(this.y);
+
         ctx.fillStyle = this.color;
         ctx.beginPath();
         if (this.shape === 'circle') {
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.arc(roundX, roundY, this.size, 0, Math.PI * 2);
         } else {
-            ctx.rect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
+            ctx.rect(roundX - this.size, roundY - this.size, this.size * 2, this.size * 2);
         }
         ctx.fill();
     }
@@ -138,8 +142,8 @@ class ProjectNode {
         this.data = data;
         this.x = Math.random() * (width - 200) + 100; // Keep away from edges
         this.y = Math.random() * (height - 200) + 100;
-        this.vx = (Math.random() - 0.5) * 0.5; // Slower movement
-        this.vy = (Math.random() - 0.5) * 0.5;
+        this.vx = (Math.random() - 0.5) * 0.3; // Even slower for smoother labels
+        this.vy = (Math.random() - 0.5) * 0.3;
         this.size = 8; // Larger base size
         this.baseSize = 8;
         this.hoverSize = 15;
@@ -175,13 +179,17 @@ class ProjectNode {
     }
 
     draw() {
+        // Round coordinates to prevent sub-pixel rendering jitter
+        const roundX = Math.round(this.x);
+        const roundY = Math.round(this.y);
+
         ctx.fillStyle = this.color;
         ctx.beginPath();
-        // Diamond shape for projects
-        ctx.moveTo(this.x, this.y - this.size);
-        ctx.lineTo(this.x + this.size, this.y);
-        ctx.lineTo(this.x, this.y + this.size);
-        ctx.lineTo(this.x - this.size, this.y);
+        // Diamond shape for projects - use rounded coordinates
+        ctx.moveTo(roundX, roundY - this.size);
+        ctx.lineTo(roundX + this.size, roundY);
+        ctx.lineTo(roundX, roundY + this.size);
+        ctx.lineTo(roundX - this.size, roundY);
         ctx.closePath();
         ctx.fill();
 
@@ -189,15 +197,27 @@ class ProjectNode {
         const shouldShowLabel = isMobile || this.isHovered || this.size > this.baseSize + 2;
 
         if (shouldShowLabel) {
+            // Save context state
+            ctx.save();
+
+            // Optimize text rendering for smooth display
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
             // Add shadow for better visibility
-            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-            ctx.shadowBlur = 4;
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+            ctx.shadowBlur = 6;
             ctx.fillStyle = '#000';
             ctx.font = isMobile ? 'bold 15px Outfit' : 'bold 16px Outfit';
             ctx.textAlign = 'center';
-            ctx.fillText(this.data.title, this.x, this.y - this.size - 15);
-            // Reset shadow
-            ctx.shadowBlur = 0;
+            ctx.textBaseline = 'middle';
+
+            // Use rounded coordinates for text to prevent jitter
+            const textY = Math.round(roundY - this.size - 18);
+            ctx.fillText(this.data.title, roundX, textY);
+
+            // Restore context state
+            ctx.restore();
         }
     }
 
@@ -247,6 +267,11 @@ function resize() {
     height = window.innerHeight;
     canvas.width = width;
     canvas.height = height;
+
+    // Optimize canvas rendering for smooth text
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.textRendering = 'optimizeLegibility';
 }
 
 function animate() {
