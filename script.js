@@ -38,6 +38,7 @@ class Particle {
         this.y = Math.random() * height;
         this.vx = (Math.random() - 0.5) * 1.5;
         this.vy = (Math.random() - 0.5) * 1.5;
+        this.baseVelocity = 1.5; // Store base velocity for normalization
         this.size = Math.random() * 3 + 1;
         this.color = colors[Math.floor(Math.random() * colors.length)];
         this.baseSize = this.size;
@@ -47,6 +48,19 @@ class Particle {
     update() {
         this.x += this.vx;
         this.y += this.vy;
+
+        // Apply damping to gradually slow down to base velocity
+        const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        if (currentSpeed > this.baseVelocity) {
+            const dampingFactor = 0.95; // Adjust this value for faster/slower damping (0.9-0.98 recommended)
+            this.vx *= dampingFactor;
+            this.vy *= dampingFactor;
+        } else if (currentSpeed < this.baseVelocity * 0.8) {
+            // Slowly restore to base velocity if too slow
+            const restoreFactor = 1.02;
+            this.vx *= restoreFactor;
+            this.vy *= restoreFactor;
+        }
 
         if (this.x < 0 || this.x > width) this.vx *= -1;
         if (this.y < 0 || this.y > height) this.vy *= -1;
