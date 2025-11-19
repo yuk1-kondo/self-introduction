@@ -8,6 +8,7 @@ const modalTitle = document.getElementById('modal-title');
 const modalCategory = document.getElementById('modal-category');
 const modalDescription = document.getElementById('modal-description');
 const modalLink = document.getElementById('modal-link');
+const modalImageWrapper = document.getElementById('modal-image-wrapper');
 const modalImage = document.getElementById('modal-image');
 const closeModal = document.getElementById('close-modal');
 const defaultModalImageSrc = (modalImage && modalImage.dataset.defaultImage) || 'profile.png';
@@ -372,14 +373,17 @@ function openModal(data) {
                 modalImage.src = fallbackSrc;
             } else {
                 modalImage.classList.add('hidden');
+                if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
             }
         };
         modalImage.src = resolvedSrc;
         modalImage.alt = data.title;
         modalImage.classList.remove('hidden');
+        if (modalImageWrapper) modalImageWrapper.classList.remove('hidden');
     } else {
         modalImage.onerror = null;
         modalImage.classList.add('hidden');
+        if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
     }
     
     // Reset default styles first
