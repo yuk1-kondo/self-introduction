@@ -115,7 +115,7 @@ p {
     height: 140px;
     border-radius: 50%;
     border: 2px solid var(--text-color);
-    padding: 6px;
+    padding: 0;
     box-sizing: border-box;
     display: flex;
     justify-content: center;
@@ -132,13 +132,15 @@ p {
 }
 
 .modal-image {
-    width: 100%;
-    height: 100%;
+    width: 110%;
+    height: 110%;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center;
     display: block;
     border: none;
     box-sizing: border-box;
+    transform: scale(1.05);
 }
 
 .modal-image.hidden {
@@ -230,14 +232,15 @@ p {
     }
 
     .modal-image {
-        width: 100%;
-        height: 100%;
+        width: 110%;
+        height: 110%;
+        transform: scale(1.05);
     }
 
     .modal-image-wrapper {
         width: 90px;
         height: 90px;
-        padding: 4px;
+        padding: 0;
         margin-bottom: 0.8rem;
     }
 
