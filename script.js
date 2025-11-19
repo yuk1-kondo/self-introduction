@@ -267,28 +267,27 @@ function openModal(data) {
     modalTitle.innerText = data.title;
     modalCategory.innerText = data.category;
     modalDescription.innerText = data.description;
-    modalLink.href = data.link;
     
     // Reset default styles first
     modalLink.style.pointerEvents = 'auto';
     modalLink.style.opacity = '1';
     modalLink.onclick = null;
+    modalLink.removeAttribute('target');
     
     // Change button text based on project type
     if (data.link.startsWith('mailto:')) {
         modalLink.innerText = 'Send Email';
-        // Force mailto to work by using location.href on click
-        modalLink.onclick = function(e) {
-            e.preventDefault();
-            window.location.href = data.link;
-            return false;
-        };
+        modalLink.href = data.link;
+        // Let the browser handle mailto naturally
     } else if (data.link === '#') {
         modalLink.innerText = 'Coming Soon';
+        modalLink.href = '#';
         modalLink.style.pointerEvents = 'none';
         modalLink.style.opacity = '0.5';
     } else {
         modalLink.innerText = 'View Project';
+        modalLink.href = data.link;
+        modalLink.setAttribute('target', '_blank');
     }
     
     modal.classList.remove('hidden');
