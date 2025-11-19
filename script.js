@@ -17,6 +17,11 @@ const particleCount = 80; // Reduced slightly to make room for projects
 const connectionDistance = 150;
 const mouseDistance = 200;
 
+// Mobile detection
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                 ('ontouchstart' in window) ||
+                 (navigator.maxTouchPoints > 0);
+
 // Mouse state
 const mouse = {
     x: undefined,
@@ -158,8 +163,15 @@ class ProjectNode {
         ctx.closePath();
         ctx.fill();
 
-        // Draw Label if hovered
-        if (this.isHovered || this.size > this.baseSize + 2) {
+        // Draw Label
+        // On mobile: always show small label
+        // On desktop: show larger label on hover
+        if (isMobile) {
+            ctx.fillStyle = '#333';
+            ctx.font = '10px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.data.title, this.x, this.y - this.size - 8);
+        } else if (this.isHovered || this.size > this.baseSize + 2) {
             ctx.fillStyle = '#333';
             ctx.font = '16px Outfit';
             ctx.textAlign = 'center';
@@ -167,10 +179,22 @@ class ProjectNode {
         }
     }
 
-    checkClick() {
-        if (this.isHovered) {
+    checkClick(clickX, clickY) {
+        // On desktop: check if hovered
+        // On mobile: check if click is near the node
+        if (isMobile) {
+            const dx = clickX - this.x;
+            const dy = clickY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < 30) {
+                openModal(this.data);
+                return true;
+            }
+        } else if (this.isHovered) {
             openModal(this.data);
+            return true;
         }
+        return false;
     }
 }
 
@@ -333,7 +357,9 @@ window.addEventListener('click', (e) => {
     // Check if clicked on a project node
     // Only if modal is hidden
     if (modal.classList.contains('hidden')) {
-        projectNodes.forEach(node => node.checkClick());
+        const clickX = e.clientX;
+        const clickY = e.clientY;
+        projectNodes.forEach(node => node.checkClick(clickX, clickY));
     }
 });
 
