@@ -313,5 +313,54 @@ window.addEventListener('mouseout', () => {
     mouse.isPressed = false;
 });
 
+// Touch support for mobile
+window.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    mouse.x = touch.clientX;
+    mouse.y = touch.clientY;
+    mouse.isPressed = true;
+});
+
+window.addEventListener('touchmove', (e) => {
+    e.preventDefault(); // Prevent scrolling
+    const touch = e.touches[0];
+    mouse.x = touch.clientX;
+    mouse.y = touch.clientY;
+}, { passive: false });
+
+window.addEventListener('touchend', () => {
+    mouse.isPressed = false;
+    setTimeout(() => {
+        mouse.x = undefined;
+        mouse.y = undefined;
+    }, 300);
+});
+
+// Double-tap for shockwave on mobile
+let lastTap = 0;
+window.addEventListener('touchstart', (e) => {
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTap;
+    
+    if (tapLength < 300 && tapLength > 0) {
+        // Double tap detected
+        const touch = e.touches[0];
+        const clickX = touch.clientX;
+        const clickY = touch.clientY;
+        
+        particles.forEach(p => {
+            const dx = p.x - clickX;
+            const dy = p.y - clickY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const force = 1000 / (dist + 10);
+            
+            const angle = Math.atan2(dy, dx);
+            p.vx += Math.cos(angle) * force;
+            p.vy += Math.sin(angle) * force;
+        });
+    }
+    lastTap = currentTime;
+});
+
 init();
 animate();

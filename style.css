@@ -145,3 +145,35 @@ p {
     background: var(--text-color);
     color: var(--bg-color);
 }
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.5rem;
+        letter-spacing: 0.15em;
+    }
+    
+    p {
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+    }
+    
+    #ui-layer {
+        top: 20px;
+        left: 20px;
+    }
+    
+    #instructions {
+        font-size: 0.7rem;
+        bottom: 20px;
+    }
+    
+    .modal-content {
+        padding: 2rem;
+        width: 85%;
+    }
+    
+    .close-btn {
+        font-size: 1.5rem;
+    }
+}
