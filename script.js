@@ -1,6 +1,15 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+// Device detection
+const isTouchDevice = () => {
+    return (('ontouchstart' in window) ||
+            (navigator.maxTouchPoints > 0) ||
+            (navigator.msMaxTouchPoints > 0));
+};
+
+const IS_TOUCH_DEVICE = isTouchDevice();
+
 // Modal Elements
 const modal = document.getElementById('project-modal');
 const modalTitle = document.getElementById('modal-title');
@@ -158,12 +167,21 @@ class ProjectNode {
         ctx.closePath();
         ctx.fill();
 
-        // Draw Label if hovered
-        if (this.isHovered || this.size > this.baseSize + 2) {
+        // Draw Label
+        if (IS_TOUCH_DEVICE) {
+            // On touch devices, always show label (small)
             ctx.fillStyle = '#333';
-            ctx.font = '16px Outfit';
+            ctx.font = '12px Outfit';
             ctx.textAlign = 'center';
-            ctx.fillText(this.data.title, this.x, this.y - this.size - 10);
+            ctx.fillText(this.data.title, this.x, this.y - this.size - 8);
+        } else {
+            // On desktop, show label only when hovered
+            if (this.isHovered || this.size > this.baseSize + 2) {
+                ctx.fillStyle = '#333';
+                ctx.font = '16px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.data.title, this.x, this.y - this.size - 10);
+            }
         }
     }
 
@@ -171,6 +189,22 @@ class ProjectNode {
         if (this.isHovered) {
             openModal(this.data);
         }
+    }
+
+    // Check if click/tap at given coordinates hits this node
+    checkClickAtPosition(x, y) {
+        let dx = x - this.x;
+        let dy = y - this.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Use slightly larger hit area for touch devices (50px radius)
+        const hitRadius = IS_TOUCH_DEVICE ? 50 : 30;
+
+        if (distance < hitRadius) {
+            openModal(this.data);
+            return true;
+        }
+        return false;
     }
 }
 
@@ -370,6 +404,9 @@ window.addEventListener('touchstart', (e) => {
     mouse.x = touch.clientX;
     mouse.y = touch.clientY;
     mouse.isPressed = true;
+
+    // Check if tap is on a project node (for single tap)
+    // Will be handled in touchend to avoid conflicts with double-tap
 });
 
 window.addEventListener('touchmove', (e) => {
@@ -379,8 +416,19 @@ window.addEventListener('touchmove', (e) => {
     mouse.y = touch.clientY;
 }, { passive: false });
 
-window.addEventListener('touchend', () => {
+window.addEventListener('touchend', (e) => {
     mouse.isPressed = false;
+
+    // Check if this was a tap on a project node
+    if (modal.classList.contains('hidden') && mouse.x !== undefined && mouse.y !== undefined) {
+        // Check each project node
+        for (let node of projectNodes) {
+            if (node.checkClickAtPosition(mouse.x, mouse.y)) {
+                break; // Stop checking once we find a match
+            }
+        }
+    }
+
     setTimeout(() => {
         mouse.x = undefined;
         mouse.y = undefined;
