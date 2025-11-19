@@ -416,3 +416,113 @@ window.addEventListener('touchstart', (e) => {
 
 init();
 animate();
+
+// Mobile Access Log System
+const logContainer = document.getElementById('mobile-log-content');
+let logCount = 0;
+const maxLogs = 20;
+
+function addLog(message, type = 'info') {
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry ${type}`;
+
+    const timestamp = new Date().toLocaleTimeString('ja-JP');
+    logEntry.innerHTML = `
+        <div class="log-timestamp">[${timestamp}]</div>
+        <div>${message}</div>
+    `;
+
+    logContainer.insertBefore(logEntry, logContainer.firstChild);
+    logCount++;
+
+    // Remove old logs if exceeding max
+    if (logCount > maxLogs) {
+        logContainer.removeChild(logContainer.lastChild);
+        logCount--;
+    }
+}
+
+// Detect device and browser info
+function detectDevice() {
+    const ua = navigator.userAgent;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const isTablet = /iPad|Android(?!.*Mobile)/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+
+    let deviceType = 'Desktop';
+    if (isTablet) deviceType = 'Tablet';
+    else if (isMobile) deviceType = 'Mobile';
+
+    const touchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    return {
+        isMobile,
+        isTablet,
+        isIOS,
+        isAndroid,
+        deviceType,
+        touchSupport,
+        screenWidth: window.innerWidth,
+        screenHeight: window.innerHeight,
+        userAgent: ua
+    };
+}
+
+// Initialize mobile logging
+function initMobileLog() {
+    const device = detectDevice();
+
+    addLog('🌐 Access Log Initialized', 'info');
+    addLog(`📱 Device: ${device.deviceType}`, 'info');
+    addLog(`📐 Screen: ${device.screenWidth}x${device.screenHeight}`, 'info');
+    addLog(`👆 Touch: ${device.touchSupport ? 'Supported ✓' : 'Not Supported ✗'}`, device.touchSupport ? 'info' : 'warning');
+
+    if (device.isIOS) {
+        addLog('🍎 iOS Device Detected', 'info');
+    } else if (device.isAndroid) {
+        addLog('🤖 Android Device Detected', 'info');
+    }
+
+    if (device.isMobile || device.isTablet) {
+        addLog('✅ Mobile Access Confirmed!', 'event');
+    } else {
+        addLog('💻 Desktop Access', 'info');
+    }
+
+    // Log user agent (truncated)
+    const shortUA = device.userAgent.substring(0, 50) + '...';
+    addLog(`UA: ${shortUA}`, 'info');
+}
+
+// Log touch events
+let touchEventCount = 0;
+window.addEventListener('touchstart', (e) => {
+    touchEventCount++;
+    if (touchEventCount <= 3) { // Only log first 3 touches to avoid spam
+        addLog(`👆 Touch Event #${touchEventCount} (${e.touches.length} finger${e.touches.length > 1 ? 's' : ''})`, 'event');
+    } else if (touchEventCount === 4) {
+        addLog('👆 Touch events continue...', 'info');
+    }
+});
+
+// Log orientation changes
+window.addEventListener('orientationchange', () => {
+    const orientation = window.orientation === 0 || window.orientation === 180 ? 'Portrait' : 'Landscape';
+    addLog(`📱 Orientation: ${orientation}`, 'event');
+    setTimeout(() => {
+        addLog(`📐 New Size: ${window.innerWidth}x${window.innerHeight}`, 'info');
+    }, 100);
+});
+
+// Log resize events (throttled)
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        addLog(`📐 Resize: ${window.innerWidth}x${window.innerHeight}`, 'info');
+    }, 500);
+});
+
+// Initialize the mobile log system
+initMobileLog();

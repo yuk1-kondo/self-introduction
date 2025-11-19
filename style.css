@@ -160,34 +160,99 @@ p {
     color: var(--bg-color);
 }
 
+/* Mobile Access Log */
+#mobile-log {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    padding: 10px;
+    border-radius: 5px;
+    max-width: 350px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    border: 1px solid #333;
+}
+
+#mobile-log-header {
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #333;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+#mobile-log-content {
+    line-height: 1.5;
+}
+
+.log-entry {
+    margin-bottom: 8px;
+    padding: 5px;
+    border-left: 2px solid #00ff00;
+    padding-left: 8px;
+}
+
+.log-entry.info {
+    border-left-color: #00aaff;
+}
+
+.log-entry.event {
+    border-left-color: #ff00ff;
+}
+
+.log-entry.warning {
+    border-left-color: #ffaa00;
+}
+
+.log-timestamp {
+    color: #888;
+    font-size: 0.7rem;
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
     h1 {
         font-size: 1.5rem;
         letter-spacing: 0.15em;
     }
-    
+
     p {
         font-size: 0.8rem;
         letter-spacing: 0.08em;
     }
-    
+
     #ui-layer {
         top: 20px;
         left: 20px;
     }
-    
+
     #instructions {
         font-size: 0.7rem;
         bottom: 20px;
     }
-    
+
     .modal-content {
         padding: 2rem;
         width: 85%;
     }
-    
+
     .close-btn {
         font-size: 1.5rem;
+    }
+
+    #mobile-log {
+        top: 10px;
+        right: 10px;
+        max-width: calc(100vw - 20px);
+        max-height: 250px;
+        font-size: 0.65rem;
     }
 }
