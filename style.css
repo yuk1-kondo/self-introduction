@@ -110,6 +110,20 @@ p {
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
 
+.modal-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto 1.5rem;
+    display: block;
+    border: 2px solid var(--text-color);
+}
+
+.modal-image.hidden {
+    display: none;
+}
+
 .close-btn {
     position: absolute;
     top: 10px;

@@ -7,6 +7,7 @@ const modalTitle = document.getElementById('modal-title');
 const modalCategory = document.getElementById('modal-category');
 const modalDescription = document.getElementById('modal-description');
 const modalLink = document.getElementById('modal-link');
+const modalImage = document.getElementById('modal-image');
 const closeModal = document.getElementById('close-modal');
 
 let width, height;
@@ -267,6 +268,15 @@ function openModal(data) {
     modalTitle.innerText = data.title;
     modalCategory.innerText = data.category;
     modalDescription.innerText = data.description;
+    
+    // Handle profile image
+    if (data.image) {
+        modalImage.src = data.image;
+        modalImage.alt = data.title;
+        modalImage.classList.remove('hidden');
+    } else {
+        modalImage.classList.add('hidden');
+    }
     
     // Reset default styles first
     modalLink.style.pointerEvents = 'auto';
