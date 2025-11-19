@@ -269,6 +269,11 @@ function openModal(data) {
     modalDescription.innerText = data.description;
     modalLink.href = data.link;
     
+    // Reset default styles first
+    modalLink.style.pointerEvents = 'auto';
+    modalLink.style.opacity = '1';
+    modalLink.onclick = null;
+    
     // Change button text based on project type
     if (data.link.startsWith('mailto:')) {
         modalLink.innerText = 'Send Email';
@@ -282,12 +287,8 @@ function openModal(data) {
         modalLink.innerText = 'Coming Soon';
         modalLink.style.pointerEvents = 'none';
         modalLink.style.opacity = '0.5';
-        modalLink.onclick = null;
     } else {
         modalLink.innerText = 'View Project';
-        modalLink.style.pointerEvents = 'auto';
-        modalLink.style.opacity = '1';
-        modalLink.onclick = null;
     }
     
     modal.classList.remove('hidden');
