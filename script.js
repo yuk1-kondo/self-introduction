@@ -268,6 +268,20 @@ function openModal(data) {
     modalCategory.innerText = data.category;
     modalDescription.innerText = data.description;
     modalLink.href = data.link;
+    
+    // Change button text based on project type
+    if (data.link.startsWith('mailto:')) {
+        modalLink.innerText = 'Send Email';
+    } else if (data.link === '#') {
+        modalLink.innerText = 'Coming Soon';
+        modalLink.style.pointerEvents = 'none';
+        modalLink.style.opacity = '0.5';
+    } else {
+        modalLink.innerText = 'View Project';
+        modalLink.style.pointerEvents = 'auto';
+        modalLink.style.opacity = '1';
+    }
+    
     modal.classList.remove('hidden');
 }
 
