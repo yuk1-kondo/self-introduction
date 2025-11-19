@@ -183,11 +183,43 @@ p {
     }
 
     .modal-content {
-        padding: 2rem;
-        width: 85%;
+        padding: 1.5rem;
+        width: 90%;
+        max-width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .modal-content h2 {
+        font-size: 1.3rem;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .modal-content p {
+        font-size: 0.85rem;
+        margin: 0.5rem 0;
+    }
+
+    .subtitle {
+        font-size: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .modal-image {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 1rem;
+    }
+
+    .btn {
+        margin-top: 1rem;
+        padding: 8px 20px;
+        font-size: 0.85rem;
     }
 
     .close-btn {
-        font-size: 1.5rem;
+        font-size: 1.8rem;
+        top: 5px;
+        right: 10px;
     }
 }

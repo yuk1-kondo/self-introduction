@@ -177,10 +177,13 @@ class ProjectNode {
         ctx.closePath();
         ctx.fill();
 
-        // Draw Label if hovered
-        if (this.isHovered || this.size > this.baseSize + 2) {
+        // Draw Label - always visible on mobile, hover on desktop
+        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const shouldShowLabel = isMobile || this.isHovered || this.size > this.baseSize + 2;
+
+        if (shouldShowLabel) {
             ctx.fillStyle = '#333';
-            ctx.font = '16px Outfit';
+            ctx.font = isMobile ? '14px Outfit' : '16px Outfit';
             ctx.textAlign = 'center';
             ctx.fillText(this.data.title, this.x, this.y - this.size - 10);
         }
