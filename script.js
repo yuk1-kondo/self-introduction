@@ -167,10 +167,22 @@ class ProjectNode {
         }
     }
 
-    checkClick() {
-        if (this.isHovered) {
+    checkClick(x, y) {
+        // If x, y are provided (from touch), check distance directly
+        if (x !== undefined && y !== undefined) {
+            let dx = x - this.x;
+            let dy = y - this.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < 40) { // Larger hit area for mobile
+                openModal(this.data);
+                return true;
+            }
+        } else if (this.isHovered) {
+            // Desktop: use hover state
             openModal(this.data);
+            return true;
         }
+        return false;
     }
 }
 
@@ -329,13 +341,17 @@ window.addEventListener('mouseup', () => {
     mouse.isPressed = false;
 });
 
-window.addEventListener('click', (e) => {
-    // Check if clicked on a project node
-    // Only if modal is hidden
+// Handle both click and tap for project nodes
+function handleProjectNodeInteraction() {
     if (modal.classList.contains('hidden')) {
         projectNodes.forEach(node => node.checkClick());
     }
-});
+}
+
+window.addEventListener('click', handleProjectNodeInteraction);
+
+// Track tap position for modal opening
+let tapStartX, tapStartY;
 
 window.addEventListener('dblclick', (e) => {
     // Shockwave effect on double-click
@@ -370,6 +386,10 @@ window.addEventListener('touchstart', (e) => {
     mouse.x = touch.clientX;
     mouse.y = touch.clientY;
     mouse.isPressed = true;
+
+    // Store tap position for modal opening
+    tapStartX = touch.clientX;
+    tapStartY = touch.clientY;
 });
 
 window.addEventListener('touchmove', (e) => {
@@ -381,9 +401,21 @@ window.addEventListener('touchmove', (e) => {
 
 window.addEventListener('touchend', () => {
     mouse.isPressed = false;
+
+    // Check if a project node was tapped
+    if (modal.classList.contains('hidden') && tapStartX !== undefined) {
+        for (let node of projectNodes) {
+            if (node.checkClick(tapStartX, tapStartY)) {
+                break;
+            }
+        }
+    }
+
     setTimeout(() => {
         mouse.x = undefined;
         mouse.y = undefined;
+        tapStartX = undefined;
+        tapStartY = undefined;
     }, 300);
 });
 
