@@ -16,10 +16,10 @@ const portfolioData = {
         },
         {
             id: 'proj3',
-            title: 'Echo',
-            category: 'Audio',
-            description: 'Generative music experiment using Web Audio API.',
-            link: '#'
+            title: 'Contact',
+            category: 'Get in touch',
+            description: 'Feel free to reach out via email for collaboration or inquiries.',
+            link: 'mailto:t-kondoy@e.osakamanabi.jp'
         },
         {
             id: 'proj4',
