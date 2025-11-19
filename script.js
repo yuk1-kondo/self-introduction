@@ -43,23 +43,27 @@ class Particle {
         this.color = colors[Math.floor(Math.random() * colors.length)];
         this.baseSize = this.size;
         this.shape = Math.random() > 0.5 ? 'circle' : 'square';
+        this.dampingActive = false; // Only apply damping after shockwave
     }
 
     update() {
         this.x += this.vx;
         this.y += this.vy;
 
-        // Apply damping to gradually slow down to base velocity
-        const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-        if (currentSpeed > this.baseVelocity) {
-            const dampingFactor = 0.95; // Adjust this value for faster/slower damping (0.9-0.98 recommended)
-            this.vx *= dampingFactor;
-            this.vy *= dampingFactor;
-        } else if (currentSpeed < this.baseVelocity * 0.8) {
-            // Slowly restore to base velocity if too slow
-            const restoreFactor = 1.02;
-            this.vx *= restoreFactor;
-            this.vy *= restoreFactor;
+        // Apply damping only if particle was affected by shockwave
+        if (this.dampingActive) {
+            const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            if (currentSpeed > this.baseVelocity * 1.2) {
+                const dampingFactor = 0.97; // Gradual slowdown
+                this.vx *= dampingFactor;
+                this.vy *= dampingFactor;
+            } else {
+                // Reset to base velocity and turn off damping
+                const angle = Math.atan2(this.vy, this.vx);
+                this.vx = Math.cos(angle) * this.baseVelocity;
+                this.vy = Math.sin(angle) * this.baseVelocity;
+                this.dampingActive = false;
+            }
         }
 
         if (this.x < 0 || this.x > width) this.vx *= -1;
@@ -312,11 +316,12 @@ window.addEventListener('dblclick', (e) => {
             const dx = p.x - clickX;
             const dy = p.y - clickY;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = 1000 / (dist + 10); // Strong repulsive force
+            const force = 1500 / (dist + 10); // Stronger repulsive force
             
             const angle = Math.atan2(dy, dx);
             p.vx += Math.cos(angle) * force;
             p.vy += Math.sin(angle) * force;
+            p.dampingActive = true; // Enable damping after shockwave
         });
     }
 });
@@ -366,11 +371,12 @@ window.addEventListener('touchstart', (e) => {
             const dx = p.x - clickX;
             const dy = p.y - clickY;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = 1000 / (dist + 10);
+            const force = 1500 / (dist + 10); // Stronger force
             
             const angle = Math.atan2(dy, dx);
             p.vx += Math.cos(angle) * force;
             p.vy += Math.sin(angle) * force;
+            p.dampingActive = true; // Enable damping after shockwave
         });
     }
     lastTap = currentTime;
