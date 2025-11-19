@@ -39,12 +39,20 @@ let particles = [];
 let projectNodes = [];
 let tapStartX, tapStartY;
 let lastTap = 0;
+let isMobile = false;
 
 const mouse = {
     x: undefined,
     y: undefined,
     isPressed: false
 };
+
+// Detect mobile device once
+function detectMobile() {
+    isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               ('ontouchstart' in window) ||
+               (navigator.maxTouchPoints > 0);
+}
 
 // ===========================
 // Particle Class
@@ -178,14 +186,18 @@ class ProjectNode {
         ctx.fill();
 
         // Draw Label - always visible on mobile, hover on desktop
-        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         const shouldShowLabel = isMobile || this.isHovered || this.size > this.baseSize + 2;
 
         if (shouldShowLabel) {
-            ctx.fillStyle = '#333';
-            ctx.font = isMobile ? '14px Outfit' : '16px Outfit';
+            // Add shadow for better visibility
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+            ctx.shadowBlur = 4;
+            ctx.fillStyle = '#000';
+            ctx.font = isMobile ? 'bold 15px Outfit' : 'bold 16px Outfit';
             ctx.textAlign = 'center';
-            ctx.fillText(this.data.title, this.x, this.y - this.size - 10);
+            ctx.fillText(this.data.title, this.x, this.y - this.size - 15);
+            // Reset shadow
+            ctx.shadowBlur = 0;
         }
     }
 
@@ -212,6 +224,7 @@ class ProjectNode {
 // Core Functions
 // ===========================
 function init() {
+    detectMobile(); // Detect device type once
     resize();
     particles = [];
     projectNodes = [];
