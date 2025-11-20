@@ -2,7 +2,7 @@
     --bg-color: #f0f0f0;
     --text-color: #333;
     --accent-color: #000;
-    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-bg: rgba(255, 255, 255, 0.92); /* Slightly transparent to let background show through */
     --glass-border: rgba(255, 255, 255, 0.5);
 }
 
@@ -86,8 +86,8 @@ p {
     justify-content: center;
     align-items: center;
     z-index: 10;
-    background: rgba(240, 240, 240, 0.85); /* Light overlay */
-    backdrop-filter: blur(8px);
+    background: rgba(240, 240, 240, 0.4); /* More transparent overlay to see particles and glow */
+    backdrop-filter: blur(4px); /* Lighter blur for better visibility */
     opacity: 1;
     transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s ease;
 }
