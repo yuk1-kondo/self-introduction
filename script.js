@@ -34,7 +34,7 @@ const PARTICLE_COUNT_DESKTOP = 80;
 const PARTICLE_COUNT_MOBILE = 50;
 const CONNECTION_DISTANCE = 150;
 const MOUSE_DISTANCE = 200;
-const PARTICLE_BASE_VELOCITY = 1.5;
+const PARTICLE_BASE_VELOCITY = 2.5;
 const SHOCKWAVE_FORCE = 1500;
 const DOUBLE_TAP_DELAY = 300;
 const TOUCH_RESET_DELAY = 300;
@@ -379,8 +379,8 @@ function openModal(data) {
     modalCategory.innerText = data.category;
     modalDescription.innerText = data.description;
 
-    // Apply left alignment for About Me and other descriptive sections
-    if (data.id === 'proj1' || data.id === 'proj4') {
+    // Apply left alignment for About Me, Repository, and other descriptive sections
+    if (data.id === 'proj1' || data.id === 'proj2' || data.id === 'proj4') {
         modalDescription.classList.add('modal-description-left');
     } else {
         modalDescription.classList.remove('modal-description-left');
@@ -418,7 +418,7 @@ function openModal(data) {
         modalLink.href = data.link;
         // Let the browser handle mailto naturally
     } else if (data.link.startsWith('https://github.com/')) {
-        modalLink.innerText = 'GitHubを見る';
+        modalLink.innerText = 'View on GitHub';
         modalLink.href = data.link;
         modalLink.setAttribute('target', '_blank');
     } else if (data.link === '#') {
