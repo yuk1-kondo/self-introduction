@@ -177,8 +177,8 @@ class ProjectNode {
         // Apply damping only if node was affected by shockwave
         if (this.dampingActive) {
             const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (currentSpeed > this.baseVelocity * 1.2) {
-                const dampingFactor = 0.97; // Gradual slowdown
+            if (currentSpeed > this.baseVelocity * 1.05) {
+                const dampingFactor = 0.98; // Gentler slowdown for smoother effect
                 this.vx *= dampingFactor;
                 this.vy *= dampingFactor;
             } else {
