@@ -136,16 +136,12 @@ class Particle {
     }
 
     draw() {
-        // Round coordinates to prevent sub-pixel rendering
-        const roundX = Math.round(this.x);
-        const roundY = Math.round(this.y);
-
         ctx.fillStyle = this.color;
         ctx.beginPath();
         if (this.shape === 'circle') {
-            ctx.arc(roundX, roundY, this.size, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         } else {
-            ctx.rect(roundX - this.size, roundY - this.size, this.size * 2, this.size * 2);
+            ctx.rect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
         }
         ctx.fill();
     }
