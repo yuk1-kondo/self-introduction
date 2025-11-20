@@ -297,6 +297,46 @@ p {
     }
 }
 
+/* Cursor/Touch Glow Effect */
+.glow-effect {
+    position: fixed;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(255,255,255,0.25) 0%,
+        rgba(255,255,255,0.15) 30%,
+        rgba(255,255,255,0.05) 50%,
+        transparent 70%
+    );
+    pointer-events: none;
+    mix-blend-mode: screen;
+    transition: opacity 0.3s ease;
+    opacity: 0;
+    z-index: 50;
+    will-change: transform;
+}
+
+.glow-effect.active {
+    opacity: 1;
+}
+
+.glow-effect.pulse {
+    animation: glowPulse 0.5s ease-out;
+}
+
+@keyframes glowPulse {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+    }
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
     h1 {

@@ -732,3 +732,92 @@ window.addEventListener('keydown', (e) => {
         console.log('Hint history cleared. Reload to see hints again.');
     }
 });
+
+// ===========================
+// Cursor/Touch Glow Effect
+// ===========================
+const glowEffect = document.getElementById('glow-effect');
+
+if (glowEffect) {
+    let glowX = 0;
+    let glowY = 0;
+    let glowTargetX = 0;
+    let glowTargetY = 0;
+    let glowAnimationFrame = null;
+
+    function updateGlowPosition() {
+        // Smooth interpolation for smoother movement
+        glowX += (glowTargetX - glowX) * 0.15;
+        glowY += (glowTargetY - glowY) * 0.15;
+
+        glowEffect.style.transform = `translate(${glowX}px, ${glowY}px) translate(-50%, -50%)`;
+
+        // Continue animation if there's still movement
+        if (Math.abs(glowTargetX - glowX) > 0.5 || Math.abs(glowTargetY - glowY) > 0.5) {
+            glowAnimationFrame = requestAnimationFrame(updateGlowPosition);
+        } else {
+            glowAnimationFrame = null;
+        }
+    }
+
+    if (!isMobile) {
+    // Desktop: Mouse glow with smooth interpolation
+    let isMouseIn = false;
+
+    window.addEventListener('mousemove', (e) => {
+        glowTargetX = e.clientX;
+        glowTargetY = e.clientY;
+
+        if (!isMouseIn) {
+            isMouseIn = true;
+            glowX = e.clientX;
+            glowY = e.clientY;
+            glowEffect.classList.add('active');
+        }
+
+        if (!glowAnimationFrame) {
+            glowAnimationFrame = requestAnimationFrame(updateGlowPosition);
+        }
+    });
+
+    window.addEventListener('mouseout', () => {
+        isMouseIn = false;
+        glowEffect.classList.remove('active');
+        if (glowAnimationFrame) {
+            cancelAnimationFrame(glowAnimationFrame);
+            glowAnimationFrame = null;
+        }
+    });
+
+    window.addEventListener('mousedown', () => {
+        glowEffect.classList.add('pulse');
+        setTimeout(() => glowEffect.classList.remove('pulse'), 500);
+    });
+} else {
+    // Mobile: Touch glow (instant, no interpolation needed)
+    let touchGlowTimeout;
+
+    window.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        glowEffect.style.transform = `translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%)`;
+        glowEffect.classList.add('active', 'pulse');
+
+        clearTimeout(touchGlowTimeout);
+        touchGlowTimeout = setTimeout(() => {
+            glowEffect.classList.remove('active', 'pulse');
+        }, 500);
+    });
+
+    window.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        glowEffect.style.transform = `translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%)`;
+    });
+
+    window.addEventListener('touchend', () => {
+        clearTimeout(touchGlowTimeout);
+        touchGlowTimeout = setTimeout(() => {
+            glowEffect.classList.remove('active', 'pulse');
+        }, 500);
+    });
+}
+}
