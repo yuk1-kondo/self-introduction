@@ -233,7 +233,7 @@ class ProjectNode {
             ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
             ctx.shadowBlur = 6;
             ctx.fillStyle = '#000';
-            ctx.font = isMobile ? 'bold 15px Outfit' : 'bold 16px Outfit';
+            ctx.font = isMobile ? '500 15px Outfit' : '500 16px Outfit';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
@@ -386,25 +386,20 @@ function openModal(data) {
         modalDescription.classList.remove('modal-description-left');
     }
 
-    // Handle profile image
-    const imageSource = data.image || defaultModalImageSrc;
-    if (imageSource) {
-        const resolvedSrc = resolveImagePath(imageSource);
+    // Handle profile image - only show for About Me (proj1)
+    if (data.id === 'proj1' && data.image) {
+        const resolvedSrc = resolveImagePath(data.image);
         modalImage.onerror = () => {
             modalImage.onerror = null;
-            const fallbackSrc = resolveImagePath(defaultModalImageSrc);
-            if (fallbackSrc && modalImage.src !== fallbackSrc) {
-                modalImage.src = fallbackSrc;
-            } else {
-                modalImage.classList.add('hidden');
-                if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
-            }
+            modalImage.classList.add('hidden');
+            if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
         };
         modalImage.src = resolvedSrc;
         modalImage.alt = data.title;
         modalImage.classList.remove('hidden');
         if (modalImageWrapper) modalImageWrapper.classList.remove('hidden');
     } else {
+        // Hide image for all other sections
         modalImage.onerror = null;
         modalImage.classList.add('hidden');
         if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
