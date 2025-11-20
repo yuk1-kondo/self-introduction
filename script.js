@@ -154,7 +154,7 @@ class Particle {
 // ProjectNode Class
 // ===========================
 class ProjectNode {
-    constructor(data) {
+    constructor(data, index) {
         this.data = data;
         this.x = Math.random() * (width - 200) + 100; // Keep away from edges
         this.y = Math.random() * (height - 200) + 100;
@@ -169,9 +169,38 @@ class ProjectNode {
         this.color = '#000000'; // Main projects are black (or dark)
         this.isHovered = false;
         this.dampingActive = false;
+        // Load animation properties
+        this.opacity = 0;
+        this.scale = 0.5;
+        this.loadAnimationStartTime = Date.now() + 300 + (index * 200); // 300ms initial delay
+        this.loadAnimationDuration = 400;
+        this.loadAnimationComplete = false;
     }
 
     update() {
+        // Handle load animation
+        if (!this.loadAnimationComplete) {
+            const now = Date.now();
+            if (now >= this.loadAnimationStartTime) {
+                const elapsed = now - this.loadAnimationStartTime;
+                const progress = Math.min(elapsed / this.loadAnimationDuration, 1);
+
+                // Easing function: easeOutBack (slight overshoot for bounce effect)
+                const c1 = 1.70158;
+                const c3 = c1 + 1;
+                const eased = 1 + c3 * Math.pow(progress - 1, 3) + c1 * Math.pow(progress - 1, 2);
+
+                this.opacity = Math.min(progress * 1.2, 1); // Fade in faster
+                this.scale = 0.5 + (eased * 0.5); // 0.5 → 1.0 with bounce
+
+                if (progress >= 1) {
+                    this.opacity = 1;
+                    this.scale = 1;
+                    this.loadAnimationComplete = true;
+                }
+            }
+        }
+
         this.x += this.vx;
         this.y += this.vy;
 
@@ -229,22 +258,33 @@ class ProjectNode {
     }
 
     draw() {
+        // Apply load animation opacity and scale
+        ctx.save();
+        ctx.globalAlpha = this.opacity;
+
+        const scaledSize = this.size * this.scale;
+
         ctx.fillStyle = this.color;
         ctx.beginPath();
         // Diamond shape for projects
-        ctx.moveTo(this.x, this.y - this.size);
-        ctx.lineTo(this.x + this.size, this.y);
-        ctx.lineTo(this.x, this.y + this.size);
-        ctx.lineTo(this.x - this.size, this.y);
+        ctx.moveTo(this.x, this.y - scaledSize);
+        ctx.lineTo(this.x + scaledSize, this.y);
+        ctx.lineTo(this.x, this.y + scaledSize);
+        ctx.lineTo(this.x - scaledSize, this.y);
         ctx.closePath();
         ctx.fill();
 
+        ctx.restore();
+
         // Draw Label - always visible on mobile, hover on desktop
-        const shouldShowLabel = isMobile || this.isHovered || this.size > this.baseSize + 2;
+        const shouldShowLabel = (isMobile || this.isHovered || this.size > this.baseSize + 2) && this.opacity > 0.3;
 
         if (shouldShowLabel) {
             // Save context state
             ctx.save();
+
+            // Apply load animation opacity to label
+            ctx.globalAlpha = this.opacity;
 
             // Optimize text rendering for smooth display
             ctx.imageSmoothingEnabled = true;
@@ -258,8 +298,8 @@ class ProjectNode {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // Draw label text
-            const textY = this.y - this.size - 18;
+            // Draw label text with scaled size
+            const textY = this.y - scaledSize - 18;
             ctx.fillText(this.data.title, this.x, textY);
 
             // Restore context state
@@ -303,8 +343,8 @@ function init() {
 
     // Create project nodes from portfolio data
     if (typeof portfolioData !== 'undefined') {
-        portfolioData.projects.forEach(project => {
-            projectNodes.push(new ProjectNode(project));
+        portfolioData.projects.forEach((project, index) => {
+            projectNodes.push(new ProjectNode(project, index));
         });
     }
 }
@@ -623,3 +663,72 @@ window.addEventListener('touchend', () => {
 // ===========================
 init();
 animate();
+
+// ===========================
+// Interaction Hints System
+// ===========================
+function showInteractionHints() {
+    // Check if user has visited before
+    if (localStorage.getItem('portfolio_visited')) {
+        return; // Don't show hints for returning visitors
+    }
+
+    const hintContainer = document.getElementById('hint-container');
+    if (!hintContainer) return;
+
+    hintContainer.classList.remove('hidden');
+
+    const hints = isMobile
+        ? [
+            { text: 'ダブルタップで爆発効果 🎆', delay: 500, duration: 2500 },
+            { text: 'プロジェクトをタップして詳細を見る', delay: 3200, duration: 2500 }
+          ]
+        : [
+            { text: 'ダブルクリックで爆発効果 🎆', delay: 500, duration: 2500 },
+            { text: 'プロジェクトをクリックして詳細を見る', delay: 3200, duration: 2500 }
+          ];
+
+    hints.forEach((hint) => {
+        setTimeout(() => {
+            const hintElement = document.createElement('div');
+            hintElement.className = 'hint';
+            hintElement.textContent = hint.text;
+            hintElement.setAttribute('role', 'status');
+            hintElement.setAttribute('aria-live', 'polite');
+            hintContainer.appendChild(hintElement);
+
+            // Auto fade out and remove
+            setTimeout(() => {
+                hintElement.classList.add('fade-out');
+                setTimeout(() => {
+                    hintElement.remove();
+                    // Hide container if no more hints
+                    if (hintContainer.children.length === 0) {
+                        hintContainer.classList.add('hidden');
+                    }
+                }, 300);
+            }, hint.duration);
+        }, hint.delay);
+    });
+
+    // Mark as visited
+    localStorage.setItem('portfolio_visited', 'true');
+}
+
+// Show hints after DOM is ready (faster than 'load')
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(showInteractionHints, 500);
+    });
+} else {
+    // DOM already loaded
+    setTimeout(showInteractionHints, 500);
+}
+
+// Debug: Clear hints history with Shift+H
+window.addEventListener('keydown', (e) => {
+    if (e.shiftKey && e.key === 'H') {
+        localStorage.removeItem('portfolio_visited');
+        console.log('Hint history cleared. Reload to see hints again.');
+    }
+});
