@@ -35,7 +35,11 @@ const PARTICLE_COUNT_MOBILE = 50;
 const CONNECTION_DISTANCE = 150;
 const MOUSE_DISTANCE = 200;
 const PARTICLE_BASE_VELOCITY = 2.5;
+const PROJECT_NODE_VELOCITY_DESKTOP = 0.3;
+const PROJECT_NODE_VELOCITY_MOBILE = 1.0;
 const SHOCKWAVE_FORCE = 1500;
+const DAMPING_THRESHOLD = 3.0; // Absolute threshold for damping (matches Particle at 2.5 * 1.2)
+const DAMPING_FACTOR = 0.97;
 const DOUBLE_TAP_DELAY = 300;
 const TOUCH_RESET_DELAY = 300;
 const PROJECT_NODE_HIT_AREA = 40;
@@ -95,10 +99,9 @@ class Particle {
         // Apply damping only if particle was affected by shockwave
         if (this.dampingActive) {
             const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (currentSpeed > this.baseVelocity * 1.2) {
-                const dampingFactor = 0.97; // Gradual slowdown
-                this.vx *= dampingFactor;
-                this.vy *= dampingFactor;
+            if (currentSpeed > DAMPING_THRESHOLD) {
+                this.vx *= DAMPING_FACTOR;
+                this.vy *= DAMPING_FACTOR;
             } else {
                 // Reset to base velocity and turn off damping
                 const angle = Math.atan2(this.vy, this.vx);
@@ -136,16 +139,12 @@ class Particle {
     }
 
     draw() {
-        // Round coordinates to prevent sub-pixel rendering
-        const roundX = Math.round(this.x);
-        const roundY = Math.round(this.y);
-
         ctx.fillStyle = this.color;
         ctx.beginPath();
         if (this.shape === 'circle') {
-            ctx.arc(roundX, roundY, this.size, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         } else {
-            ctx.rect(roundX - this.size, roundY - this.size, this.size * 2, this.size * 2);
+            ctx.rect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
         }
         ctx.fill();
     }
@@ -159,21 +158,47 @@ class ProjectNode {
         this.data = data;
         this.x = Math.random() * (width - 200) + 100; // Keep away from edges
         this.y = Math.random() * (height - 200) + 100;
-        this.vx = (Math.random() - 0.5) * 0.3; // Even slower for smoother labels
-        this.vy = (Math.random() - 0.5) * 0.3;
+        // Use faster velocity for mobile, slower for desktop
+        const velocity = isMobile ? PROJECT_NODE_VELOCITY_MOBILE : PROJECT_NODE_VELOCITY_DESKTOP;
+        this.vx = (Math.random() - 0.5) * velocity;
+        this.vy = (Math.random() - 0.5) * velocity;
+        this.baseVelocity = velocity;
         this.size = 8; // Larger base size
         this.baseSize = 8;
         this.hoverSize = 15;
         this.color = '#000000'; // Main projects are black (or dark)
         this.isHovered = false;
+        this.dampingActive = false;
     }
 
     update() {
         this.x += this.vx;
         this.y += this.vy;
 
-        if (this.x < 50 || this.x > width - 50) this.vx *= -1;
-        if (this.y < 50 || this.y > height - 50) this.vy *= -1;
+        // Apply damping only if node was affected by shockwave
+        if (this.dampingActive) {
+            const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            if (currentSpeed > DAMPING_THRESHOLD) {
+                this.vx *= DAMPING_FACTOR;
+                this.vy *= DAMPING_FACTOR;
+            } else {
+                // Reset to base velocity and turn off damping
+                const angle = Math.atan2(this.vy, this.vx);
+                this.vx = Math.cos(angle) * this.baseVelocity;
+                this.vy = Math.sin(angle) * this.baseVelocity;
+                this.dampingActive = false;
+            }
+        }
+
+        // Boundary check - but allow more movement during shockwave damping
+        if (!this.dampingActive) {
+            if (this.x < 50 || this.x > width - 50) this.vx *= -1;
+            if (this.y < 50 || this.y > height - 50) this.vy *= -1;
+        } else {
+            // During damping, only bounce at screen edges to prevent getting stuck
+            if (this.x < 0 || this.x > width) this.vx *= -1;
+            if (this.y < 0 || this.y > height) this.vy *= -1;
+        }
 
         // Check hover
         if (mouse.x != undefined && mouse.y != undefined) {
@@ -204,17 +229,13 @@ class ProjectNode {
     }
 
     draw() {
-        // Round coordinates to prevent sub-pixel rendering jitter
-        const roundX = Math.round(this.x);
-        const roundY = Math.round(this.y);
-
         ctx.fillStyle = this.color;
         ctx.beginPath();
-        // Diamond shape for projects - use rounded coordinates
-        ctx.moveTo(roundX, roundY - this.size);
-        ctx.lineTo(roundX + this.size, roundY);
-        ctx.lineTo(roundX, roundY + this.size);
-        ctx.lineTo(roundX - this.size, roundY);
+        // Diamond shape for projects
+        ctx.moveTo(this.x, this.y - this.size);
+        ctx.lineTo(this.x + this.size, this.y);
+        ctx.lineTo(this.x, this.y + this.size);
+        ctx.lineTo(this.x - this.size, this.y);
         ctx.closePath();
         ctx.fill();
 
@@ -237,9 +258,9 @@ class ProjectNode {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // Use rounded coordinates for text to prevent jitter
-            const textY = Math.round(roundY - this.size - 18);
-            ctx.fillText(this.data.title, roundX, textY);
+            // Draw label text
+            const textY = this.y - this.size - 18;
+            ctx.fillText(this.data.title, this.x, textY);
 
             // Restore context state
             ctx.restore();
@@ -488,6 +509,7 @@ window.addEventListener('dblclick', (e) => {
         const clickX = e.clientX;
         const clickY = e.clientY;
 
+        // Apply shockwave to particles
         particles.forEach(p => {
             const dx = p.x - clickX;
             const dy = p.y - clickY;
@@ -498,6 +520,19 @@ window.addEventListener('dblclick', (e) => {
             p.vx += Math.cos(angle) * force;
             p.vy += Math.sin(angle) * force;
             p.dampingActive = true;
+        });
+
+        // Apply shockwave to project nodes (same force as particles)
+        projectNodes.forEach(node => {
+            const dx = node.x - clickX;
+            const dy = node.y - clickY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const force = SHOCKWAVE_FORCE / (dist + 10);
+
+            const angle = Math.atan2(dy, dx);
+            node.vx += Math.cos(angle) * force;
+            node.vy += Math.sin(angle) * force;
+            node.dampingActive = true;
         });
     }
 });
@@ -525,6 +560,7 @@ window.addEventListener('touchstart', (e) => {
 
     // Check for double-tap (shockwave effect)
     if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0 && modal.classList.contains('hidden')) {
+        // Apply shockwave to particles
         particles.forEach(p => {
             const dx = p.x - touch.clientX;
             const dy = p.y - touch.clientY;
@@ -535,6 +571,19 @@ window.addEventListener('touchstart', (e) => {
             p.vx += Math.cos(angle) * force;
             p.vy += Math.sin(angle) * force;
             p.dampingActive = true;
+        });
+
+        // Apply shockwave to project nodes (same force as particles)
+        projectNodes.forEach(node => {
+            const dx = node.x - touch.clientX;
+            const dy = node.y - touch.clientY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const force = SHOCKWAVE_FORCE / (dist + 10);
+
+            const angle = Math.atan2(dy, dx);
+            node.vx += Math.cos(angle) * force;
+            node.vy += Math.sin(angle) * force;
+            node.dampingActive = true;
         });
     }
 
