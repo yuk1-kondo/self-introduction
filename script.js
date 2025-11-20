@@ -522,7 +522,7 @@ window.addEventListener('dblclick', (e) => {
             p.dampingActive = true;
         });
 
-        // Apply shockwave to project nodes with stronger force
+        // Apply shockwave to project nodes (same force as particles)
         projectNodes.forEach(node => {
             const dx = node.x - clickX;
             const dy = node.y - clickY;
@@ -530,9 +530,8 @@ window.addEventListener('dblclick', (e) => {
             const force = SHOCKWAVE_FORCE / (dist + 10);
 
             const angle = Math.atan2(dy, dx);
-            // Apply 1.5x stronger force to ProjectNodes for more visible effect
-            node.vx += Math.cos(angle) * force * 1.5;
-            node.vy += Math.sin(angle) * force * 1.5;
+            node.vx += Math.cos(angle) * force;
+            node.vy += Math.sin(angle) * force;
             node.dampingActive = true;
         });
     }
@@ -574,7 +573,7 @@ window.addEventListener('touchstart', (e) => {
             p.dampingActive = true;
         });
 
-        // Apply shockwave to project nodes with stronger force
+        // Apply shockwave to project nodes (same force as particles)
         projectNodes.forEach(node => {
             const dx = node.x - touch.clientX;
             const dy = node.y - touch.clientY;
@@ -582,9 +581,8 @@ window.addEventListener('touchstart', (e) => {
             const force = SHOCKWAVE_FORCE / (dist + 10);
 
             const angle = Math.atan2(dy, dx);
-            // Apply 1.5x stronger force to ProjectNodes for more visible effect
-            node.vx += Math.cos(angle) * force * 1.5;
-            node.vy += Math.sin(angle) * force * 1.5;
+            node.vx += Math.cos(angle) * force;
+            node.vy += Math.sin(angle) * force;
             node.dampingActive = true;
         });
     }
