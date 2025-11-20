@@ -252,51 +252,6 @@ p {
     outline: none;
 }
 
-/* Interaction Hints */
-.hint-container {
-    position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-    pointer-events: none;
-}
-
-.hint {
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(8px);
-    animation: hintFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 1;
-    transition: opacity 0.3s ease;
-}
-
-.hint.fade-out {
-    opacity: 0;
-}
-
-@keyframes hintFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 /* Cursor/Touch Glow Effect */
 .glow-effect {
     position: fixed;
@@ -419,14 +374,5 @@ p {
         right: 8px;
         padding: 5px;
         line-height: 1;
-    }
-
-    .hint-container {
-        bottom: 60px;
-    }
-
-    .hint {
-        font-size: 0.8rem;
-        padding: 10px 20px;
     }
 }

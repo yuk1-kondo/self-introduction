@@ -219,15 +219,9 @@ class ProjectNode {
             }
         }
 
-        // Boundary check - but allow more movement during shockwave damping
-        if (!this.dampingActive) {
-            if (this.x < 50 || this.x > width - 50) this.vx *= -1;
-            if (this.y < 50 || this.y > height - 50) this.vy *= -1;
-        } else {
-            // During damping, only bounce at screen edges to prevent getting stuck
-            if (this.x < 0 || this.x > width) this.vx *= -1;
-            if (this.y < 0 || this.y > height) this.vy *= -1;
-        }
+        // Boundary check at screen edges
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
 
         // Check hover
         if (mouse.x != undefined && mouse.y != undefined) {
@@ -663,75 +657,6 @@ window.addEventListener('touchend', () => {
 // ===========================
 init();
 animate();
-
-// ===========================
-// Interaction Hints System
-// ===========================
-function showInteractionHints() {
-    // Check if user has visited before
-    if (localStorage.getItem('portfolio_visited')) {
-        return; // Don't show hints for returning visitors
-    }
-
-    const hintContainer = document.getElementById('hint-container');
-    if (!hintContainer) return;
-
-    hintContainer.classList.remove('hidden');
-
-    const hints = isMobile
-        ? [
-            { text: 'ダブルタップで爆発効果 🎆', delay: 500, duration: 2500 },
-            { text: 'プロジェクトをタップして詳細を見る', delay: 3200, duration: 2500 }
-          ]
-        : [
-            { text: 'ダブルクリックで爆発効果 🎆', delay: 500, duration: 2500 },
-            { text: 'プロジェクトをクリックして詳細を見る', delay: 3200, duration: 2500 }
-          ];
-
-    hints.forEach((hint) => {
-        setTimeout(() => {
-            const hintElement = document.createElement('div');
-            hintElement.className = 'hint';
-            hintElement.textContent = hint.text;
-            hintElement.setAttribute('role', 'status');
-            hintElement.setAttribute('aria-live', 'polite');
-            hintContainer.appendChild(hintElement);
-
-            // Auto fade out and remove
-            setTimeout(() => {
-                hintElement.classList.add('fade-out');
-                setTimeout(() => {
-                    hintElement.remove();
-                    // Hide container if no more hints
-                    if (hintContainer.children.length === 0) {
-                        hintContainer.classList.add('hidden');
-                    }
-                }, 300);
-            }, hint.duration);
-        }, hint.delay);
-    });
-
-    // Mark as visited
-    localStorage.setItem('portfolio_visited', 'true');
-}
-
-// Show hints after DOM is ready (faster than 'load')
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(showInteractionHints, 500);
-    });
-} else {
-    // DOM already loaded
-    setTimeout(showInteractionHints, 500);
-}
-
-// Debug: Clear hints history with Shift+H
-window.addEventListener('keydown', (e) => {
-    if (e.shiftKey && e.key === 'H') {
-        localStorage.removeItem('portfolio_visited');
-        console.log('Hint history cleared. Reload to see hints again.');
-    }
-});
 
 // ===========================
 // Cursor/Touch Glow Effect
