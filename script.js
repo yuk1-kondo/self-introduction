@@ -177,8 +177,8 @@ class ProjectNode {
         // Apply damping only if node was affected by shockwave
         if (this.dampingActive) {
             const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (currentSpeed > this.baseVelocity * 1.05) {
-                const dampingFactor = 0.98; // Gentler slowdown for smoother effect
+            if (currentSpeed > this.baseVelocity * 1.2) {
+                const dampingFactor = 0.97; // Match Particle damping
                 this.vx *= dampingFactor;
                 this.vy *= dampingFactor;
             } else {
@@ -190,8 +190,15 @@ class ProjectNode {
             }
         }
 
-        if (this.x < 50 || this.x > width - 50) this.vx *= -1;
-        if (this.y < 50 || this.y > height - 50) this.vy *= -1;
+        // Boundary check - but allow more movement during shockwave damping
+        if (!this.dampingActive) {
+            if (this.x < 50 || this.x > width - 50) this.vx *= -1;
+            if (this.y < 50 || this.y > height - 50) this.vy *= -1;
+        } else {
+            // During damping, only bounce at screen edges to prevent getting stuck
+            if (this.x < 0 || this.x > width) this.vx *= -1;
+            if (this.y < 0 || this.y > height) this.vy *= -1;
+        }
 
         // Check hover
         if (mouse.x != undefined && mouse.y != undefined) {
@@ -515,7 +522,7 @@ window.addEventListener('dblclick', (e) => {
             p.dampingActive = true;
         });
 
-        // Apply shockwave to project nodes
+        // Apply shockwave to project nodes with stronger force
         projectNodes.forEach(node => {
             const dx = node.x - clickX;
             const dy = node.y - clickY;
@@ -523,8 +530,9 @@ window.addEventListener('dblclick', (e) => {
             const force = SHOCKWAVE_FORCE / (dist + 10);
 
             const angle = Math.atan2(dy, dx);
-            node.vx += Math.cos(angle) * force;
-            node.vy += Math.sin(angle) * force;
+            // Apply 1.5x stronger force to ProjectNodes for more visible effect
+            node.vx += Math.cos(angle) * force * 1.5;
+            node.vy += Math.sin(angle) * force * 1.5;
             node.dampingActive = true;
         });
     }
@@ -566,7 +574,7 @@ window.addEventListener('touchstart', (e) => {
             p.dampingActive = true;
         });
 
-        // Apply shockwave to project nodes
+        // Apply shockwave to project nodes with stronger force
         projectNodes.forEach(node => {
             const dx = node.x - touch.clientX;
             const dy = node.y - touch.clientY;
@@ -574,8 +582,9 @@ window.addEventListener('touchstart', (e) => {
             const force = SHOCKWAVE_FORCE / (dist + 10);
 
             const angle = Math.atan2(dy, dx);
-            node.vx += Math.cos(angle) * force;
-            node.vy += Math.sin(angle) * force;
+            // Apply 1.5x stronger force to ProjectNodes for more visible effect
+            node.vx += Math.cos(angle) * force * 1.5;
+            node.vy += Math.sin(angle) * force * 1.5;
             node.dampingActive = true;
         });
     }
