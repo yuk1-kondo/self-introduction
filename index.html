@@ -15,12 +15,12 @@
     <div id="ui-layer">
         <h1>YUKI KONDO</h1>
         <p>Creative Developer & Designer</p>
-        <div id="instructions">Click to Explore</div>
+        <div id="instructions">Tap or Click Projects to Learn More</div>
     </div>
 
-    <div id="project-modal" class="modal hidden">
+    <div id="project-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content">
-            <button id="close-modal" class="close-btn">&times;</button>
+            <button id="close-modal" class="close-btn" aria-label="Close modal">&times;</button>
             <div class="modal-image-wrapper hidden" id="modal-image-wrapper">
                 <img id="modal-image" src="profile.png" alt="" class="modal-image" data-default-image="profile.png" loading="lazy">
             </div>

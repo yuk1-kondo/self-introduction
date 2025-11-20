@@ -10,10 +10,10 @@ const portfolioData = {
         },
         {
             id: 'proj2',
-            title: 'Data Scape',
-            category: 'Visualization',
-            description: 'Real-time data visualization of global weather patterns.',
-            link: '#'
+            title: 'リポジトリ',
+            category: 'GitHub',
+            description: '私のプロジェクトやコード作品を公開しています。教育向けアプリやIoTプロジェクト、クリエイティブなコーディング作品など、様々なリポジトリをご覧いただけます。',
+            link: 'https://github.com/yuk1-kondo'
         },
         {
             id: 'proj3',

@@ -30,7 +30,8 @@ if (defaultModalImageSrc) {
 // ===========================
 // Configuration Constants
 // ===========================
-const PARTICLE_COUNT = 80;
+const PARTICLE_COUNT_DESKTOP = 80;
+const PARTICLE_COUNT_MOBILE = 50;
 const CONNECTION_DISTANCE = 150;
 const MOUSE_DISTANCE = 200;
 const PARTICLE_BASE_VELOCITY = 1.5;
@@ -182,15 +183,23 @@ class ProjectNode {
 
             if (distance < 30) { // Hover radius
                 this.isHovered = true;
-                if (this.size < this.hoverSize) this.size += 1;
+                // Smooth size transition
+                if (this.size < this.hoverSize) {
+                    this.size += (this.hoverSize - this.size) * 0.2;
+                }
                 document.body.style.cursor = 'pointer';
             } else {
                 this.isHovered = false;
-                if (this.size > this.baseSize) this.size -= 1;
+                // Smooth size transition back
+                if (this.size > this.baseSize) {
+                    this.size -= (this.size - this.baseSize) * 0.2;
+                }
             }
         } else {
             this.isHovered = false;
-            if (this.size > this.baseSize) this.size -= 1;
+            if (this.size > this.baseSize) {
+                this.size -= (this.size - this.baseSize) * 0.2;
+            }
         }
     }
 
@@ -265,8 +274,9 @@ function init() {
     particles = [];
     projectNodes = [];
 
-    // Create background particles
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    // Create background particles (adjust count based on device)
+    const particleCount = isMobile ? PARTICLE_COUNT_MOBILE : PARTICLE_COUNT_DESKTOP;
+    for (let i = 0; i < particleCount; i++) {
         particles.push(new Particle());
     }
 
@@ -291,21 +301,25 @@ function resize() {
 }
 
 function animate() {
+    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    let allNodes = [...particles, ...projectNodes];
+    const allNodes = [...particles, ...projectNodes];
+
+    // Batch path operations for better performance
+    ctx.save();
 
     // Draw connections between nodes
     for (let a = 0; a < allNodes.length; a++) {
-        for (let b = a; b < allNodes.length; b++) {
+        for (let b = a + 1; b < allNodes.length; b++) {
             const dx = allNodes[a].x - allNodes[b].x;
             const dy = allNodes[a].y - allNodes[b].y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance < CONNECTION_DISTANCE) {
                 const opacityValue = 1 - (distance / CONNECTION_DISTANCE);
-                ctx.strokeStyle = `rgba(0, 0, 0, ${opacityValue * 0.1})`;
-                ctx.lineWidth = 1;
+                ctx.strokeStyle = `rgba(0, 0, 0, ${opacityValue * 0.08})`;
+                ctx.lineWidth = 0.8;
                 ctx.beginPath();
                 ctx.moveTo(allNodes[a].x, allNodes[a].y);
                 ctx.lineTo(allNodes[b].x, allNodes[b].y);
@@ -313,6 +327,8 @@ function animate() {
             }
         }
     }
+
+    ctx.restore();
 
     // Update and draw particles
     particles.forEach(particle => {
@@ -328,12 +344,12 @@ function animate() {
         if (node.isHovered) cursorPointer = true;
     });
 
-    if (!cursorPointer) {
-        document.body.style.cursor = 'default';
-    }
+    // Update cursor style
+    document.body.style.cursor = cursorPointer ? 'pointer' : 'default';
 
     // Draw connections to mouse
     if (mouse.x !== undefined && mouse.y !== undefined) {
+        ctx.save();
         allNodes.forEach(node => {
             const dx = mouse.x - node.x;
             const dy = mouse.y - node.y;
@@ -349,6 +365,7 @@ function animate() {
                 ctx.stroke();
             }
         });
+        ctx.restore();
     }
 
     requestAnimationFrame(animate);
@@ -361,7 +378,14 @@ function openModal(data) {
     modalTitle.innerText = data.title;
     modalCategory.innerText = data.category;
     modalDescription.innerText = data.description;
-    
+
+    // Apply left alignment for About Me and other descriptive sections
+    if (data.id === 'proj1' || data.id === 'proj4') {
+        modalDescription.classList.add('modal-description-left');
+    } else {
+        modalDescription.classList.remove('modal-description-left');
+    }
+
     // Handle profile image
     const imageSource = data.image || defaultModalImageSrc;
     if (imageSource) {
@@ -385,29 +409,32 @@ function openModal(data) {
         modalImage.classList.add('hidden');
         if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
     }
-    
+
     // Reset default styles first
     modalLink.style.pointerEvents = 'auto';
     modalLink.style.opacity = '1';
+    modalLink.style.display = 'inline-block';
     modalLink.onclick = null;
     modalLink.removeAttribute('target');
-    
+
     // Change button text based on project type
     if (data.link.startsWith('mailto:')) {
         modalLink.innerText = 'Send Email';
         modalLink.href = data.link;
         // Let the browser handle mailto naturally
+    } else if (data.link.startsWith('https://github.com/')) {
+        modalLink.innerText = 'GitHubを見る';
+        modalLink.href = data.link;
+        modalLink.setAttribute('target', '_blank');
     } else if (data.link === '#') {
-        modalLink.innerText = 'Coming Soon';
-        modalLink.href = '#';
-        modalLink.style.pointerEvents = 'none';
-        modalLink.style.opacity = '0.5';
+        // Hide button for projects without links (except Contact)
+        modalLink.style.display = 'none';
     } else {
         modalLink.innerText = 'View Project';
         modalLink.href = data.link;
         modalLink.setAttribute('target', '_blank');
     }
-    
+
     modal.classList.remove('hidden');
 }
 
@@ -415,14 +442,24 @@ function openModal(data) {
 // Event Listeners
 // ===========================
 
-// Modal event listeners
-closeModal.addEventListener('click', () => {
+// Close modal function
+function closeModalHandler() {
     modal.classList.add('hidden');
-});
+}
+
+// Modal event listeners
+closeModal.addEventListener('click', closeModalHandler);
 
 window.addEventListener('click', (e) => {
     if (e.target === modal) {
-        modal.classList.add('hidden');
+        closeModalHandler();
+    }
+});
+
+// Close modal on ESC key press
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        closeModalHandler();
     }
 });
 
