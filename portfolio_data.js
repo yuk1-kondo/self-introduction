@@ -10,9 +10,9 @@ const portfolioData = {
         },
         {
             id: 'proj2',
-            title: 'リポジトリ',
+            title: 'Repository',
             category: 'GitHub',
-            description: '私のプロジェクトやコード作品を公開しています。教育向けアプリやIoTプロジェクト、クリエイティブなコーディング作品など、様々なリポジトリをご覧いただけます。',
+            description: 'Explore my projects and code creations. From educational apps and IoT projects to creative coding experiments, you can find a variety of repositories showcasing my work and learning journey.',
             link: 'https://github.com/yuk1-kondo'
         },
         {
