@@ -38,6 +38,8 @@ const PARTICLE_BASE_VELOCITY = 2.5;
 const PROJECT_NODE_VELOCITY_DESKTOP = 0.3;
 const PROJECT_NODE_VELOCITY_MOBILE = 1.0;
 const SHOCKWAVE_FORCE = 1500;
+const DAMPING_THRESHOLD = 3.0; // Absolute threshold for damping (matches Particle at 2.5 * 1.2)
+const DAMPING_FACTOR = 0.97;
 const DOUBLE_TAP_DELAY = 300;
 const TOUCH_RESET_DELAY = 300;
 const PROJECT_NODE_HIT_AREA = 40;
@@ -97,10 +99,9 @@ class Particle {
         // Apply damping only if particle was affected by shockwave
         if (this.dampingActive) {
             const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (currentSpeed > this.baseVelocity * 1.2) {
-                const dampingFactor = 0.97; // Gradual slowdown
-                this.vx *= dampingFactor;
-                this.vy *= dampingFactor;
+            if (currentSpeed > DAMPING_THRESHOLD) {
+                this.vx *= DAMPING_FACTOR;
+                this.vy *= DAMPING_FACTOR;
             } else {
                 // Reset to base velocity and turn off damping
                 const angle = Math.atan2(this.vy, this.vx);
@@ -177,10 +178,9 @@ class ProjectNode {
         // Apply damping only if node was affected by shockwave
         if (this.dampingActive) {
             const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (currentSpeed > this.baseVelocity * 1.2) {
-                const dampingFactor = 0.97; // Match Particle damping
-                this.vx *= dampingFactor;
-                this.vy *= dampingFactor;
+            if (currentSpeed > DAMPING_THRESHOLD) {
+                this.vx *= DAMPING_FACTOR;
+                this.vy *= DAMPING_FACTOR;
             } else {
                 // Reset to base velocity and turn off damping
                 const angle = Math.atan2(this.vy, this.vx);
