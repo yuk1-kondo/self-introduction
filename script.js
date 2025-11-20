@@ -35,6 +35,8 @@ const PARTICLE_COUNT_MOBILE = 50;
 const CONNECTION_DISTANCE = 150;
 const MOUSE_DISTANCE = 200;
 const PARTICLE_BASE_VELOCITY = 2.5;
+const PROJECT_NODE_VELOCITY_DESKTOP = 0.3;
+const PROJECT_NODE_VELOCITY_MOBILE = 1.0;
 const SHOCKWAVE_FORCE = 1500;
 const DOUBLE_TAP_DELAY = 300;
 const TOUCH_RESET_DELAY = 300;
@@ -155,9 +157,11 @@ class ProjectNode {
         this.data = data;
         this.x = Math.random() * (width - 200) + 100; // Keep away from edges
         this.y = Math.random() * (height - 200) + 100;
-        this.vx = (Math.random() - 0.5) * 0.3; // Even slower for smoother labels
-        this.vy = (Math.random() - 0.5) * 0.3;
-        this.baseVelocity = 0.3;
+        // Use faster velocity for mobile, slower for desktop
+        const velocity = isMobile ? PROJECT_NODE_VELOCITY_MOBILE : PROJECT_NODE_VELOCITY_DESKTOP;
+        this.vx = (Math.random() - 0.5) * velocity;
+        this.vy = (Math.random() - 0.5) * velocity;
+        this.baseVelocity = velocity;
         this.size = 8; // Larger base size
         this.baseSize = 8;
         this.hoverSize = 15;
