@@ -200,17 +200,13 @@ class ProjectNode {
     }
 
     draw() {
-        // Round coordinates to prevent sub-pixel rendering jitter
-        const roundX = Math.round(this.x);
-        const roundY = Math.round(this.y);
-
         ctx.fillStyle = this.color;
         ctx.beginPath();
-        // Diamond shape for projects - use rounded coordinates
-        ctx.moveTo(roundX, roundY - this.size);
-        ctx.lineTo(roundX + this.size, roundY);
-        ctx.lineTo(roundX, roundY + this.size);
-        ctx.lineTo(roundX - this.size, roundY);
+        // Diamond shape for projects
+        ctx.moveTo(this.x, this.y - this.size);
+        ctx.lineTo(this.x + this.size, this.y);
+        ctx.lineTo(this.x, this.y + this.size);
+        ctx.lineTo(this.x - this.size, this.y);
         ctx.closePath();
         ctx.fill();
 
@@ -233,9 +229,9 @@ class ProjectNode {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // Use rounded coordinates for text to prevent jitter
-            const textY = Math.round(roundY - this.size - 18);
-            ctx.fillText(this.data.title, roundX, textY);
+            // Draw label text
+            const textY = this.y - this.size - 18;
+            ctx.fillText(this.data.title, this.x, textY);
 
             // Restore context state
             ctx.restore();
