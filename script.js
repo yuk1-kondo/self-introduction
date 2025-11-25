@@ -61,12 +61,56 @@ let projectNodes = [];
 let tapStartX, tapStartY;
 let lastTap = 0;
 let isMobile = false;
+let currentLang = 'en'; // Current language: 'en' or 'ja'
 
 const mouse = {
     x: undefined,
     y: undefined,
     isPressed: false
 };
+
+// ===========================
+// Language Functions
+// ===========================
+function switchLanguage(lang) {
+    currentLang = lang;
+    
+    // Update UI texts
+    if (typeof portfolioData !== 'undefined' && portfolioData.uiTexts) {
+        const texts = portfolioData.uiTexts[currentLang];
+        const titleEl = document.getElementById('main-title');
+        const subtitleEl = document.getElementById('main-subtitle');
+        const instructionsEl = document.getElementById('instructions');
+        
+        if (titleEl) titleEl.textContent = texts.title;
+        if (subtitleEl) subtitleEl.textContent = texts.subtitle;
+        if (instructionsEl) instructionsEl.textContent = texts.instructions;
+    }
+    
+    // Update toggle button active state
+    const langToggle = document.getElementById('lang-toggle');
+    if (langToggle) {
+        langToggle.classList.toggle('lang-ja-active', currentLang === 'ja');
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('preferredLang', currentLang);
+}
+
+function initLanguage() {
+    // Check for saved preference or browser language
+    const savedLang = localStorage.getItem('preferredLang');
+    if (savedLang) {
+        currentLang = savedLang;
+    } else {
+        // Detect browser language
+        const browserLang = navigator.language || navigator.userLanguage;
+        currentLang = browserLang.startsWith('ja') ? 'ja' : 'en';
+    }
+    
+    // Apply initial language
+    switchLanguage(currentLang);
+}
 
 // Detect mobile device once
 function detectMobile() {
@@ -294,9 +338,14 @@ class ProjectNode {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
+            // Get localized title
+            const title = typeof this.data.title === 'object' 
+                ? (this.data.title[currentLang] || this.data.title.en || '') 
+                : this.data.title;
+
             // Draw label text with scaled size
             const textY = this.y - scaledSize - 18;
-            ctx.fillText(this.data.title, this.x, textY);
+            ctx.fillText(title, this.x, textY);
 
             // Restore context state
             ctx.restore();
@@ -432,9 +481,17 @@ function animate() {
 // Modal Functions
 // ===========================
 function openModal(data) {
-    modalTitle.innerText = data.title;
-    modalCategory.innerText = data.category;
-    modalDescription.innerText = data.description;
+    // Get localized text (handle both old format string and new format {en:, ja:})
+    const getLocalizedText = (field) => {
+        if (typeof field === 'object' && field !== null) {
+            return field[currentLang] || field.en || '';
+        }
+        return field || '';
+    };
+    
+    modalTitle.innerText = getLocalizedText(data.title);
+    modalCategory.innerText = getLocalizedText(data.category);
+    modalDescription.innerText = getLocalizedText(data.description);
 
     // Apply left alignment for About Me, Repository, and other descriptive sections
     if (data.id === 'proj1' || data.id === 'proj2' || data.id === 'proj4') {
@@ -452,7 +509,7 @@ function openModal(data) {
             if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
         };
         modalImage.src = resolvedSrc;
-        modalImage.alt = data.title;
+        modalImage.alt = getLocalizedText(data.title);
         modalImage.classList.remove('hidden');
         if (modalImageWrapper) modalImageWrapper.classList.remove('hidden');
     } else {
@@ -469,20 +526,25 @@ function openModal(data) {
     modalLink.onclick = null;
     modalLink.removeAttribute('target');
 
+    // Get localized button texts
+    const buttonTexts = typeof portfolioData !== 'undefined' && portfolioData.uiTexts 
+        ? portfolioData.uiTexts[currentLang] 
+        : { sendEmail: 'Send Email', viewOnGitHub: 'View on GitHub', viewProject: 'View Project' };
+
     // Change button text based on project type
     if (data.link.startsWith('mailto:')) {
-        modalLink.innerText = 'Send Email';
+        modalLink.innerText = buttonTexts.sendEmail;
         modalLink.href = data.link;
         // Let the browser handle mailto naturally
     } else if (data.link.startsWith('https://github.com/')) {
-        modalLink.innerText = 'View on GitHub';
+        modalLink.innerText = buttonTexts.viewOnGitHub;
         modalLink.href = data.link;
         modalLink.setAttribute('target', '_blank');
     } else if (data.link === '#') {
         // Hide button for projects without links (except Contact)
         modalLink.style.display = 'none';
     } else {
-        modalLink.innerText = 'View Project';
+        modalLink.innerText = buttonTexts.viewProject;
         modalLink.href = data.link;
         modalLink.setAttribute('target', '_blank');
     }
@@ -748,3 +810,17 @@ if (glowEffect) {
     });
 }
 }
+
+// ===========================
+// Language Toggle Event Listener
+// ===========================
+const langToggle = document.getElementById('lang-toggle');
+if (langToggle) {
+    langToggle.addEventListener('click', () => {
+        const newLang = currentLang === 'en' ? 'ja' : 'en';
+        switchLanguage(newLang);
+    });
+}
+
+// Initialize language on page load
+initLanguage();
