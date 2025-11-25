@@ -10,10 +10,11 @@ const portfolioData = {
         },
         {
             id: 'proj2',
-            title: 'Repository',
-            category: 'GitHub',
-            description: 'Explore my projects and code creations. From educational apps and IoT projects to creative coding experiments, you can find a variety of repositories showcasing my work and learning journey.',
-            link: 'https://github.com/yuk1-kondo'
+            title: 'Google Cloud Certified',
+            category: 'Generative AI Leader',
+            description: 'Certified in Generative AI Leadership (Nov 2024). Comprehensive understanding of how generative AI transforms businesses, with business-level knowledge of Google Cloud generative AI services and enterprise-ready solutions.',
+            link: 'https://www.credly.com/badges/ca0837199f654af186561d3096e732b4',
+            image: './genaileader_certification.png'
         },
         {
             id: 'proj3',
