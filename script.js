@@ -114,7 +114,7 @@ class Particle {
         if (this.x < 0 || this.x > width) this.vx *= -1;
         if (this.y < 0 || this.y > height) this.vy *= -1;
 
-        // Mouse interaction (Repel/Attract)
+        // Mouse interaction (Attract with magnetic effect)
         if (mouse.x !== undefined && mouse.y !== undefined) {
             const dx = mouse.x - this.x;
             const dy = mouse.y - this.y;
@@ -124,15 +124,17 @@ class Particle {
                 const forceDirectionX = dx / distance;
                 const forceDirectionY = dy / distance;
                 const force = (MOUSE_DISTANCE - distance) / MOUSE_DISTANCE;
-                const directionX = forceDirectionX * force * 2;
-                const directionY = forceDirectionY * force * 2;
-
+                
                 if (mouse.isPressed) {
-                    this.x += directionX * 2; // Attract
-                    this.y += directionY * 2;
+                    // Strong attraction when pressed
+                    const attractStrength = force * 4;
+                    this.x += forceDirectionX * attractStrength;
+                    this.y += forceDirectionY * attractStrength;
                 } else {
-                    this.x -= directionX; // Repel
-                    this.y -= directionY;
+                    // Gentle magnetic attraction when hovering (not pressed)
+                    const magnetStrength = force * 1.2;
+                    this.x += forceDirectionX * magnetStrength;
+                    this.y += forceDirectionY * magnetStrength;
                 }
             }
         }
@@ -441,8 +443,8 @@ function openModal(data) {
         modalDescription.classList.remove('modal-description-left');
     }
 
-    // Handle profile image - only show for About Me (proj1)
-    if (data.id === 'proj1' && data.image) {
+    // Handle profile image - show if image is defined
+    if (data.image) {
         const resolvedSrc = resolveImagePath(data.image);
         modalImage.onerror = () => {
             modalImage.onerror = null;
@@ -454,7 +456,7 @@ function openModal(data) {
         modalImage.classList.remove('hidden');
         if (modalImageWrapper) modalImageWrapper.classList.remove('hidden');
     } else {
-        // Hide image for all other sections
+        // Hide image if not defined
         modalImage.onerror = null;
         modalImage.classList.add('hidden');
         if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
