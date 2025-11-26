@@ -98,14 +98,13 @@ function switchLanguage(lang) {
 }
 
 function initLanguage() {
-    // Check for saved preference or browser language
+    // Check for saved preference, default to English
     const savedLang = localStorage.getItem('preferredLang');
     if (savedLang) {
         currentLang = savedLang;
     } else {
-        // Detect browser language
-        const browserLang = navigator.language || navigator.userLanguage;
-        currentLang = browserLang.startsWith('ja') ? 'ja' : 'en';
+        // Default to English
+        currentLang = 'en';
     }
     
     // Apply initial language

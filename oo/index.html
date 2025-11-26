@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YUKI K. | Social Hub</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="../style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="ui-layer">
+        <h1 id="main-title">YUKI K.</h1>
+        <p id="main-subtitle">Community & Social</p>
+        <div id="instructions">Tap or Click to Explore</div>
+    </div>
+
+    <!-- Language Toggle Button -->
+    <button id="lang-toggle" class="lang-toggle" aria-label="Toggle language">
+        <span class="lang-en">EN</span>
+        <span class="lang-divider">/</span>
+        <span class="lang-ja">JA</span>
+    </button>
+
+    <!-- Cursor/Touch Glow Effect -->
+    <div id="glow-effect" class="glow-effect"></div>
+
+    <div id="project-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-content">
+            <button id="close-modal" class="close-btn" aria-label="Close modal">&times;</button>
+            <div class="modal-image-wrapper hidden" id="modal-image-wrapper">
+                <img id="modal-image" src="../profile.png" alt="" class="modal-image" data-default-image="../profile.png" loading="lazy">
+            </div>
+            <h2 id="modal-title">Project Title</h2>
+            <p id="modal-category" class="subtitle">Category</p>
+            <p id="modal-description">Description goes here.</p>
+            <a id="modal-link" href="#" class="btn">View Project</a>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script src="social_data.js"></script>
+    <script src="../script.js"></script>
+</body>
+
+</html>
