@@ -1,6 +1,16 @@
 // ===========================
 // Social Portfolio Data
 // ===========================
+
+// Dark theme particle colors (white/light gray)
+const THEME_COLORS = [
+    '#ffffff', // White
+    '#e0e0e0', // Light Gray
+    '#c0c0c0', // Silver
+    '#a0a0a0', // Medium Gray
+    '#808080'  // Gray
+];
+
 const portfolioData = {
     // UI Texts for language switching
     uiTexts: {

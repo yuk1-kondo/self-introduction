@@ -44,13 +44,17 @@ const DOUBLE_TAP_DELAY = 300;
 const TOUCH_RESET_DELAY = 300;
 const PROJECT_NODE_HIT_AREA = 40;
 
-const COLORS = [
+// Default colors (light theme - work page)
+const DEFAULT_COLORS = [
     '#000000', // Black
     '#333333', // Dark Gray
     '#666666', // Medium Gray
     '#999999', // Light Gray
     '#cccccc'  // Very Light Gray
 ];
+
+// Use theme colors if defined (from social_data.js), otherwise use defaults
+const COLORS = (typeof THEME_COLORS !== 'undefined') ? THEME_COLORS : DEFAULT_COLORS;
 
 // ===========================
 // State Variables
@@ -329,10 +333,11 @@ class ProjectNode {
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
-            // Add shadow for better visibility
-            ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+            // Add shadow for better visibility (adapt to theme)
+            const isDarkTheme = (typeof THEME_COLORS !== 'undefined');
+            ctx.shadowColor = isDarkTheme ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)';
             ctx.shadowBlur = 6;
-            ctx.fillStyle = '#000';
+            ctx.fillStyle = isDarkTheme ? '#fff' : '#000';
             ctx.font = isMobile ? '500 15px Outfit' : '500 16px Outfit';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
