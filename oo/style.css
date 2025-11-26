@@ -3,11 +3,11 @@
    =========================== */
 
 :root {
-    --bg-color: #1a1a1a;
+    --bg-color: #2a2a2a;
     --text-color: #e0e0e0;
     --accent-color: #ffffff;
-    --glass-bg: rgba(40, 40, 40, 0.92);
-    --glass-border: rgba(80, 80, 80, 0.5);
+    --glass-bg: rgba(50, 50, 50, 0.92);
+    --glass-border: rgba(100, 100, 100, 0.5);
 }
 
 body {
@@ -142,7 +142,7 @@ p {
     justify-content: center;
     align-items: center;
     z-index: 10;
-    background: rgba(26, 26, 26, 0.4);
+    background: rgba(42, 42, 42, 0.4);
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     opacity: 1;
