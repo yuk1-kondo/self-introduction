@@ -1,49 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YUKI KONDO | Portfolio</title>
+    <title>YUKI KONDO | Home</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="home.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600&display=swap" rel="stylesheet">
 </head>
-
 <body>
-    <div id="ui-layer">
-        <h1 id="main-title">YUKI KONDO</h1>
-        <p id="main-subtitle">Creative Developer & Designer</p>
-        <div id="instructions">Tap or Click Projects to Learn More</div>
-    </div>
+    <header class="header">
+        <div class="brand">YUKI KONDO</div>
+        <div class="lang">EN / JA</div>
+    </header>
 
-    <!-- Language Toggle Button -->
-    <button id="lang-toggle" class="lang-toggle" aria-label="Toggle language">
-        <span class="lang-en">EN</span>
-        <span class="lang-divider">/</span>
-        <span class="lang-ja">JA</span>
-    </button>
-
-    <!-- Cursor/Touch Glow Effect -->
-    <div id="glow-effect" class="glow-effect"></div>
-
-    <div id="project-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div class="modal-content">
-            <button id="close-modal" class="close-btn" aria-label="Close modal">&times;</button>
-            <div class="modal-image-wrapper hidden" id="modal-image-wrapper">
-                <img id="modal-image" src="profile.png" alt="" class="modal-image" data-default-image="profile.png" loading="lazy">
+    <main class="main">
+        <section class="hero">
+            <h1>Welcome, I am YUKI</h1>
+            <p>Creative developer combining design, engineering, and community. Choose where to explore: professional work or social/ambassador activities.</p>
+            <div class="meta">
+                <span class="badge">Creative Developer</span>
+                <span class="badge">Community / Ambassador</span>
             </div>
-            <h2 id="modal-title">Project Title</h2>
-            <p id="modal-category" class="subtitle">Category</p>
-            <p id="modal-description">Description goes here.</p>
-            <a id="modal-link" href="#" class="btn">View Project</a>
-        </div>
-    </div>
-    <canvas id="canvas"></canvas>
-    <script src="portfolio_data.js"></script>
-    <script src="script.js"></script>
-</body>
+        </section>
 
+        <section class="card">
+            <h3>Work Portfolio</h3>
+            <p>Selected projects, About, Certification, Contact, and Skills. The interactive particle canvas lives here.</p>
+            <div class="actions">
+                <a class="btn work" href="/xx/">Go to Work ( /xx )</a>
+            </div>
+        </section>
+
+        <section class="card">
+            <h3>Social / Ambassador</h3>
+            <p>Social links, Qiita, note, community activities, and ambassador info with the dark themed canvas.</p>
+            <div class="actions">
+                <a class="btn social" href="/oo/">Go to Social ( /oo )</a>
+            </div>
+        </section>
+    </main>
+</body>
 </html>
