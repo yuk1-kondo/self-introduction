@@ -13,6 +13,22 @@ const modalImage = document.getElementById('modal-image');
 const closeModal = document.getElementById('close-modal');
 const defaultModalImageSrc = (modalImage && modalImage.dataset.defaultImage) || 'profile.png';
 
+// Custom Cursor Element
+const cursorEl = document.createElement('div');
+cursorEl.style.position = 'fixed';
+cursorEl.style.top = '0';
+cursorEl.style.left = '0';
+cursorEl.style.width = '8px';
+cursorEl.style.height = '8px';
+cursorEl.style.background = 'white';
+cursorEl.style.borderRadius = '50%';
+cursorEl.style.pointerEvents = 'none';
+cursorEl.style.zIndex = '9999';
+cursorEl.style.mixBlendMode = 'exclusion';
+cursorEl.style.transform = 'translate(-50%, -50%)';
+cursorEl.style.transition = 'width 0.2s, height 0.2s';
+document.body.appendChild(cursorEl);
+
 function resolveImagePath(path) {
     if (!path) return null;
     try {
@@ -30,31 +46,21 @@ if (defaultModalImageSrc) {
 // ===========================
 // Configuration Constants
 // ===========================
-const PARTICLE_COUNT_DESKTOP = 80;
-const PARTICLE_COUNT_MOBILE = 50;
-const CONNECTION_DISTANCE = 150;
-const MOUSE_DISTANCE = 200;
-const PARTICLE_BASE_VELOCITY = 2.5;
-const PROJECT_NODE_VELOCITY_DESKTOP = 0.3;
-const PROJECT_NODE_VELOCITY_MOBILE = 1.0;
-const SHOCKWAVE_FORCE = 1500;
-const DAMPING_THRESHOLD = 3.0; // Absolute threshold for damping (matches Particle at 2.5 * 1.2)
-const DAMPING_FACTOR = 0.97;
-const DOUBLE_TAP_DELAY = 300;
-const TOUCH_RESET_DELAY = 300;
-const PROJECT_NODE_HIT_AREA = 40;
+const PARTICLE_COUNT_DESKTOP = 120; // Increased for denser networking
+const PARTICLE_COUNT_MOBILE = 60;
+const CONNECTION_DISTANCE = 120;
+const MOUSE_DISTANCE = 250;
+const PARTICLE_BASE_VELOCITY = 0.8; // Slower, more elegant
+const PROJECT_NODE_VELOCITY = 0.2;
+const SHOCKWAVE_FORCE = 1000;
+const DAMPING_FACTOR = 0.95;
 
-// Default colors (light theme - work page)
-const DEFAULT_COLORS = [
-    '#000000', // Black
-    '#333333', // Dark Gray
-    '#666666', // Medium Gray
-    '#999999', // Light Gray
-    '#cccccc'  // Very Light Gray
+const COLORS = [
+    '#ffffff', // White
+    '#dddddd',
+    '#bbbbbb',
+    '#999999'
 ];
-
-// Use theme colors if defined (from social_data.js), otherwise use defaults
-const COLORS = (typeof THEME_COLORS !== 'undefined') ? THEME_COLORS : DEFAULT_COLORS;
 
 // ===========================
 // State Variables
@@ -65,7 +71,6 @@ let projectNodes = [];
 let tapStartX, tapStartY;
 let lastTap = 0;
 let isMobile = false;
-let currentLang = 'en'; // Current language: 'en' or 'ja'
 
 const mouse = {
     x: undefined,
@@ -73,53 +78,11 @@ const mouse = {
     isPressed: false
 };
 
-// ===========================
-// Language Functions
-// ===========================
-function switchLanguage(lang) {
-    currentLang = lang;
-    
-    // Update UI texts
-    if (typeof portfolioData !== 'undefined' && portfolioData.uiTexts) {
-        const texts = portfolioData.uiTexts[currentLang];
-        const titleEl = document.getElementById('main-title');
-        const subtitleEl = document.getElementById('main-subtitle');
-        const instructionsEl = document.getElementById('instructions');
-        
-        if (titleEl) titleEl.textContent = texts.title;
-        if (subtitleEl) subtitleEl.textContent = texts.subtitle;
-        if (instructionsEl) instructionsEl.textContent = texts.instructions;
-    }
-    
-    // Update toggle button active state
-    const langToggle = document.getElementById('lang-toggle');
-    if (langToggle) {
-        langToggle.classList.toggle('lang-ja-active', currentLang === 'ja');
-    }
-    
-    // Save preference to localStorage
-    localStorage.setItem('preferredLang', currentLang);
-}
-
-function initLanguage() {
-    // Check for saved preference, default to English
-    const savedLang = localStorage.getItem('preferredLang');
-    if (savedLang) {
-        currentLang = savedLang;
-    } else {
-        // Default to English
-        currentLang = 'en';
-    }
-    
-    // Apply initial language
-    switchLanguage(currentLang);
-}
-
 // Detect mobile device once
 function detectMobile() {
     isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-               ('ontouchstart' in window) ||
-               (navigator.maxTouchPoints > 0);
+        ('ontouchstart' in window) ||
+        (navigator.maxTouchPoints > 0);
 }
 
 // ===========================
@@ -131,37 +94,19 @@ class Particle {
         this.y = Math.random() * height;
         this.vx = (Math.random() - 0.5) * PARTICLE_BASE_VELOCITY;
         this.vy = (Math.random() - 0.5) * PARTICLE_BASE_VELOCITY;
-        this.baseVelocity = PARTICLE_BASE_VELOCITY;
-        this.size = Math.random() * 3 + 1;
+        this.size = Math.random() * 2 + 0.5; // Smaller, star-like
         this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
         this.baseSize = this.size;
-        this.shape = Math.random() > 0.5 ? 'circle' : 'square';
-        this.dampingActive = false;
     }
 
     update() {
         this.x += this.vx;
         this.y += this.vy;
 
-        // Apply damping only if particle was affected by shockwave
-        if (this.dampingActive) {
-            const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (currentSpeed > DAMPING_THRESHOLD) {
-                this.vx *= DAMPING_FACTOR;
-                this.vy *= DAMPING_FACTOR;
-            } else {
-                // Reset to base velocity and turn off damping
-                const angle = Math.atan2(this.vy, this.vx);
-                this.vx = Math.cos(angle) * this.baseVelocity;
-                this.vy = Math.sin(angle) * this.baseVelocity;
-                this.dampingActive = false;
-            }
-        }
-
         if (this.x < 0 || this.x > width) this.vx *= -1;
         if (this.y < 0 || this.y > height) this.vy *= -1;
 
-        // Mouse interaction (Attract with magnetic effect)
+        // Mouse interaction (Magnetic Flow)
         if (mouse.x !== undefined && mouse.y !== undefined) {
             const dx = mouse.x - this.x;
             const dy = mouse.y - this.y;
@@ -171,30 +116,32 @@ class Particle {
                 const forceDirectionX = dx / distance;
                 const forceDirectionY = dy / distance;
                 const force = (MOUSE_DISTANCE - distance) / MOUSE_DISTANCE;
-                
-                if (mouse.isPressed) {
-                    // Strong attraction when pressed
-                    const attractStrength = force * 4;
-                    this.x += forceDirectionX * attractStrength;
-                    this.y += forceDirectionY * attractStrength;
-                } else {
-                    // Gentle magnetic attraction when hovering (not pressed)
-                    const magnetStrength = force * 1.2;
-                    this.x += forceDirectionX * magnetStrength;
-                    this.y += forceDirectionY * magnetStrength;
-                }
+
+                // Gentle attraction/swirl
+                const angle = Math.atan2(dy, dx);
+                const rotator = 0.5; // Spiral effect
+
+                this.vx += (Math.cos(angle + rotator) * force * 0.05);
+                this.vy += (Math.sin(angle + rotator) * force * 0.05);
             }
+        }
+
+        // Speed limit to keep it elegant
+        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        if (speed > PARTICLE_BASE_VELOCITY * 3) {
+            this.vx *= 0.95;
+            this.vy *= 0.95;
+        } else if (speed < PARTICLE_BASE_VELOCITY * 0.5) {
+            this.vx *= 1.05;
+            this.vy *= 1.05;
         }
     }
 
     draw() {
         ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.8;
         ctx.beginPath();
-        if (this.shape === 'circle') {
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        } else {
-            ctx.rect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
-        }
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fill();
     }
 }
@@ -205,169 +152,117 @@ class Particle {
 class ProjectNode {
     constructor(data, index) {
         this.data = data;
-        this.x = Math.random() * (width - 200) + 100; // Keep away from edges
+        this.x = Math.random() * (width - 200) + 100;
         this.y = Math.random() * (height - 200) + 100;
-        // Use faster velocity for mobile, slower for desktop
-        const velocity = isMobile ? PROJECT_NODE_VELOCITY_MOBILE : PROJECT_NODE_VELOCITY_DESKTOP;
-        this.vx = (Math.random() - 0.5) * velocity;
-        this.vy = (Math.random() - 0.5) * velocity;
-        this.baseVelocity = velocity;
-        this.size = 8; // Larger base size
-        this.baseSize = 8;
-        this.hoverSize = 15;
-        this.color = '#000000'; // Main projects are black (or dark)
+        this.vx = (Math.random() - 0.5) * PROJECT_NODE_VELOCITY;
+        this.vy = (Math.random() - 0.5) * PROJECT_NODE_VELOCITY;
+        this.size = 12; // Static large size
+        this.hoverSize = 25; // Expands significantly
+        this.color = '#ffffff';
         this.isHovered = false;
-        this.dampingActive = false;
-        // Load animation properties
+
+        // Load animation
         this.opacity = 0;
-        this.scale = 0.5;
-        this.loadAnimationStartTime = Date.now() + 300 + (index * 200); // 300ms initial delay
-        this.loadAnimationDuration = 400;
-        this.loadAnimationComplete = false;
+        this.scale = 0;
+        this.loadDelay = 500 + index * 200;
+        this.loaded = false;
+        this.introTime = 0;
     }
 
     update() {
-        // Handle load animation
-        if (!this.loadAnimationComplete) {
-            const now = Date.now();
-            if (now >= this.loadAnimationStartTime) {
-                const elapsed = now - this.loadAnimationStartTime;
-                const progress = Math.min(elapsed / this.loadAnimationDuration, 1);
+        // Intro Animation
+        if (!this.loaded) {
+            this.introTime += 16; // approximate frame time
+            if (this.introTime > this.loadDelay) {
+                const progress = Math.min((this.introTime - this.loadDelay) / 800, 1);
+                // Ease out elastic
+                const p = progress;
+                this.scale = p === 0 ? 0 : p === 1 ? 1 : Math.pow(2, -10 * p) * Math.sin((p * 10 - 0.75) * (2 * Math.PI) / 3) + 1;
+                this.opacity = Math.min(progress * 2, 1);
 
-                // Easing function: easeOutBack (slight overshoot for bounce effect)
-                const c1 = 1.70158;
-                const c3 = c1 + 1;
-                const eased = 1 + c3 * Math.pow(progress - 1, 3) + c1 * Math.pow(progress - 1, 2);
-
-                this.opacity = Math.min(progress * 1.2, 1); // Fade in faster
-                this.scale = 0.5 + (eased * 0.5); // 0.5 → 1.0 with bounce
-
-                if (progress >= 1) {
-                    this.opacity = 1;
-                    this.scale = 1;
-                    this.loadAnimationComplete = true;
-                }
+                if (progress >= 1) this.loaded = true;
             }
         }
 
         this.x += this.vx;
         this.y += this.vy;
 
-        // Apply damping only if node was affected by shockwave
-        if (this.dampingActive) {
-            const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (currentSpeed > DAMPING_THRESHOLD) {
-                this.vx *= DAMPING_FACTOR;
-                this.vy *= DAMPING_FACTOR;
-            } else {
-                // Reset to base velocity and turn off damping
-                const angle = Math.atan2(this.vy, this.vx);
-                this.vx = Math.cos(angle) * this.baseVelocity;
-                this.vy = Math.sin(angle) * this.baseVelocity;
-                this.dampingActive = false;
-            }
-        }
-
-        // Boundary check at screen edges
         if (this.x < 0 || this.x > width) this.vx *= -1;
         if (this.y < 0 || this.y > height) this.vy *= -1;
 
-        // Check hover
-        if (mouse.x != undefined && mouse.y != undefined) {
-            let dx = mouse.x - this.x;
-            let dy = mouse.y - this.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
+        // Interaction
+        if (mouse.x !== undefined && mouse.y !== undefined) {
+            const dx = mouse.x - this.x;
+            const dy = mouse.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < 30) { // Hover radius
+            if (distance < 50) {
                 this.isHovered = true;
-                // Smooth size transition
-                if (this.size < this.hoverSize) {
-                    this.size += (this.hoverSize - this.size) * 0.2;
-                }
-                document.body.style.cursor = 'pointer';
-            } else {
+                cursorEl.style.width = '50px';
+                cursorEl.style.height = '50px';
+                cursorEl.style.mixBlendMode = 'exclusion'; // ensure visibility
+            } else if (this.isHovered) {
                 this.isHovered = false;
-                // Smooth size transition back
-                if (this.size > this.baseSize) {
-                    this.size -= (this.size - this.baseSize) * 0.2;
-                }
+                cursorEl.style.width = '8px';
+                cursorEl.style.height = '8px';
             }
         } else {
             this.isHovered = false;
-            if (this.size > this.baseSize) {
-                this.size -= (this.size - this.baseSize) * 0.2;
-            }
         }
+
+        // Smooth size transition
+        const targetSize = this.isHovered ? this.hoverSize : 12;
+        this.size += (targetSize - this.size) * 0.1;
     }
 
     draw() {
-        // Apply load animation opacity and scale
+        if (this.scale <= 0.01) return;
+
         ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.scale, this.scale);
+
+        // Draw Diamond
         ctx.globalAlpha = this.opacity;
-
-        const scaledSize = this.size * this.scale;
-
         ctx.fillStyle = this.color;
+
+        // Outer Glow (when hovered)
+        if (this.isHovered) {
+            ctx.shadowColor = 'white';
+            ctx.shadowBlur = 20;
+        }
+
         ctx.beginPath();
-        // Diamond shape for projects
-        ctx.moveTo(this.x, this.y - scaledSize);
-        ctx.lineTo(this.x + scaledSize, this.y);
-        ctx.lineTo(this.x, this.y + scaledSize);
-        ctx.lineTo(this.x - scaledSize, this.y);
+        ctx.moveTo(0, -this.size);
+        ctx.lineTo(this.size, 0);
+        ctx.lineTo(0, this.size);
+        ctx.lineTo(-this.size, 0);
         ctx.closePath();
         ctx.fill();
 
-        ctx.restore();
-
-        // Draw Label - always visible on mobile, hover on desktop
-        const shouldShowLabel = (isMobile || this.isHovered || this.size > this.baseSize + 2) && this.opacity > 0.3;
-
-        if (shouldShowLabel) {
-            // Save context state
-            ctx.save();
-
-            // Apply load animation opacity to label
-            ctx.globalAlpha = this.opacity;
-
-            // Optimize text rendering for smooth display
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-
-            // Add shadow for better visibility (adapt to theme)
-            const isDarkTheme = (typeof THEME_COLORS !== 'undefined');
-            ctx.shadowColor = isDarkTheme ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)';
-            ctx.shadowBlur = 6;
-            ctx.fillStyle = isDarkTheme ? '#fff' : '#000';
-            ctx.font = isMobile ? '500 15px Outfit' : '500 16px Outfit';
+        // Label
+        if (this.isHovered || isMobile) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '500 14px Outfit';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-
-            // Get localized title
-            const title = typeof this.data.title === 'object' 
-                ? (this.data.title[currentLang] || this.data.title.en || '') 
-                : this.data.title;
-
-            // Draw label text with scaled size
-            const textY = this.y - scaledSize - 18;
-            ctx.fillText(title, this.x, textY);
-
-            // Restore context state
-            ctx.restore();
+            ctx.shadowColor = 'black';
+            ctx.shadowBlur = 4;
+            ctx.fillText(this.data.title, 0, -this.size - 15);
         }
+
+        ctx.restore();
     }
 
     checkClick(x, y) {
-        // If x, y are provided (from touch), check distance directly
         if (x !== undefined && y !== undefined) {
             const dx = x - this.x;
             const dy = y - this.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < PROJECT_NODE_HIT_AREA) {
+            if (Math.sqrt(dx * dx + dy * dy) < 60) {
                 openModal(this.data);
                 return true;
             }
         } else if (this.isHovered) {
-            // Desktop: use hover state
             openModal(this.data);
             return true;
         }
@@ -379,18 +274,16 @@ class ProjectNode {
 // Core Functions
 // ===========================
 function init() {
-    detectMobile(); // Detect device type once
+    detectMobile();
     resize();
     particles = [];
     projectNodes = [];
 
-    // Create background particles (adjust count based on device)
-    const particleCount = isMobile ? PARTICLE_COUNT_MOBILE : PARTICLE_COUNT_DESKTOP;
-    for (let i = 0; i < particleCount; i++) {
+    const pCount = isMobile ? PARTICLE_COUNT_MOBILE : PARTICLE_COUNT_DESKTOP;
+    for (let i = 0; i < pCount; i++) {
         particles.push(new Particle());
     }
 
-    // Create project nodes from portfolio data
     if (typeof portfolioData !== 'undefined') {
         portfolioData.projects.forEach((project, index) => {
             projectNodes.push(new ProjectNode(project, index));
@@ -403,428 +296,167 @@ function resize() {
     height = window.innerHeight;
     canvas.width = width;
     canvas.height = height;
-
-    // Optimize canvas rendering for smooth text
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.textRendering = 'optimizeLegibility';
 }
 
 function animate() {
-    // Clear canvas
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; // Trails for cool effect? OR Clear?
+    // Let's go with clear for crisp look, or very subtle trails
     ctx.clearRect(0, 0, width, height);
 
     const allNodes = [...particles, ...projectNodes];
 
-    // Batch path operations for better performance
-    ctx.save();
+    // Connections
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < allNodes.length; i++) {
+        const nodeA = allNodes[i];
 
-    // Draw connections between nodes
-    for (let a = 0; a < allNodes.length; a++) {
-        for (let b = a + 1; b < allNodes.length; b++) {
-            const dx = allNodes[a].x - allNodes[b].x;
-            const dy = allNodes[a].y - allNodes[b].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        // Optimization: check spatial partitioning if needed, but for <200 nodes n^2 is fine
+        for (let j = i + 1; j < allNodes.length; j++) {
+            const nodeB = allNodes[j];
+            const dx = nodeA.x - nodeB.x;
+            const dy = nodeA.y - nodeB.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < CONNECTION_DISTANCE) {
-                const opacityValue = 1 - (distance / CONNECTION_DISTANCE);
-                ctx.strokeStyle = `rgba(0, 0, 0, ${opacityValue * 0.08})`;
-                ctx.lineWidth = 0.8;
+            if (dist < CONNECTION_DISTANCE) {
+                const alpha = 1 - (dist / CONNECTION_DISTANCE);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.15})`;
                 ctx.beginPath();
-                ctx.moveTo(allNodes[a].x, allNodes[a].y);
-                ctx.lineTo(allNodes[b].x, allNodes[b].y);
+                ctx.moveTo(nodeA.x, nodeA.y);
+                ctx.lineTo(nodeB.x, nodeB.y);
                 ctx.stroke();
             }
         }
     }
 
-    ctx.restore();
-
-    // Update and draw particles
-    particles.forEach(particle => {
-        particle.update();
-        particle.draw();
-    });
-
-    // Update and draw project nodes (draw last to be on top)
-    let cursorPointer = false;
-    projectNodes.forEach(node => {
-        node.update();
-        node.draw();
-        if (node.isHovered) cursorPointer = true;
-    });
-
-    // Update cursor style
-    document.body.style.cursor = cursorPointer ? 'pointer' : 'default';
-
-    // Draw connections to mouse
+    // Mouse Connections (Constellations)
     if (mouse.x !== undefined && mouse.y !== undefined) {
-        ctx.save();
         allNodes.forEach(node => {
             const dx = mouse.x - node.x;
             const dy = mouse.y - node.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < MOUSE_DISTANCE) {
-                const opacityValue = 1 - (distance / MOUSE_DISTANCE);
-                ctx.strokeStyle = `rgba(50, 50, 50, ${opacityValue * 0.2})`;
-                ctx.lineWidth = 1;
+            if (dist < MOUSE_DISTANCE) {
+                const alpha = 1 - (dist / MOUSE_DISTANCE);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.2})`;
                 ctx.beginPath();
                 ctx.moveTo(mouse.x, mouse.y);
                 ctx.lineTo(node.x, node.y);
                 ctx.stroke();
             }
         });
-        ctx.restore();
     }
+
+    // Update & Draw
+    particles.forEach(p => { p.update(); p.draw(); });
+    projectNodes.forEach(n => { n.update(); n.draw(); });
 
     requestAnimationFrame(animate);
 }
 
 // ===========================
-// Modal Functions
-// ===========================
-function openModal(data) {
-    // Get localized text (handle both old format string and new format {en:, ja:})
-    const getLocalizedText = (field) => {
-        if (typeof field === 'object' && field !== null) {
-            return field[currentLang] || field.en || '';
-        }
-        return field || '';
-    };
-    
-    modalTitle.innerText = getLocalizedText(data.title);
-    modalCategory.innerText = getLocalizedText(data.category);
-    modalDescription.innerText = getLocalizedText(data.description);
-
-    // Apply left alignment for About Me, Repository, and other descriptive sections
-    if (data.id === 'proj1' || data.id === 'proj2' || data.id === 'proj4') {
-        modalDescription.classList.add('modal-description-left');
-    } else {
-        modalDescription.classList.remove('modal-description-left');
-    }
-
-    // Handle profile image - show if image is defined
-    if (data.image) {
-        const resolvedSrc = resolveImagePath(data.image);
-        modalImage.onerror = () => {
-            modalImage.onerror = null;
-            modalImage.classList.add('hidden');
-            if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
-        };
-        modalImage.src = resolvedSrc;
-        modalImage.alt = getLocalizedText(data.title);
-        modalImage.classList.remove('hidden');
-        if (modalImageWrapper) modalImageWrapper.classList.remove('hidden');
-    } else {
-        // Hide image if not defined
-        modalImage.onerror = null;
-        modalImage.classList.add('hidden');
-        if (modalImageWrapper) modalImageWrapper.classList.add('hidden');
-    }
-
-    // Reset default styles first
-    modalLink.style.pointerEvents = 'auto';
-    modalLink.style.opacity = '1';
-    modalLink.style.display = 'inline-block';
-    modalLink.onclick = null;
-    modalLink.removeAttribute('target');
-
-    // Get localized button texts
-    const buttonTexts = typeof portfolioData !== 'undefined' && portfolioData.uiTexts 
-        ? portfolioData.uiTexts[currentLang] 
-        : { sendEmail: 'Send Email', viewOnGitHub: 'View on GitHub', viewProject: 'View Project' };
-
-    // Change button text based on project type
-    if (data.link.startsWith('mailto:')) {
-        modalLink.innerText = buttonTexts.sendEmail;
-        modalLink.href = data.link;
-        // Let the browser handle mailto naturally
-    } else if (data.link.startsWith('https://github.com/')) {
-        modalLink.innerText = buttonTexts.viewOnGitHub;
-        modalLink.href = data.link;
-        modalLink.setAttribute('target', '_blank');
-    } else if (data.link === '#') {
-        // Hide button for projects without links (except Contact)
-        modalLink.style.display = 'none';
-    } else {
-        modalLink.innerText = buttonTexts.viewProject;
-        modalLink.href = data.link;
-        modalLink.setAttribute('target', '_blank');
-    }
-
-    modal.classList.remove('hidden');
-}
-
-// ===========================
-// Event Listeners
+// Interaction & Events
 // ===========================
 
-// Close modal function
-function closeModalHandler() {
-    modal.classList.add('hidden');
-}
-
-// Modal event listeners
-closeModal.addEventListener('click', closeModalHandler);
-
-window.addEventListener('click', (e) => {
-    if (e.target === modal) {
-        closeModalHandler();
-    }
-});
-
-// Close modal on ESC key press
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-        closeModalHandler();
-    }
-});
-
-// Window and canvas event listeners
-window.addEventListener('resize', resize);
-
+// Custom Cursor Position
 window.addEventListener('mousemove', (e) => {
-    mouse.x = e.x;
-    mouse.y = e.y;
-});
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
 
-window.addEventListener('mousedown', () => {
-    mouse.isPressed = true;
-});
-
-window.addEventListener('mouseup', () => {
-    mouse.isPressed = false;
-});
-
-// Handle both click and tap for project nodes
-function handleProjectNodeInteraction() {
-    if (modal.classList.contains('hidden')) {
-        projectNodes.forEach(node => node.checkClick());
-    }
-}
-
-window.addEventListener('click', handleProjectNodeInteraction);
-
-window.addEventListener('dblclick', (e) => {
-    if (modal.classList.contains('hidden')) {
-        const clickX = e.clientX;
-        const clickY = e.clientY;
-
-        // Apply shockwave to particles
-        particles.forEach(p => {
-            const dx = p.x - clickX;
-            const dy = p.y - clickY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = SHOCKWAVE_FORCE / (dist + 10);
-
-            const angle = Math.atan2(dy, dx);
-            p.vx += Math.cos(angle) * force;
-            p.vy += Math.sin(angle) * force;
-            p.dampingActive = true;
-        });
-
-        // Apply shockwave to project nodes (same force as particles)
-        projectNodes.forEach(node => {
-            const dx = node.x - clickX;
-            const dy = node.y - clickY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = SHOCKWAVE_FORCE / (dist + 10);
-
-            const angle = Math.atan2(dy, dx);
-            node.vx += Math.cos(angle) * force;
-            node.vy += Math.sin(angle) * force;
-            node.dampingActive = true;
-        });
-    }
+    // Smooth cursor follow
+    // For bespoke feel, we can just set it directly or use lerp. 
+    // Direct for responsiveness since we have CSS transition on width/height
+    cursorEl.style.left = e.clientX + 'px';
+    cursorEl.style.top = e.clientY + 'px';
 });
 
 window.addEventListener('mouseout', () => {
     mouse.x = undefined;
     mouse.y = undefined;
-    mouse.isPressed = false;
+    cursorEl.style.opacity = '0';
 });
 
-// Touch event listeners
-window.addEventListener('touchstart', (e) => {
-    const touch = e.touches[0];
-    const currentTime = new Date().getTime();
-    const tapLength = currentTime - lastTap;
+window.addEventListener('mouseenter', () => {
+    cursorEl.style.opacity = '1';
+});
 
-    // Update mouse position and interaction state
-    mouse.x = touch.clientX;
-    mouse.y = touch.clientY;
-    mouse.isPressed = true;
+window.addEventListener('mousedown', () => {
+    cursorEl.style.transform = 'translate(-50%, -50%) scale(0.8)';
+});
 
-    // Store tap position for modal opening
-    tapStartX = touch.clientX;
-    tapStartY = touch.clientY;
+window.addEventListener('mouseup', () => {
+    cursorEl.style.transform = 'translate(-50%, -50%) scale(1)';
+});
 
-    // Check for double-tap (shockwave effect)
-    if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0 && modal.classList.contains('hidden')) {
-        // Apply shockwave to particles
-        particles.forEach(p => {
-            const dx = p.x - touch.clientX;
-            const dy = p.y - touch.clientY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = SHOCKWAVE_FORCE / (dist + 10);
+// Click Interaction
+window.addEventListener('click', (e) => {
+    if (modal.classList.contains('hidden')) {
+        let clicked = false;
+        // Check nodes first
+        for (let node of projectNodes) {
+            if (node.checkClick(e.clientX, e.clientY)) {
+                clicked = true;
+                break;
+            }
+        }
+    } else if (e.target === modal) {
+        closeModalHandler();
+    }
+});
 
-            const angle = Math.atan2(dy, dx);
-            p.vx += Math.cos(angle) * force;
-            p.vy += Math.sin(angle) * force;
-            p.dampingActive = true;
-        });
+// Modal Logic
+function openModal(data) {
+    modalTitle.innerText = data.title;
+    modalCategory.innerText = data.category;
+    modalDescription.innerText = data.description;
 
-        // Apply shockwave to project nodes (same force as particles)
-        projectNodes.forEach(node => {
-            const dx = node.x - touch.clientX;
-            const dy = node.y - touch.clientY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = SHOCKWAVE_FORCE / (dist + 10);
-
-            const angle = Math.atan2(dy, dx);
-            node.vx += Math.cos(angle) * force;
-            node.vy += Math.sin(angle) * force;
-            node.dampingActive = true;
-        });
+    // Image Handling
+    if (data.image) {
+        const resolvedSrc = resolveImagePath(data.image);
+        modalImage.src = resolvedSrc;
+        modalImageWrapper.classList.remove('hidden');
+    } else {
+        modalImageWrapper.classList.add('hidden');
     }
 
-    lastTap = currentTime;
-});
+    // Link Handling
+    if (data.link === '#') {
+        modalLink.style.display = 'none';
+    } else {
+        modalLink.style.display = 'inline-block';
+        modalLink.href = data.link;
+        modalLink.innerText = data.link.startsWith('mailto:') ? 'Contact' : 'View Project';
+    }
 
-window.addEventListener('touchmove', (e) => {
-    e.preventDefault(); // Prevent scrolling
+    modal.classList.remove('hidden');
+    // slight delay to allow display:block to apply before opacity transition
+    requestAnimationFrame(() => {
+        modal.classList.add('open');
+    });
+}
+
+function closeModalHandler() {
+    modal.classList.remove('open');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 400);
+}
+
+closeModal.addEventListener('click', closeModalHandler);
+window.addEventListener('resize', resize);
+
+// Touch Support
+window.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     mouse.x = touch.clientX;
     mouse.y = touch.clientY;
 }, { passive: false });
 
-window.addEventListener('touchend', () => {
-    mouse.isPressed = false;
-
-    // Check if a project node was tapped
-    if (modal.classList.contains('hidden') && tapStartX !== undefined) {
-        for (let node of projectNodes) {
-            if (node.checkClick(tapStartX, tapStartY)) {
-                break;
-            }
-        }
-    }
-
-    // Reset mouse and tap position after delay
-    setTimeout(() => {
-        mouse.x = undefined;
-        mouse.y = undefined;
-        tapStartX = undefined;
-        tapStartY = undefined;
-    }, TOUCH_RESET_DELAY);
+window.addEventListener('touchend', (e) => {
+    mouse.x = undefined;
+    mouse.y = undefined;
+    // Simple tap check could go here if needed
 });
 
-// ===========================
-// Initialize and Start
-// ===========================
+// Start
 init();
 animate();
-
-// ===========================
-// Cursor/Touch Glow Effect
-// ===========================
-const glowEffect = document.getElementById('glow-effect');
-
-if (glowEffect) {
-    let glowX = 0;
-    let glowY = 0;
-    let glowTargetX = 0;
-    let glowTargetY = 0;
-    let glowAnimationFrame = null;
-
-    function updateGlowPosition() {
-        // Smooth interpolation for smoother movement
-        glowX += (glowTargetX - glowX) * 0.15;
-        glowY += (glowTargetY - glowY) * 0.15;
-
-        glowEffect.style.transform = `translate(${glowX}px, ${glowY}px) translate(-50%, -50%)`;
-
-        // Continue animation if there's still movement
-        if (Math.abs(glowTargetX - glowX) > 0.5 || Math.abs(glowTargetY - glowY) > 0.5) {
-            glowAnimationFrame = requestAnimationFrame(updateGlowPosition);
-        } else {
-            glowAnimationFrame = null;
-        }
-    }
-
-    if (!isMobile) {
-    // Desktop: Mouse glow with smooth interpolation
-    let isMouseIn = false;
-
-    window.addEventListener('mousemove', (e) => {
-        glowTargetX = e.clientX;
-        glowTargetY = e.clientY;
-
-        if (!isMouseIn) {
-            isMouseIn = true;
-            glowX = e.clientX;
-            glowY = e.clientY;
-            glowEffect.classList.add('active');
-        }
-
-        if (!glowAnimationFrame) {
-            glowAnimationFrame = requestAnimationFrame(updateGlowPosition);
-        }
-    });
-
-    window.addEventListener('mouseout', () => {
-        isMouseIn = false;
-        glowEffect.classList.remove('active');
-        if (glowAnimationFrame) {
-            cancelAnimationFrame(glowAnimationFrame);
-            glowAnimationFrame = null;
-        }
-    });
-
-    window.addEventListener('mousedown', () => {
-        glowEffect.classList.add('pulse');
-        setTimeout(() => glowEffect.classList.remove('pulse'), 500);
-    });
-} else {
-    // Mobile: Touch glow (instant, no interpolation needed)
-    let touchGlowTimeout;
-
-    window.addEventListener('touchstart', (e) => {
-        const touch = e.touches[0];
-        glowEffect.style.transform = `translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%)`;
-        glowEffect.classList.add('active', 'pulse');
-
-        clearTimeout(touchGlowTimeout);
-        touchGlowTimeout = setTimeout(() => {
-            glowEffect.classList.remove('active', 'pulse');
-        }, 500);
-    });
-
-    window.addEventListener('touchmove', (e) => {
-        const touch = e.touches[0];
-        glowEffect.style.transform = `translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%)`;
-    });
-
-    window.addEventListener('touchend', () => {
-        clearTimeout(touchGlowTimeout);
-        touchGlowTimeout = setTimeout(() => {
-            glowEffect.classList.remove('active', 'pulse');
-        }, 500);
-    });
-}
-}
-
-// ===========================
-// Language Toggle Event Listener
-// ===========================
-const langToggle = document.getElementById('lang-toggle');
-if (langToggle) {
-    langToggle.addEventListener('click', () => {
-        const newLang = currentLang === 'en' ? 'ja' : 'en';
-        switchLanguage(newLang);
-    });
-}
-
-// Initialize language on page load
-initLanguage();
