@@ -471,47 +471,33 @@ window.addEventListener('touchend', (e) => {
 const videoElement = document.getElementsByClassName('input_video')[0];
 let handLandmarks = null;
 let camera = null;
-let isCameraActive = false; // Flag to disable mouse interference
+let lastHandDetectedTime = 0;
+const CAMERA_TIMEOUT_MS = 2000; // Time without hand before mouse takes over
 
 // Smoothing variables
 let targetX = undefined;
 let targetY = undefined;
-const SMOOTHING_FACTOR = 0.2; // Increased from 0.15 for snappier response
+const SMOOTHING_FACTOR = 0.2;
 
 function onResults(results) {
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        // Hand detected - disable mouse
-        isCameraActive = true;
+        // Hand detected
+        lastHandDetectedTime = Date.now();
 
-        // Get the first hand detected
         const landmarks = results.multiHandLandmarks[0];
-
-        // Use Index Finger Tip (Landmark 8) for interaction
-        // Landmarks are 0.0 - 1.0 (normalized)
         const indexTip = landmarks[8];
 
-        // Mirror horizontally for natural mirror interaction
+        // Mirror horizontally
         const x = (1 - indexTip.x) * width;
         const y = indexTip.y * height;
 
         targetX = x;
         targetY = y;
 
-        // If mouse was previously undefined, snap to it immediately
+        // Initialize mouse pos if needed
         if (mouse.x === undefined) {
             mouse.x = x;
             mouse.y = y;
-        }
-    } else {
-        // No hand detected - optionally revert to mouse after a timeout, 
-        // but for now let's keep it sticky or set flag false immediately?
-        // Let's set false only if we want auto-fallback. 
-        // To be safe against flickering, maybe we keep it true? 
-        // User requested "stop mouse cursor action", so sticking to camera once active is safer.
-        // But if they put hand down, they might want mouse back.
-        // Let's use a timeout.
-        if (isCameraActive) {
-            setTimeout(() => { if (!targetX) isCameraActive = false; }, 1000);
         }
     }
 }
@@ -533,7 +519,6 @@ hands.setOptions({
 hands.onResults(onResults);
 
 // Initialize Camera on Button Click
-// Browsers require a user gesture to grant permissions reliably
 const cameraBtn = document.getElementById('camera-btn');
 
 if (cameraBtn) {
@@ -552,10 +537,8 @@ if (cameraBtn) {
                     cameraBtn.innerText = "Camera Active";
                     cameraBtn.style.opacity = '0.5';
                     cameraBtn.disabled = true;
-                    // Provide feedback that it's working
-                    const originalText = document.getElementById('instructions').innerHTML;
-                    // Keep instructions but maybe fade out the button
-                    isCameraActive = true; // Assume active once started
+                    // Force active state to prevent immediate fallback
+                    lastHandDetectedTime = Date.now();
                 })
                 .catch(err => {
                     console.error(err);
@@ -574,10 +557,15 @@ if (cameraBtn) {
 init();
 animate();
 
+// Helper to check if camera is currently controlling
+function isCameraActive() {
+    return (Date.now() - lastHandDetectedTime) < CAMERA_TIMEOUT_MS;
+}
+
 // Update loop needs to handle the smoothing
 function updateInputPosition() {
-    if (targetX !== undefined && targetY !== undefined) {
-        // Simple Lerp
+    // Only update from target if camera is active
+    if (isCameraActive() && targetX !== undefined && targetY !== undefined) {
         mouse.x += (targetX - mouse.x) * SMOOTHING_FACTOR;
         mouse.y += (targetY - mouse.y) * SMOOTHING_FACTOR;
 
@@ -585,12 +573,19 @@ function updateInputPosition() {
         cursorEl.style.left = mouse.x + 'px';
         cursorEl.style.top = mouse.y + 'px';
 
-        // Dynamic "Active" tracking style
-        cursorEl.style.width = '20px';
-        cursorEl.style.height = '20px';
+        // Camera Cursor Style (Double Ring)
+        cursorEl.style.width = '30px';
+        cursorEl.style.height = '30px';
         cursorEl.style.background = 'transparent';
-        cursorEl.style.border = '2px solid #000'; // Black ring for visibility
-        cursorEl.style.transform = 'translate(-50%, -50%)'; // Center it
+        cursorEl.style.border = '2px solid #000';
+        cursorEl.style.transform = 'translate(-50%, -50%)';
+    } else {
+        // Mouse Cursor Style (Single Small Ring)
+        cursorEl.style.width = '15px';
+        cursorEl.style.height = '15px';
+        cursorEl.style.background = 'transparent';
+        cursorEl.style.border = '1.5px solid #000';
+        cursorEl.style.transform = 'translate(-50%, -50%)';
     }
 }
 

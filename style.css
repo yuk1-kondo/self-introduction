@@ -130,21 +130,8 @@ p {
 
 /* Custom Cursor */
 body::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 8px;
-    height: 8px;
-    background: #000;
-    /* Black cursor */
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    z-index: 9999;
-    /* mix-blend-mode: exclusion; Removed for clarity on white */
-    transition: transform 0.1s ease;
-    will-change: transform;
+    /* Removed default body::after cursor as script.js manages 'cursorEl' specifically now */
+    content: none;
 }
 
 @keyframes fadeInOut {
