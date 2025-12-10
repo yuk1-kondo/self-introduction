@@ -516,21 +516,40 @@ hands.setOptions({
 
 hands.onResults(onResults);
 
-// Initialize Camera
-// Note: We start this only if user interaction allows, or auto-start. 
-// Browsers often block camera without user gesture or explicit permission grant context.
-// For now, we will try to start it immediately.
-try {
-    camera = new Camera(videoElement, {
-        onFrame: async () => {
-            await hands.send({ image: videoElement });
-        },
-        width: 640,
-        height: 480
+// Initialize Camera on Button Click
+// Browsers require a user gesture to grant permissions reliably
+const cameraBtn = document.getElementById('camera-btn');
+
+if (cameraBtn) {
+    cameraBtn.addEventListener('click', () => {
+        cameraBtn.innerText = "Initializing...";
+        try {
+            camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({ image: videoElement });
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start()
+                .then(() => {
+                    cameraBtn.innerText = "Camera Active";
+                    cameraBtn.style.opacity = '0.5';
+                    cameraBtn.disabled = true;
+                    // Provide feedback that it's working
+                    const originalText = document.getElementById('instructions').innerHTML;
+                    // Keep instructions but maybe fade out the button
+                })
+                .catch(err => {
+                    console.error(err);
+                    cameraBtn.innerText = "Camera Access Denied";
+                    alert("Could not access camera. Please ensure you are on HTTPS and have allowed permissions.");
+                });
+        } catch (e) {
+            console.warn("Camera setup failed:", e);
+            cameraBtn.innerText = "Error";
+        }
     });
-    camera.start();
-} catch (e) {
-    console.warn("Camera access might be blocked or failed:", e);
 }
 
 
