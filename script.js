@@ -601,18 +601,31 @@ function isCameraActive() {
 function drawHandVisuals() {
     if (isCameraActive() && latestResults && latestResults.multiHandLandmarks) {
         for (const landmarks of latestResults.multiHandLandmarks) {
-            // Draw Connectors (Bones)
-            drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-                color: 'rgba(0, 0, 0, 0.3)', // Faint black lines
-                lineWidth: 2
-            });
-            // Draw Landmarks (Joints)
-            drawLandmarks(ctx, landmarks, {
-                color: '#000000', // Black dots
-                fillColor: '#FFFFFF', // White fill
-                lineWidth: 1,
-                radius: 3
-            });
+            // Only draw Index Finger (Landmarks 5, 6, 7, 8)
+            // And maybe the connection to wrist (0 -> 5) for context? 
+            // User asked to reduce points. Let's just show the Index Finger chain.
+            const indexFingerIndices = [5, 6, 7, 8];
+
+            // Draw connections
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.moveTo(landmarks[5].x * width, landmarks[5].y * height);
+            for (let i = 1; i < indexFingerIndices.length; i++) {
+                const idx = indexFingerIndices[i];
+                ctx.lineTo(landmarks[idx].x * width, landmarks[idx].y * height);
+            }
+            ctx.stroke();
+
+            // Draw Tip (8) specifically
+            const tip = landmarks[8];
+            ctx.beginPath();
+            ctx.arc(tip.x * width, tip.y * height, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = '#000000';
+            ctx.fill();
+
+            // Optional: Draw wrist for "base" reference? 
+            // Let's keep it minimal as requested.
         }
     }
 }
