@@ -65,8 +65,5 @@ const portfolioData = {
             },
             link: '#'
         }
-    ],
-    skills: [
-        'JavaScript', 'WebGL', 'Creative Coding', 'UI/UX', 'React', 'Node.js'
     ]
 };

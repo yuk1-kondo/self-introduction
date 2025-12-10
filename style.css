@@ -445,10 +445,16 @@ p {
     }
 
     .back-to-top {
-        top: 15px;
+        bottom: 15px;
         left: 15px;
-        padding: 10px 16px;
-        font-size: 0.7rem;
+        padding: 8px 14px;
+        font-size: 0.65rem;
+        gap: 5px;
+        border-radius: 20px;
+    }
+
+    .back-to-top .back-arrow {
+        font-size: 0.85rem;
     }
 }
 
