@@ -475,7 +475,10 @@ const CAMERA_TIMEOUT_MS = 2000; // Time without hand before mouse takes over
 // Smoothing variables
 
 
+let latestResults = null;
+
 function onResults(results) {
+    latestResults = results; // Store for drawing
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         // Hand detected
         lastHandDetectedTime = Date.now();
@@ -594,6 +597,26 @@ function isCameraActive() {
     return (Date.now() - lastHandDetectedTime) < CAMERA_TIMEOUT_MS;
 }
 
+// Draw Hand Skeleton
+function drawHandVisuals() {
+    if (isCameraActive() && latestResults && latestResults.multiHandLandmarks) {
+        for (const landmarks of latestResults.multiHandLandmarks) {
+            // Draw Connectors (Bones)
+            drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
+                color: 'rgba(0, 0, 0, 0.3)', // Faint black lines
+                lineWidth: 2
+            });
+            // Draw Landmarks (Joints)
+            drawLandmarks(ctx, landmarks, {
+                color: '#000000', // Black dots
+                fillColor: '#FFFFFF', // White fill
+                lineWidth: 1,
+                radius: 3
+            });
+        }
+    }
+}
+
 // Update loop needs to handle the smoothing
 function updateInputPosition() {
     // Only update from target if camera is active
@@ -611,7 +634,7 @@ function updateInputPosition() {
         // Inactive State (Mouse)
         cursorEl.classList.remove('camera-active');
 
-        // Reset manual overrides if any were set previously (though we are careful not to)
+        // Reset manual overrides
         cursorEl.style.width = '';
         cursorEl.style.height = '';
         cursorEl.style.background = '';
@@ -624,5 +647,23 @@ function updateInputPosition() {
 const originalAnimate = animate;
 animate = function () {
     updateInputPosition();
+    // Clear/Trails handled in originalAnimate... wait, we need to inject drawing inside the loop
+    // But originalAnimate clears the screen at the start! 
+    // If we call originalAnimate() first, it clears, draws particles.
+    // THEN we draw Hand Visuals on top.
+
+    // However, originalAnimate calls requestAnimationFrame recursively!
+    // We cannot just wrap it like this because originalAnimate calls ITSELF, not our wrapper.
+    // We need to redefine animate entirely or hook into it properly.
+    // But wait, the original code had:
+    // requestAnimationFrame(animate);
+    // So if I overwrite 'animate', the next frame will call MY new animate.
+    // Yes, that works.
+
+    // 1. Trails (clearing) - inside originalAnimate
+    // 2. Nodes/Particles - inside originalAnimate
+    // 3. Hand Visuals - should be here
+
     originalAnimate();
+    drawHandVisuals(); // Draw on top
 };
