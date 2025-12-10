@@ -610,17 +610,22 @@ function drawHandVisuals() {
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.lineWidth = 2;
-            ctx.moveTo(landmarks[5].x * width, landmarks[5].y * height);
+
+            // Mirror X for first point
+            ctx.moveTo((1 - landmarks[5].x) * width, landmarks[5].y * height);
+
             for (let i = 1; i < indexFingerIndices.length; i++) {
                 const idx = indexFingerIndices[i];
-                ctx.lineTo(landmarks[idx].x * width, landmarks[idx].y * height);
+                // Mirror X for subsequent points
+                ctx.lineTo((1 - landmarks[idx].x) * width, landmarks[idx].y * height);
             }
             ctx.stroke();
 
             // Draw Tip (8) specifically
             const tip = landmarks[8];
             ctx.beginPath();
-            ctx.arc(tip.x * width, tip.y * height, 6, 0, 2 * Math.PI);
+            // Mirror X for tip
+            ctx.arc((1 - tip.x) * width, tip.y * height, 6, 0, 2 * Math.PI);
             ctx.fillStyle = '#000000';
             ctx.fill();
 

@@ -21,7 +21,6 @@
 </head>
 
 <body>
-    <!-- Hidden video element for camera feed -->
     <!-- Hidden video element for camera feed (using CSS to hide, not display:none) -->
     <video class="input_video" playsinline></video>
     <canvas id="canvas"></canvas>
@@ -46,10 +45,19 @@
                 <img id="modal-image" src="profile.png" alt="" class="modal-image" data-default-image="profile.png"
                     loading="lazy">
             </div>
-            </section>
 
-            </main>
-            <script src="script.js"></script>
+            <!-- Modal Text Content -->
+            <div class="modal-text">
+                <p id="modal-category" class="modal-category">Category</p>
+                <h2 id="modal-title" class="modal-title">Project Title</h2>
+                <p id="modal-description" class="modal-description">Project description goes here.</p>
+                <a id="modal-link" href="#" target="_blank" class="modal-link btn-text">View Project</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Script -->
+    <script src="script.js"></script>
 </body>
 
 </html>
