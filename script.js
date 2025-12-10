@@ -473,9 +473,7 @@ let lastHandDetectedTime = 0;
 const CAMERA_TIMEOUT_MS = 2000; // Time without hand before mouse takes over
 
 // Smoothing variables
-let targetX = undefined;
-let targetY = undefined;
-const SMOOTHING_FACTOR = 0.2;
+
 
 function onResults(results) {
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
@@ -607,19 +605,18 @@ function updateInputPosition() {
         cursorEl.style.left = mouse.x + 'px';
         cursorEl.style.top = mouse.y + 'px';
 
-        // Camera Cursor Style (Double Ring)
-        cursorEl.style.width = '30px';
-        cursorEl.style.height = '30px';
-        cursorEl.style.background = 'transparent';
-        cursorEl.style.border = '2px solid #000';
-        cursorEl.style.transform = 'translate(-50%, -50%)';
+        // Active State
+        cursorEl.classList.add('camera-active');
     } else {
-        // Mouse Cursor Style (Single Small Ring)
-        cursorEl.style.width = '15px';
-        cursorEl.style.height = '15px';
-        cursorEl.style.background = 'transparent';
-        cursorEl.style.border = '1.5px solid #000';
-        cursorEl.style.transform = 'translate(-50%, -50%)';
+        // Inactive State (Mouse)
+        cursorEl.classList.remove('camera-active');
+
+        // Reset manual overrides if any were set previously (though we are careful not to)
+        cursorEl.style.width = '';
+        cursorEl.style.height = '';
+        cursorEl.style.background = '';
+        cursorEl.style.border = '';
+        cursorEl.style.transform = '';
     }
 }
 
