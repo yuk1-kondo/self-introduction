@@ -345,6 +345,50 @@ window.addEventListener('mouseup', () => {
         cursorEl.style.transform = 'translate(-50%, -50%) scale(1)'; 
     } 
 });
+
+// Touch Events for Mobile
+window.addEventListener('touchstart', (e) => {
+    if (isCameraActive()) return;
+    
+    const touch = e.touches[0];
+    mouse.x = touch.clientX;
+    mouse.y = touch.clientY;
+    isGathering = true;
+    
+    // Update cursor position
+    cursorEl.style.left = touch.clientX + 'px';
+    cursorEl.style.top = touch.clientY + 'px';
+    cursorEl.style.opacity = '1';
+    cursorEl.style.transform = 'translate(-50%, -50%) scale(0.8)';
+}, { passive: true });
+
+window.addEventListener('touchmove', (e) => {
+    if (isCameraActive()) return;
+    
+    const touch = e.touches[0];
+    mouse.x = touch.clientX;
+    mouse.y = touch.clientY;
+    
+    // Update cursor position
+    cursorEl.style.left = touch.clientX + 'px';
+    cursorEl.style.top = touch.clientY + 'px';
+}, { passive: true });
+
+window.addEventListener('touchend', () => {
+    if (isCameraActive()) return;
+    
+    isGathering = false;
+    burst();
+    cursorEl.style.transform = 'translate(-50%, -50%) scale(1)';
+    
+    // Keep particles interactive for a moment, then reset
+    setTimeout(() => {
+        mouse.x = undefined;
+        mouse.y = undefined;
+        cursorEl.style.opacity = '0';
+    }, 300);
+}, { passive: true });
+
 window.addEventListener('resize', resize);
 
 init();
