@@ -453,6 +453,14 @@ window.addEventListener('click', (e) => {
 
 // ... (skipping to MediaPipe onResults) ...
 
+// ===========================
+// MediaPipe Hands Integration
+// ===========================
+const videoElement = document.getElementsByClassName('input_video')[0];
+let lastHandDetectedTime = 0;
+const CAMERA_TIMEOUT_MS = 2000;
+let latestResults = null;
+
 const PINCH_THRESHOLD = 0.05; // 5% of screen width roughly
 
 function onResults(results) {
