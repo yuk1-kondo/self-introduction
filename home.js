@@ -9,6 +9,7 @@ const videoElement = document.getElementsByClassName('input_video')[0];
 // Custom Cursor
 const cursorEl = document.createElement('div');
 cursorEl.classList.add('custom-cursor');
+cursorEl.style.opacity = '1';
 document.body.appendChild(cursorEl);
 
 // Config
@@ -304,8 +305,14 @@ window.addEventListener('mousemove', (e) => {
         cursorEl.style.top = e.clientY + 'px';
     }
 });
-window.addEventListener('mouseout', () => { if (!isCameraActive()) { mouse.x = undefined; mouse.y = undefined; } cursorEl.style.opacity = '0'; });
+window.addEventListener('mouseout', (e) => { 
+    if (e.relatedTarget === null) {
+        if (!isCameraActive()) { mouse.x = undefined; mouse.y = undefined; }
+        cursorEl.style.opacity = '0';
+    }
+});
 window.addEventListener('mouseenter', () => { cursorEl.style.opacity = '1'; });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) cursorEl.style.opacity = '1'; });
 window.addEventListener('mousedown', () => { if (!isCameraActive()) { isGathering = true; cursorEl.style.transform = 'translate(-50%, -50%) scale(0.8)'; } });
 window.addEventListener('mouseup', () => { if (!isCameraActive()) { isGathering = false; burst(); cursorEl.style.transform = 'translate(-50%, -50%) scale(1)'; } });
 window.addEventListener('resize', resize);
