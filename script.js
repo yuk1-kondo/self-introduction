@@ -466,7 +466,9 @@ window.addEventListener('touchend', (e) => {
 // ===========================
 const videoElement = document.getElementsByClassName('input_video')[0];
 let handLandmarks = null;
-let camera = null;
+// camera variable removed here as it is local to the button logic now, or if needed globally, renamed properly. 
+// Just removing the dead 'let camera = null;' line to be clean, or keeping it if other funcs use it (none do).
+// We'll just leave local variables in the event listener block for cleaner scope.
 let lastHandDetectedTime = 0;
 const CAMERA_TIMEOUT_MS = 2000; // Time without hand before mouse takes over
 
@@ -516,23 +518,57 @@ hands.onResults(onResults);
 
 // Initialize Camera on Button Click
 const cameraBtn = document.getElementById('camera-btn');
+let cameraInstance = null;
+let isCameraRunning = false;
 
 if (cameraBtn) {
     cameraBtn.addEventListener('click', () => {
+        if (isCameraRunning) {
+            // STOP CAMERA
+            if (cameraInstance) {
+                cameraInstance.stop();
+
+                // Stop the video stream tracks explicitly to turn off the hardware light
+                const stream = videoElement.srcObject;
+                if (stream) {
+                    const tracks = stream.getTracks();
+                    tracks.forEach(track => track.stop());
+                    videoElement.srcObject = null;
+                }
+            }
+
+            isCameraRunning = false;
+            cameraInstance = null;
+
+            // Reset UI
+            cameraBtn.innerText = "Enable Camera Control";
+            cameraBtn.style.opacity = '1';
+
+            // Re-enable mouse immediately
+            lastHandDetectedTime = 0;
+
+            return;
+        }
+
+        // START CAMERA
         cameraBtn.innerText = "Initializing...";
         try {
-            camera = new Camera(videoElement, {
+            cameraInstance = new Camera(videoElement, {
                 onFrame: async () => {
-                    await hands.send({ image: videoElement });
+                    if (isCameraRunning) { // Double check flag
+                        await hands.send({ image: videoElement });
+                    }
                 },
                 width: 640,
                 height: 480
             });
-            camera.start()
+
+            cameraInstance.start()
                 .then(() => {
-                    cameraBtn.innerText = "Camera Active";
-                    cameraBtn.style.opacity = '0.5';
-                    cameraBtn.disabled = true;
+                    isCameraRunning = true;
+                    cameraBtn.innerText = "Stop Camera";
+                    cameraBtn.style.opacity = '1';
+
                     // Force active state to prevent immediate fallback
                     lastHandDetectedTime = Date.now();
                 })
@@ -540,10 +576,12 @@ if (cameraBtn) {
                     console.error(err);
                     cameraBtn.innerText = "Camera Access Denied";
                     alert("Could not access camera. Please ensure you are on HTTPS and have allowed permissions.");
+                    isCameraRunning = false;
                 });
         } catch (e) {
             console.warn("Camera setup failed:", e);
             cameraBtn.innerText = "Error";
+            isCameraRunning = false;
         }
     });
 }
