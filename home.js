@@ -297,24 +297,54 @@ if (cameraBtn) {
     });
 }
 
-// Mouse Events
+// Mouse Events - Always track mouse position and show cursor
 window.addEventListener('mousemove', (e) => {
+    // Always update cursor position visually
+    cursorEl.style.left = e.clientX + 'px';
+    cursorEl.style.top = e.clientY + 'px';
+    cursorEl.style.opacity = '1';
+    
+    // Only update particle interaction when camera is not active
     if (!isCameraActive()) {
-        mouse.x = e.clientX; mouse.y = e.clientY;
-        cursorEl.style.left = e.clientX + 'px';
-        cursorEl.style.top = e.clientY + 'px';
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
     }
 });
-window.addEventListener('mouseout', (e) => { 
-    if (e.relatedTarget === null) {
-        if (!isCameraActive()) { mouse.x = undefined; mouse.y = undefined; }
-        cursorEl.style.opacity = '0';
+
+window.addEventListener('mouseleave', () => { 
+    cursorEl.style.opacity = '0';
+    if (!isCameraActive()) { 
+        mouse.x = undefined; 
+        mouse.y = undefined; 
     }
 });
-window.addEventListener('mouseenter', () => { cursorEl.style.opacity = '1'; });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) cursorEl.style.opacity = '1'; });
-window.addEventListener('mousedown', () => { if (!isCameraActive()) { isGathering = true; cursorEl.style.transform = 'translate(-50%, -50%) scale(0.8)'; } });
-window.addEventListener('mouseup', () => { if (!isCameraActive()) { isGathering = false; burst(); cursorEl.style.transform = 'translate(-50%, -50%) scale(1)'; } });
+
+window.addEventListener('mouseenter', () => { 
+    cursorEl.style.opacity = '1'; 
+});
+
+window.addEventListener('focus', () => { 
+    cursorEl.style.opacity = '1'; 
+});
+
+document.addEventListener('visibilitychange', () => { 
+    if (!document.hidden) cursorEl.style.opacity = '1'; 
+});
+
+window.addEventListener('mousedown', () => { 
+    if (!isCameraActive()) { 
+        isGathering = true; 
+        cursorEl.style.transform = 'translate(-50%, -50%) scale(0.8)'; 
+    } 
+});
+
+window.addEventListener('mouseup', () => { 
+    if (!isCameraActive()) { 
+        isGathering = false; 
+        burst(); 
+        cursorEl.style.transform = 'translate(-50%, -50%) scale(1)'; 
+    } 
+});
 window.addEventListener('resize', resize);
 
 init();
