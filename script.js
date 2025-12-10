@@ -471,14 +471,18 @@ window.addEventListener('touchend', (e) => {
 const videoElement = document.getElementsByClassName('input_video')[0];
 let handLandmarks = null;
 let camera = null;
+let isCameraActive = false; // Flag to disable mouse interference
 
 // Smoothing variables
 let targetX = undefined;
 let targetY = undefined;
-const SMOOTHING_FACTOR = 0.15;
+const SMOOTHING_FACTOR = 0.2; // Increased from 0.15 for snappier response
 
 function onResults(results) {
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        // Hand detected - disable mouse
+        isCameraActive = true;
+
         // Get the first hand detected
         const landmarks = results.multiHandLandmarks[0];
 
@@ -497,6 +501,17 @@ function onResults(results) {
         if (mouse.x === undefined) {
             mouse.x = x;
             mouse.y = y;
+        }
+    } else {
+        // No hand detected - optionally revert to mouse after a timeout, 
+        // but for now let's keep it sticky or set flag false immediately?
+        // Let's set false only if we want auto-fallback. 
+        // To be safe against flickering, maybe we keep it true? 
+        // User requested "stop mouse cursor action", so sticking to camera once active is safer.
+        // But if they put hand down, they might want mouse back.
+        // Let's use a timeout.
+        if (isCameraActive) {
+            setTimeout(() => { if (!targetX) isCameraActive = false; }, 1000);
         }
     }
 }
@@ -540,6 +555,7 @@ if (cameraBtn) {
                     // Provide feedback that it's working
                     const originalText = document.getElementById('instructions').innerHTML;
                     // Keep instructions but maybe fade out the button
+                    isCameraActive = true; // Assume active once started
                 })
                 .catch(err => {
                     console.error(err);
@@ -561,6 +577,7 @@ animate();
 // Update loop needs to handle the smoothing
 function updateInputPosition() {
     if (targetX !== undefined && targetY !== undefined) {
+        // Simple Lerp
         mouse.x += (targetX - mouse.x) * SMOOTHING_FACTOR;
         mouse.y += (targetY - mouse.y) * SMOOTHING_FACTOR;
 
@@ -568,11 +585,12 @@ function updateInputPosition() {
         cursorEl.style.left = mouse.x + 'px';
         cursorEl.style.top = mouse.y + 'px';
 
-        // Dynamic "Active" state for cursor when controlled by camera
+        // Dynamic "Active" tracking style
         cursorEl.style.width = '20px';
         cursorEl.style.height = '20px';
-        cursorEl.style.border = '2px solid cyan';
         cursorEl.style.background = 'transparent';
+        cursorEl.style.border = '2px solid #000'; // Black ring for visibility
+        cursorEl.style.transform = 'translate(-50%, -50%)'; // Center it
     }
 }
 
