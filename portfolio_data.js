@@ -31,7 +31,7 @@ const portfolioData = {
                 ja: "関西出身の理科教員志望で、教育とテクノロジーを融合させることが大好きです。Spresenseでピクセルアートカメラを作ったり、GeminiでストーリーテリングAIを開発したり、学生向けのクリエイティブなアプリを作ったり。アイデアを形にすることを楽しんでいます。実践から学び、その精神を共有することを信じています。一緒に意味のあるものを作りましょう。"
             },
             link: '#',
-            image: './profile.png'
+            image: '/profile.png'
         },
         {
             id: 'proj2',
@@ -42,7 +42,7 @@ const portfolioData = {
                 ja: '生成AIリーダーシップ認定資格取得（2024年11月）。生成AIがビジネスをどのように変革するかについて包括的に理解しており、Google Cloudの生成AIサービスに関するビジネスレベルの知識を持っています。'
             },
             link: 'https://www.credly.com/badges/ca0837199f654af186561d3096e732b4',
-            image: './genaileader_certification.png'
+            image: '/genaileader_certification.png'
         },
         {
             id: 'proj3',
