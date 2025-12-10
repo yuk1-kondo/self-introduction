@@ -207,19 +207,37 @@ function onResults(results) {
 function drawHandVisuals() {
     if (isCameraActive() && latestResults && latestResults.multiHandLandmarks) {
         for (const landmarks of latestResults.multiHandLandmarks) {
-            ctx.beginPath();
+            // Hand connections - 5 fingers + palm
+            const fingerConnections = [
+                [0, 1, 2, 3, 4],      // Thumb
+                [0, 5, 6, 7, 8],      // Index
+                [0, 9, 10, 11, 12],   // Middle
+                [0, 13, 14, 15, 16],  // Ring
+                [0, 17, 18, 19, 20],  // Pinky
+                [5, 9, 13, 17]        // Palm connections
+            ];
+
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.lineWidth = 2;
-            ctx.moveTo((1 - landmarks[5].x) * width, landmarks[5].y * height);
-            [6, 7, 8].forEach(idx => {
-                ctx.lineTo((1 - landmarks[idx].x) * width, landmarks[idx].y * height);
-            });
-            ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc((1 - landmarks[8].x) * width, landmarks[8].y * height, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = '#000000';
-            ctx.fill();
+            // Draw all finger connections
+            fingerConnections.forEach(finger => {
+                ctx.beginPath();
+                ctx.moveTo((1 - landmarks[finger[0]].x) * width, landmarks[finger[0]].y * height);
+                for (let i = 1; i < finger.length; i++) {
+                    ctx.lineTo((1 - landmarks[finger[i]].x) * width, landmarks[finger[i]].y * height);
+                }
+                ctx.stroke();
+            });
+
+            // Draw joints
+            landmarks.forEach((point, idx) => {
+                ctx.beginPath();
+                const size = [4, 8, 12, 16, 20].includes(idx) ? 5 : 3; // Fingertips larger
+                ctx.arc((1 - point.x) * width, point.y * height, size, 0, 2 * Math.PI);
+                ctx.fillStyle = [4, 8, 12, 16, 20].includes(idx) ? '#000000' : 'rgba(0,0,0,0.6)';
+                ctx.fill();
+            });
         }
     }
 }
