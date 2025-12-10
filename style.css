@@ -455,8 +455,8 @@ p {
 /* Back to TOP Button */
 .back-to-top {
     position: fixed;
-    top: 25px;
-    left: 25px;
+    bottom: 20px;
+    left: 20px;
     z-index: 100;
     display: flex;
     align-items: center;
