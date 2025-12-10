@@ -56,10 +56,10 @@ const SHOCKWAVE_FORCE = 1000;
 const DAMPING_FACTOR = 0.95;
 
 const COLORS = [
-    '#ffffff', // White
-    '#dddddd',
-    '#bbbbbb',
-    '#999999'
+    '#111111', // Black
+    '#333333',
+    '#555555',
+    '#777777'
 ];
 
 // ===========================
@@ -165,7 +165,7 @@ class ProjectNode {
         this.vy = (Math.random() - 0.5) * PROJECT_NODE_VELOCITY;
         this.size = 12; // Static large size
         this.hoverSize = 25; // Expands significantly
-        this.color = '#ffffff';
+        this.color = '#111111'; // Black nodes
         this.isHovered = false;
 
         // Load animation
@@ -249,7 +249,7 @@ class ProjectNode {
 
         // Label
         if (this.isHovered || isMobile) {
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#111111'; // Black text
             ctx.font = '500 14px Outfit';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -326,7 +326,7 @@ function animate() {
 
             if (dist < CONNECTION_DISTANCE) {
                 const alpha = 1 - (dist / CONNECTION_DISTANCE);
-                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.15})`;
+                ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.15})`; // Dark lines
                 ctx.beginPath();
                 ctx.moveTo(nodeA.x, nodeA.y);
                 ctx.lineTo(nodeB.x, nodeB.y);
@@ -344,7 +344,7 @@ function animate() {
 
             if (dist < MOUSE_DISTANCE) {
                 const alpha = 1 - (dist / MOUSE_DISTANCE);
-                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.2})`;
+                ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.2})`; // Dark interaction lines
                 ctx.beginPath();
                 ctx.moveTo(mouse.x, mouse.y);
                 ctx.lineTo(node.x, node.y);
