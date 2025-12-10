@@ -1,8 +1,0 @@
-# robots.txt for yukknd.dev
-# Block search engines from indexing the social page
-
-User-agent: *
-Disallow: /oo/
-
-# Allow everything else
-Allow: /
