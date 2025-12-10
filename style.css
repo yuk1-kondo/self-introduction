@@ -53,7 +53,7 @@ canvas {
     text-align: center;
     z-index: 1;
     pointer-events: none;
-    mix-blend-mode: exclusion;
+    /* mix-blend-mode: exclusion; Removed as it makes black text invisible on white bg */
     width: 100%;
 }
 
