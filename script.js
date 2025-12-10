@@ -15,18 +15,7 @@ const defaultModalImageSrc = (modalImage && modalImage.dataset.defaultImage) || 
 
 // Custom Cursor Element
 const cursorEl = document.createElement('div');
-cursorEl.style.position = 'fixed';
-cursorEl.style.top = '0';
-cursorEl.style.left = '0';
-cursorEl.style.width = '8px';
-cursorEl.style.height = '8px';
-cursorEl.style.background = 'white';
-cursorEl.style.borderRadius = '50%';
-cursorEl.style.pointerEvents = 'none';
-cursorEl.style.zIndex = '9999';
-cursorEl.style.mixBlendMode = 'exclusion';
-cursorEl.style.transform = 'translate(-50%, -50%)';
-cursorEl.style.transition = 'width 0.2s, height 0.2s';
+cursorEl.classList.add('custom-cursor'); // Use class for base styles
 document.body.appendChild(cursorEl);
 
 function resolveImagePath(path) {
@@ -54,6 +43,7 @@ const PARTICLE_BASE_VELOCITY = 0.8; // Slower, more elegant
 const PROJECT_NODE_VELOCITY = 0.2;
 const SHOCKWAVE_FORCE = 1000;
 const DAMPING_FACTOR = 0.95;
+const SMOOTHING_FACTOR = 0.2; // For cursor smoothing
 
 const COLORS = [
     '#111111', // Black
@@ -71,12 +61,18 @@ let projectNodes = [];
 let tapStartX, tapStartY;
 let lastTap = 0;
 let isMobile = false;
+let targetX, targetY; // For camera/smoothed input
 
 const mouse = {
     x: undefined,
     y: undefined,
     isPressed: false
 };
+
+// Placeholder for camera active state
+function isCameraActive() {
+    return false; // Implement actual camera detection logic here
+}
 
 // Detect mobile device once
 function detectMobile() {
