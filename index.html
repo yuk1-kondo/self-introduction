@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YUKI KONDO | Home</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="home.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600&display=swap" rel="stylesheet">
@@ -21,43 +21,23 @@
 </head>
 
 <body>
-    <!-- Hidden video element for camera feed (using CSS to hide, not display:none) -->
+    <!-- Hidden video element for camera feed -->
     <video class="input_video" playsinline></video>
     <canvas id="canvas"></canvas>
     <div id="ui-layer">
         <h1>YUKI KONDO</h1>
         <p>Creative Developer & Designer</p>
+        <a href="/xx/" class="btn-enter">View Work →</a>
     </div>
 
     <div id="instructions">
-        Tap or Click Projects<br>
-        Or use your <strong>Index Finger</strong> to control the cursor<br>
+        Use your <strong>Index Finger</strong> to control particles<br>
+        <em>Pinch to gather, release to burst</em><br>
         <button id="camera-btn" class="btn-text">Enable Camera Control</button>
     </div>
 
-    <!-- Cursor/Touch Glow Effect -->
-    <div id="glow-effect" class="glow-effect"></div>
-
-    <div id="project-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div class="modal-content">
-            <button id="close-modal" class="close-btn" aria-label="Close modal">&times;</button>
-            <div class="modal-image-wrapper hidden" id="modal-image-wrapper">
-                <img id="modal-image" src="profile.png" alt="" class="modal-image" data-default-image="profile.png"
-                    loading="lazy">
-            </div>
-
-            <!-- Modal Text Content -->
-            <div class="modal-text">
-                <p id="modal-category" class="modal-category">Category</p>
-                <h2 id="modal-title" class="modal-title">Project Title</h2>
-                <p id="modal-description" class="modal-description">Project description goes here.</p>
-                <a id="modal-link" href="#" target="_blank" class="modal-link btn-text">View Project</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Content Script -->
-    <script src="script.js"></script>
+    <!-- Home Page Script (MediaPipe enabled) -->
+    <script src="home.js"></script>
 </body>
 
 </html>

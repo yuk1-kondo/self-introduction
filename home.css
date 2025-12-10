@@ -1,168 +1,377 @@
-/* Landing page styles */
 :root {
-    --bg: #f7f7f7;
-    --text: #1f1f1f;
-    --muted: #5a5a5a;
-    --card: #ffffff;
-    --shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
-    --accent-work: #111;
-    --accent-social: #3a3a3a;
-}
-
-* {
-    box-sizing: border-box;
+    --bg-color: #ffffff;
+    --text-color: #111111;
+    --accent-color: #000000;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --node-color: #111111;
+    --line-color: rgba(0, 0, 0, 0.1);
 }
 
 body {
     margin: 0;
     padding: 0;
+    overflow: hidden;
+    background-color: var(--bg-color);
     font-family: 'Outfit', sans-serif;
-    background: radial-gradient(circle at 20% 20%, rgba(0,0,0,0.03), transparent 25%),
-                radial-gradient(circle at 80% 30%, rgba(0,0,0,0.04), transparent 30%),
-                var(--bg);
-    color: var(--text);
+    color: var(--text-color);
+    cursor: none;
+    /* Custom cursor or just hide default if we want pure bespoke feel */
 }
 
-.header {
-    padding: 32px 48px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 24px;
+/* Custom Cursor */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: exclusion;
+    transition: transform 0.1s ease;
+    will-change: transform;
 }
 
-.brand {
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    font-size: 1rem;
+canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+
+/* Hide video but keep it playing for MediaPipe */
+.input_video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -10;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 1;
+    pointer-events: none;
+    /* mix-blend-mode: exclusion; Removed as it makes black text invisible on white bg */
+    width: 100%;
+}
+
+h1 {
+    font-weight: 700;
+    font-size: 5rem;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    margin: 0;
     text-transform: uppercase;
+    color: var(--text-color);
+    opacity: 0.95;
+    animation: textPulse 3s infinite ease-in-out;
 }
 
-.lang {
-    display: flex;
-    gap: 6px;
+@keyframes textPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    }
+
+    50% {
+        transform: scale(1.02);
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+    }
+}
+
+p {
+    font-weight: 300;
+    font-size: 1rem;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    margin-top: 25px;
+    opacity: 0.7;
+    margin-bottom: 2rem;
+}
+
+/* Enter Button */
+.btn-enter {
+    display: inline-block;
+    padding: 14px 32px;
     font-size: 0.9rem;
-    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+    color: #fff;
+    background: #111;
+    border-radius: 999px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    pointer-events: auto;
+    cursor: none;
 }
 
-.main {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 40px 32px 80px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 28px;
-    align-items: start;
+.btn-enter:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 
-.hero {
-    grid-column: 1 / -1;
-    display: grid;
-    gap: 14px;
+#instructions {
+    position: fixed;
+    bottom: 30px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.9;
+    pointer-events: auto;
+    z-index: 100;
+    white-space: pre-wrap;
 }
 
-.hero h1 {
-    margin: 0;
-    font-size: 2.4rem;
-    letter-spacing: -0.01em;
+.btn-text {
+    background: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    color: #111;
+    padding: 8px 16px;
+    margin-top: 10px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 20px;
 }
 
-.hero p {
-    margin: 0;
-    color: var(--muted);
-    line-height: 1.7;
+.btn-text:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: #000;
 }
 
-.card {
-    background: var(--card);
-    border-radius: 18px;
-    padding: 22px;
-    box-shadow: var(--shadow);
-    display: grid;
-    gap: 14px;
-    border: 1px solid rgba(0,0,0,0.04);
+/* Custom Cursor managed by JS */
+.custom-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 15px;
+    height: 15px;
+    background: transparent;
+    border: 1.5px solid #000;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9999;
+    will-change: transform, width, height, border;
+    transition: width 0.2s, height 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
-.card h3 {
-    margin: 0;
-    font-size: 1.1rem;
+/* Double Ring style for Camera Mode */
+.custom-cursor.camera-active {
+    width: 30px;
+    height: 30px;
+    border: 2px solid #000;
+    background: rgba(0, 0, 0, 0.1);
+    /* Slight tint to see center */
+    /* Create outer ring using box-shadow */
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8), 0 0 0 6px #000;
 }
 
-.card p {
-    margin: 0;
-    color: var(--muted);
-    line-height: 1.6;
+@keyframes fadeInOut {
+
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
-.actions {
+/* Modal Styles */
+.modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.modal.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.modal-content {
+    background: #111;
+    padding: 3rem;
+    border: 1px solid var(--glass-border);
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    transform: scale(0.95) translateY(20px);
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+}
+
+/* Subtle gradient border effect */
+.modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.modal.open .modal-content {
+    transform: scale(1) translateY(0);
+}
+
+/* Image Wrapper */
+.modal-image-wrapper {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1.5rem auto;
+    border-radius: 50%;
+    overflow: hidden;
+    filter: grayscale(100%) contrast(1.2);
+    /* Black and white style */
+    transition: filter 0.3s ease;
+}
+
+.modal-image-wrapper:hover {
+    filter: grayscale(0%) contrast(1);
+}
+
+.modal-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal h2 {
+    font-size: 1.8rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+    color: white;
+}
+
+.modal .subtitle {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #888;
+    margin-bottom: 2rem;
+}
+
+.modal p {
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: #ccc;
+    text-transform: none;
+    letter-spacing: 0.02em;
+    margin-bottom: 2.5rem;
 }
 
 .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px 16px;
-    border-radius: 12px;
-    text-decoration: none;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    border: 1px solid transparent;
-    transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-}
-
-.btn:active {
-    transform: translateY(1px);
-}
-
-.btn.work {
-    background: var(--accent-work);
-    color: #fff;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
-}
-
-.btn.work:hover {
-    box-shadow: 0 14px 38px rgba(0,0,0,0.16);
-}
-
-.btn.social {
-    background: #fff;
+    display: inline-block;
+    padding: 12px 30px;
+    border: 1px solid #111;
     color: #111;
-    border-color: rgba(0,0,0,0.08);
+    text-decoration: none;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    transition: all 0.3s ease;
+    background: transparent;
 }
 
-.btn.social:hover {
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+.btn:hover {
+    background: #111;
+    color: white;
 }
 
-.meta {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    color: var(--muted);
-    font-size: 0.9rem;
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 2rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    line-height: 1;
 }
 
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.05);
-    font-size: 0.9rem;
+.close-btn:hover {
+    color: white;
 }
 
-@media (max-width: 720px) {
-    .header {
-        padding: 24px 20px;
+.hidden {
+    display: none !important;
+}
+
+/* Glow Effect - repurposed as a subtle ambient light if needed, or remove if cleaner without */
+#glow-effect {
+    display: none;
+    /* Removed for cleaner look, replacing with cursor element */
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2.5rem;
     }
-    .main {
-        padding: 24px 20px 64px;
+
+    p {
+        font-size: 0.8rem;
     }
-    .hero h1 {
-        font-size: 2rem;
+
+    #ui-layer {
+        width: 80%;
+    }
+
+    .modal-content {
+        padding: 2rem;
+        width: 85%;
+    }
+
+    body {
+        cursor: auto;
+        /* Restore default cursor on touch */
+    }
+
+    body::after {
+        display: none;
     }
 }
