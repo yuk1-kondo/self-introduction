@@ -117,21 +117,26 @@ class Particle {
                 const forceDirectionY = dy / distance;
                 const force = (MOUSE_DISTANCE - distance) / MOUSE_DISTANCE;
 
-                // Gentle attraction/swirl
+                // Stronger swirl effect
                 const angle = Math.atan2(dy, dx);
-                const rotator = 0.5; // Spiral effect
+                const rotator = 0.8; // Stronger spiral
 
-                this.vx += (Math.cos(angle + rotator) * force * 0.05);
-                this.vy += (Math.sin(angle + rotator) * force * 0.05);
+                this.vx += (Math.cos(angle + rotator) * force * 0.5); // Increased influence
+                this.vy += (Math.sin(angle + rotator) * force * 0.5);
+
+                // Color boost on interaction
+                // this.color = '#ffffff'; // Optional: flash white
             }
         }
 
-        // Speed limit to keep it elegant
+        // Speed limit with more dynamism
         const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-        if (speed > PARTICLE_BASE_VELOCITY * 3) {
-            this.vx *= 0.95;
-            this.vy *= 0.95;
+        const maxSpeed = PARTICLE_BASE_VELOCITY * 8; // Faster climax
+        if (speed > maxSpeed) {
+            this.vx *= 0.9;
+            this.vy *= 0.9;
         } else if (speed < PARTICLE_BASE_VELOCITY * 0.5) {
+            // Keep them moving
             this.vx *= 1.05;
             this.vy *= 1.05;
         }
@@ -139,9 +144,11 @@ class Particle {
 
     draw() {
         ctx.fillStyle = this.color;
+        // Pulse size
+        const pulse = Math.sin(Date.now() * 0.005 + this.x) * 0.5 + 1;
         ctx.globalAlpha = 0.8;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, this.size * pulse, 0, Math.PI * 2);
         ctx.fill();
     }
 }
@@ -299,9 +306,9 @@ function resize() {
 }
 
 function animate() {
-    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; // Trails for cool effect? OR Clear?
-    // Let's go with clear for crisp look, or very subtle trails
-    ctx.clearRect(0, 0, width, height);
+    // Create a subtle trail effect
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+    ctx.fillRect(0, 0, width, height);
 
     const allNodes = [...particles, ...projectNodes];
 
@@ -457,6 +464,101 @@ window.addEventListener('touchend', (e) => {
     // Simple tap check could go here if needed
 });
 
+// ===========================
+// MediaPipe Hands Integration
+// ===========================
+const videoElement = document.getElementsByClassName('input_video')[0];
+let handLandmarks = null;
+let camera = null;
+
+// Smoothing variables
+let targetX = undefined;
+let targetY = undefined;
+const SMOOTHING_FACTOR = 0.15;
+
+function onResults(results) {
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        // Get the first hand detected
+        const landmarks = results.multiHandLandmarks[0];
+
+        // Use Index Finger Tip (Landmark 8) for interaction
+        // Landmarks are 0.0 - 1.0 (normalized)
+        const indexTip = landmarks[8];
+
+        // Mirror horizontally for natural mirror interaction
+        const x = (1 - indexTip.x) * width;
+        const y = indexTip.y * height;
+
+        targetX = x;
+        targetY = y;
+
+        // If mouse was previously undefined, snap to it immediately
+        if (mouse.x === undefined) {
+            mouse.x = x;
+            mouse.y = y;
+        }
+    }
+}
+
+// Initialize Hands
+const hands = new Hands({
+    locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+    }
+});
+
+hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+});
+
+hands.onResults(onResults);
+
+// Initialize Camera
+// Note: We start this only if user interaction allows, or auto-start. 
+// Browsers often block camera without user gesture or explicit permission grant context.
+// For now, we will try to start it immediately.
+try {
+    camera = new Camera(videoElement, {
+        onFrame: async () => {
+            await hands.send({ image: videoElement });
+        },
+        width: 640,
+        height: 480
+    });
+    camera.start();
+} catch (e) {
+    console.warn("Camera access might be blocked or failed:", e);
+}
+
+
 // Start
 init();
 animate();
+
+// Update loop needs to handle the smoothing
+function updateInputPosition() {
+    if (targetX !== undefined && targetY !== undefined) {
+        mouse.x += (targetX - mouse.x) * SMOOTHING_FACTOR;
+        mouse.y += (targetY - mouse.y) * SMOOTHING_FACTOR;
+
+        // Visual update
+        cursorEl.style.left = mouse.x + 'px';
+        cursorEl.style.top = mouse.y + 'px';
+
+        // Dynamic "Active" state for cursor when controlled by camera
+        cursorEl.style.width = '20px';
+        cursorEl.style.height = '20px';
+        cursorEl.style.border = '2px solid cyan';
+        cursorEl.style.background = 'transparent';
+    }
+}
+
+// Hook into existing animation loop
+const originalAnimate = animate;
+animate = function () {
+    updateInputPosition();
+    originalAnimate();
+};

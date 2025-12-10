@@ -10,13 +10,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600&display=swap" rel="stylesheet">
+
+    <!-- MediaPipe Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
+    <!-- Hidden video element for camera feed -->
+    <video class="input_video" style="display: none;"></video>
     <div id="ui-layer">
         <h1>YUKI KONDO</h1>
         <p>Creative Developer & Designer</p>
-        <div id="instructions">Tap or Click Projects to Learn More</div>
+        <div id="instructions">Tap or Click Projects<br>Or use your camera to move with your finger</div>
     </div>
 
     <!-- Cursor/Touch Glow Effect -->
