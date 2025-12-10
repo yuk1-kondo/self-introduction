@@ -2,7 +2,7 @@
 const uiTexts = {
     en: {
         title: 'YUKI KONDO',
-        subtitle: 'Creative Developer & Designer',
+        subtitle: 'Multi-Stack Developer & Designer',
         instructions: 'Tap or Click Projects to Learn More',
         viewProject: 'View Project',
         sendEmail: 'Send Email',
@@ -11,7 +11,7 @@ const uiTexts = {
     },
     ja: {
         title: 'YUKI KONDO',
-        subtitle: 'クリエイティブ デベロッパー & デザイナー',
+        subtitle: 'マルチスタック デベロッパー & デザイナー',
         instructions: 'プロジェクトをタップまたはクリックして詳細を見る',
         viewProject: 'プロジェクトを見る',
         sendEmail: 'メールを送る',
