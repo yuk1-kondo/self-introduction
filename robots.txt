@@ -2,7 +2,7 @@
 # Block search engines from indexing the social page
 
 User-agent: *
-Disallow: /oo/
+Disallow: /social/
 
 # Allow everything else
 Allow: /
