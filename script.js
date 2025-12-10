@@ -307,7 +307,8 @@ function resize() {
 
 function animate() {
     // Create a subtle trail effect
-    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+    // Use white with low opacity to fade out previous frames (creating trails)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.fillRect(0, 0, width, height);
 
     const allNodes = [...particles, ...projectNodes];
