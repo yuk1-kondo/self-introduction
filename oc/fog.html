@@ -421,6 +421,29 @@
 
   let fingerTip = null;
   
+  // Check if a finger is extended (tip higher than PIP joint)
+  function isFingerExtended(landmarks, tipIdx, pipIdx) {
+    return landmarks[tipIdx].y < landmarks[pipIdx].y;
+  }
+  
+  // Check if ONLY index finger is extended (pointing gesture)
+  function isOnlyIndexFingerUp(landmarks) {
+    // Finger landmark indices:
+    // Index: tip=8, pip=6
+    // Middle: tip=12, pip=10
+    // Ring: tip=16, pip=14
+    // Pinky: tip=20, pip=18
+    // Thumb: tip=4, ip=3, mcp=2 (different check)
+    
+    const indexUp = isFingerExtended(landmarks, 8, 6);
+    const middleUp = isFingerExtended(landmarks, 12, 10);
+    const ringUp = isFingerExtended(landmarks, 16, 14);
+    const pinkyUp = isFingerExtended(landmarks, 20, 18);
+    
+    // Only index finger should be up, others should be down
+    return indexUp && !middleUp && !ringUp && !pinkyUp;
+  }
+  
   hands.onResults((results) => {
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
       handDetected = true;
@@ -434,10 +457,8 @@
         y: tip.y * H
       };
       
-      // Check if finger is extended (pointing gesture)
-      // Compare index finger tip (8) to index finger PIP (6)
-      const pip = landmarks[6];
-      const isPointing = tip.y < pip.y; // finger extended upward in image space
+      // Check if ONLY index finger is up (not palm open, not fist)
+      const isPointing = isOnlyIndexFingerUp(landmarks);
       
       if (isPointing) {
         statusText.textContent = '?? Drawing...';
@@ -459,7 +480,20 @@
         }
         lastFingerPos = { ...fingerTip };
       } else {
-        statusText.textContent = '?? Point to draw';
+        // Count extended fingers for status message
+        const indexUp = isFingerExtended(landmarks, 8, 6);
+        const middleUp = isFingerExtended(landmarks, 12, 10);
+        const ringUp = isFingerExtended(landmarks, 16, 14);
+        const pinkyUp = isFingerExtended(landmarks, 20, 18);
+        const count = [indexUp, middleUp, ringUp, pinkyUp].filter(x => x).length;
+        
+        if (count === 0) {
+          statusText.textContent = '? Fist - raise index finger';
+        } else if (count > 1) {
+          statusText.textContent = '?? Too many fingers - use only ??';
+        } else {
+          statusText.textContent = '?? Point to draw';
+        }
         lastFingerPos = null;
       }
     } else {
