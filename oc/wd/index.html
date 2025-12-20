@@ -641,17 +641,22 @@
       updateHandInteraction(handPositions) {
         if (!handPositions || handPositions.length === 0) return;
         
-        const scaleW = this.width / this.scale;
-        const scaleH = this.height / this.scale;
+        // Drop coordinates are in unscaled space (width/scale, height/scale)
+        const dropSpaceW = this.width / this.scale;
+        const dropSpaceH = this.height / this.scale;
         
         handPositions.forEach(hand => {
-          // Convert normalized coords to drop space (mirrored for selfie camera)
-          const hx = (1 - hand.x) * scaleW;
-          const hy = hand.y * scaleH;
-          const hvx = -(hand.vx || 0) * scaleW * 0.5; // velocity
-          const hvy = (hand.vy || 0) * scaleH * 0.5;
-          const handRadius = 80; // interaction radius
+          // Convert normalized coords (0-1) to drop space (mirrored for selfie camera)
+          const hx = (1 - hand.x) * dropSpaceW;
+          const hy = hand.y * dropSpaceH;
+          
+          // Velocity in drop space (amplified for better response)
+          const hvx = -(hand.vx || 0) * dropSpaceW * 2;
+          const hvy = (hand.vy || 0) * dropSpaceH * 2;
           const speed = Math.sqrt(hvx * hvx + hvy * hvy);
+          
+          // Larger interaction radius for better feel
+          const handRadius = 60;
           
           this.drops.forEach(drop => {
             const dx = drop.x - hx;
@@ -659,33 +664,55 @@
             const dist = Math.sqrt(dx * dx + dy * dy);
             
             if (dist < handRadius + drop.r) {
-              // Hand is touching this drop
-              if (speed > 5) {
-                // Fast movement - scatter the drop
+              // Hand is touching this drop!
+              if (speed > 2) {
+                // Movement - scatter the drop
                 const angle = Math.atan2(dy, dx);
-                const force = Math.min(speed * 0.3, 15);
-                drop.momentumX += Math.cos(angle) * force + hvx * 0.1;
-                drop.momentum += Math.sin(angle) * force * 0.5;
-                drop.spreadX = Math.min(drop.spreadX + 0.5, 2);
-                drop.spreadY = Math.min(drop.spreadY + 0.3, 1.5);
+                const force = Math.min(speed * 0.5, 20);
+                drop.momentumX += Math.cos(angle) * force + hvx * 0.2;
+                drop.momentum += force * 0.3;
+                drop.spreadX = Math.min(drop.spreadX + 0.8, 2);
+                drop.spreadY = Math.min(drop.spreadY + 0.5, 1.5);
                 
-                // Small drops get killed
-                if (drop.r < 15 && speed > 20) {
-                  drop.shrink = 0.5;
+                // Drops get killed when hit hard
+                if (speed > 15) {
+                  drop.shrink = 0.3 + Math.random() * 0.3;
                 }
               } else {
-                // Slow touch - gently push
-                const pushX = dx / dist * 2;
-                const pushY = dy / dist * 1;
-                drop.momentumX += pushX;
-                drop.momentum = Math.max(0, drop.momentum + pushY * 0.5);
+                // Slow touch - push away
+                if (dist > 0) {
+                  const pushX = dx / dist * 3;
+                  const pushY = dy / dist * 2;
+                  drop.momentumX += pushX;
+                  drop.momentum = Math.max(0, drop.momentum + pushY);
+                }
               }
               
-              // Clear droplets where hand touches
-              this.clearDroplets(hx, hy, handRadius * 0.5);
+              // Clear small droplets where hand touches
+              this.clearDroplets(hx, hy, handRadius);
             }
           });
         });
+      }
+      
+      // Debug: draw hand positions on canvas
+      drawHandDebug(handPositions) {
+        if (!handPositions || handPositions.length === 0) return;
+        
+        const dropSpaceW = this.width / this.scale;
+        const dropSpaceH = this.height / this.scale;
+        
+        this.ctx.save();
+        handPositions.forEach(hand => {
+          const hx = (1 - hand.x) * dropSpaceW * this.scale;
+          const hy = hand.y * dropSpaceH * this.scale;
+          
+          this.ctx.beginPath();
+          this.ctx.arc(hx, hy, 30, 0, Math.PI * 2);
+          this.ctx.fillStyle = 'rgba(255, 100, 100, 0.5)';
+          this.ctx.fill();
+        });
+        this.ctx.restore();
       }
       
       update(handPositions) {
@@ -703,6 +730,9 @@
         this.updateHandInteraction(handPositions);
         
         this.updateDrops(timeScale);
+        
+        // Debug: show hand positions (uncomment to debug)
+        // this.drawHandDebug(handPositions);
       }
     }
     
@@ -958,7 +988,7 @@
           lastHandPositions = [...handPositions];
           handPositions = [];
           
-          if (results.multiHandLandmarks) {
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
               // Use multiple key points for better coverage
               const keyPoints = [
@@ -979,6 +1009,8 @@
                 });
               });
             });
+            // Debug log (remove in production)
+            console.log('Hands detected:', handPositions.length, 'points');
           }
           handsReady = true;
         });
