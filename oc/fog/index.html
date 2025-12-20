@@ -111,12 +111,12 @@
     .slider-label {
       font-size: 12px;
       color: var(--text-muted);
-      min-width: 60px;
+      min-width: 40px;
     }
     
     input[type="range"] {
       -webkit-appearance: none;
-      width: 80px;
+      width: 60px;
       height: 4px;
       background: var(--border);
       border-radius: 2px;
@@ -130,11 +130,6 @@
       background: var(--text);
       border-radius: 50%;
       cursor: pointer;
-      transition: transform 0.1s;
-    }
-    
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
     }
     
     .slider-value {
@@ -161,18 +156,9 @@
       box-shadow: 0 0 0 1px var(--border);
     }
     
-    canvas { 
-      display: block;
-    }
+    canvas { display: block; }
     
-    #fogCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-    }
-    
-    #drawCanvas {
+    #fogCanvas, #effectCanvas {
       position: absolute;
       top: 0;
       left: 0;
@@ -198,19 +184,42 @@
       gap: 10px;
     }
     
+    .blow-indicator {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      z-index: 200;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .blow-indicator.active {
+      opacity: 1;
+      animation: blowPulse 0.5s ease-out;
+    }
+    
+    @keyframes blowPulse {
+      0% { transform: translate(-50%, -50%) scale(0.8); }
+      50% { transform: translate(-50%, -50%) scale(1.2); }
+      100% { transform: translate(-50%, -50%) scale(1); }
+    }
+    
     .hint {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.7);
-      padding: 20px 40px;
+      background: rgba(0,0,0,0.8);
+      padding: 24px 40px;
       border-radius: 16px;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 500;
       z-index: 200;
       text-align: center;
-      pointer-events: none;
+      line-height: 1.8;
     }
     
     @media (max-width: 640px) {
@@ -218,11 +227,12 @@
       .controls { padding: 12px 20px; gap: 6px; }
       .btn { padding: 8px 12px; font-size: 12px; }
       .slider { gap: 8px; }
-      input[type="range"] { width: 60px; }
+      input[type="range"] { width: 50px; }
       .divider { display: none; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 </head>
 
 <body>
@@ -230,13 +240,14 @@
     <header>
       <div>
         <span class="logo">Foggy Window</span>
-        <span class="version">v1.0</span>
+        <span class="version">v2.0</span>
       </div>
     </header>
     
     <div class="controls">
       <button id="btnStart" class="btn btn-primary">Start</button>
-      <button id="btnClear" class="btn" disabled>Reset Fog</button>
+      <button id="btnClear" class="btn" disabled>Reset</button>
+      <button id="btnFrost" class="btn" disabled>Add Frost ??</button>
       
       <span class="divider"></span>
 
@@ -247,24 +258,22 @@
       </div>
 
       <div class="slider">
-        <span class="slider-label">Brush</span>
-        <input id="brushSize" type="range" min="10" max="80" step="1" value="40" />
-        <span id="brushVal" class="slider-value">40</span>
-      </div>
-
-      <div class="slider">
         <span class="slider-label">Fade</span>
-        <input id="fadeSpeed" type="range" min="0" max="0.01" step="0.0005" value="0.002" />
-        <span id="fadeVal" class="slider-value">0.002</span>
+        <input id="fadeSpeed" type="range" min="0" max="0.01" step="0.0005" value="0.001" />
+        <span id="fadeVal" class="slider-value">0.001</span>
       </div>
     </div>
 
     <div id="hint" class="hint" style="display:none;">
-      ?? Use your finger to draw on the foggy window!
+      ?? Point finger = Draw<br>
+      ?? Open palm = Wipe<br>
+      ? Blow = Add fog
     </div>
 
+    <div id="blowIndicator" class="blow-indicator">?</div>
+
     <div id="status" class="status" style="display:none;">
-      <span id="statusText">Tracking hand...</span>
+      <span id="statusText">Starting...</span>
     </div>
 
     <div class="stage">
@@ -272,7 +281,7 @@
       <div class="canvas-container">
         <canvas id="videoCanvas"></canvas>
         <canvas id="fogCanvas"></canvas>
-        <canvas id="drawCanvas"></canvas>
+        <canvas id="effectCanvas"></canvas>
       </div>
     </div>
   </div>
@@ -282,47 +291,55 @@
   const video = document.getElementById('video');
   const videoCanvas = document.getElementById('videoCanvas');
   const fogCanvas = document.getElementById('fogCanvas');
-  const drawCanvas = document.getElementById('drawCanvas');
+  const effectCanvas = document.getElementById('effectCanvas');
   const btnStart = document.getElementById('btnStart');
   const btnClear = document.getElementById('btnClear');
+  const btnFrost = document.getElementById('btnFrost');
   const hintEl = document.getElementById('hint');
   const statusEl = document.getElementById('status');
   const statusText = document.getElementById('statusText');
+  const blowIndicator = document.getElementById('blowIndicator');
 
   const fogAmountEl = document.getElementById('fogAmount');
-  const brushSizeEl = document.getElementById('brushSize');
   const fadeSpeedEl = document.getElementById('fadeSpeed');
   const fogVal = document.getElementById('fogVal');
-  const brushVal = document.getElementById('brushVal');
   const fadeVal = document.getElementById('fadeVal');
 
   const videoCtx = videoCanvas.getContext('2d');
   const fogCtx = fogCanvas.getContext('2d');
-  const drawCtx = drawCanvas.getContext('2d');
+  const effectCtx = effectCanvas.getContext('2d');
 
   let W = 640, H = 480;
   let running = false;
-  let handDetected = false;
-  let lastFingerPos = null;
 
-  // Fog mask - stores where fog has been wiped away (0 = fog, 1 = clear)
+  // Fog mask (0 = full fog, 1 = clear)
   let fogMask = null;
+  
+  // Water droplets
+  let droplets = [];
+  
+  // Frost crystals
+  let frostPatterns = [];
+  let frostActive = false;
 
   function syncUI() {
     fogVal.textContent = (+fogAmountEl.value).toFixed(2);
-    brushVal.textContent = (+brushSizeEl.value).toFixed(0);
     fadeVal.textContent = (+fadeSpeedEl.value).toFixed(3);
   }
-  [fogAmountEl, brushSizeEl, fadeSpeedEl].forEach(el => el.addEventListener('input', syncUI));
+  [fogAmountEl, fadeSpeedEl].forEach(el => el.addEventListener('input', syncUI));
   syncUI();
 
   function initFogMask() {
     fogMask = new Float32Array(W * H);
-    // All fog (0 = full fog)
     fogMask.fill(0);
+    droplets = [];
+    frostPatterns = [];
+    frostActive = false;
   }
 
-  function wipeFog(x, y, radius) {
+  // ============ FOG MANIPULATION ============
+  
+  function wipeFog(x, y, radius, strength = 0.3) {
     const r2 = radius * radius;
     const ix = Math.floor(x);
     const iy = Math.floor(y);
@@ -335,10 +352,30 @@
         
         const dist2 = dx * dx + dy * dy;
         if (dist2 < r2) {
-          // Soft brush - center is clearer
           const softness = 1 - Math.sqrt(dist2) / radius;
           const idx = py * W + px;
-          fogMask[idx] = Math.min(1, fogMask[idx] + softness * 0.3);
+          fogMask[idx] = Math.min(1, fogMask[idx] + softness * strength);
+        }
+      }
+    }
+  }
+
+  function addFog(x, y, radius, strength = 0.15) {
+    const r2 = radius * radius;
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const px = ix + dx;
+        const py = iy + dy;
+        if (px < 0 || px >= W || py < 0 || py >= H) continue;
+        
+        const dist2 = dx * dx + dy * dy;
+        if (dist2 < r2) {
+          const softness = 1 - Math.sqrt(dist2) / radius;
+          const idx = py * W + px;
+          fogMask[idx] = Math.max(0, fogMask[idx] - softness * strength);
         }
       }
     }
@@ -355,45 +392,222 @@
     }
   }
 
+  // ============ WATER DROPLETS ============
+  
+  function spawnDroplet() {
+    if (droplets.length > 30) return;
+    
+    droplets.push({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.3,
+      size: Math.random() * 8 + 4,
+      speed: Math.random() * 0.5 + 0.3,
+      wobble: Math.random() * Math.PI * 2
+    });
+  }
+
+  function updateDroplets() {
+    for (let i = droplets.length - 1; i >= 0; i--) {
+      const d = droplets[i];
+      
+      // Move down with slight wobble
+      d.y += d.speed;
+      d.wobble += 0.1;
+      d.x += Math.sin(d.wobble) * 0.3;
+      
+      // Wipe fog as droplet moves
+      wipeFog(d.x, d.y, d.size * 0.5, 0.5);
+      
+      // Grow slightly as it collects moisture
+      d.size += 0.01;
+      d.speed += 0.01;
+      
+      // Remove if off screen
+      if (d.y > H + 20) {
+        droplets.splice(i, 1);
+      }
+    }
+    
+    // Random spawn
+    if (Math.random() < 0.02) {
+      spawnDroplet();
+    }
+  }
+
+  function renderDroplets() {
+    for (const d of droplets) {
+      // Water droplet with refraction effect
+      const gradient = effectCtx.createRadialGradient(
+        d.x - d.size * 0.3, d.y - d.size * 0.3, 0,
+        d.x, d.y, d.size
+      );
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+      gradient.addColorStop(0.5, 'rgba(200, 220, 255, 0.4)');
+      gradient.addColorStop(1, 'rgba(150, 180, 220, 0.1)');
+      
+      effectCtx.beginPath();
+      effectCtx.ellipse(d.x, d.y, d.size * 0.7, d.size, 0, 0, Math.PI * 2);
+      effectCtx.fillStyle = gradient;
+      effectCtx.fill();
+      
+      // Highlight
+      effectCtx.beginPath();
+      effectCtx.arc(d.x - d.size * 0.2, d.y - d.size * 0.3, d.size * 0.2, 0, Math.PI * 2);
+      effectCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      effectCtx.fill();
+    }
+  }
+
+  // ============ FROST PATTERNS ============
+  
+  function generateFrost() {
+    frostPatterns = [];
+    frostActive = true;
+    
+    // Generate frost from edges
+    const numBranches = 20;
+    
+    for (let i = 0; i < numBranches; i++) {
+      let startX, startY, angle;
+      const edge = Math.floor(Math.random() * 4);
+      
+      switch(edge) {
+        case 0: // top
+          startX = Math.random() * W;
+          startY = 0;
+          angle = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+          break;
+        case 1: // bottom
+          startX = Math.random() * W;
+          startY = H;
+          angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+          break;
+        case 2: // left
+          startX = 0;
+          startY = Math.random() * H;
+          angle = (Math.random() - 0.5) * 0.5;
+          break;
+        case 3: // right
+          startX = W;
+          startY = Math.random() * H;
+          angle = Math.PI + (Math.random() - 0.5) * 0.5;
+          break;
+      }
+      
+      generateFrostBranch(startX, startY, angle, 80 + Math.random() * 60, 3);
+    }
+    
+    // Corner frost (denser)
+    const corners = [[0, 0], [W, 0], [0, H], [W, H]];
+    for (const [cx, cy] of corners) {
+      for (let j = 0; j < 8; j++) {
+        const angle = Math.atan2(H/2 - cy, W/2 - cx) + (Math.random() - 0.5) * 1.5;
+        generateFrostBranch(cx, cy, angle, 60 + Math.random() * 80, 3);
+      }
+    }
+  }
+
+  function generateFrostBranch(x, y, angle, length, depth) {
+    if (depth <= 0 || length < 5) return;
+    
+    const segments = Math.floor(length / 5);
+    let px = x, py = y;
+    
+    for (let i = 0; i < segments; i++) {
+      const segLen = 3 + Math.random() * 4;
+      const nx = px + Math.cos(angle) * segLen;
+      const ny = py + Math.sin(angle) * segLen;
+      
+      frostPatterns.push({
+        x1: px, y1: py,
+        x2: nx, y2: ny,
+        width: depth * 0.8,
+        opacity: 0.3 + depth * 0.15
+      });
+      
+      // Sub-branches
+      if (Math.random() < 0.3 && depth > 1) {
+        const branchAngle = angle + (Math.random() > 0.5 ? 1 : -1) * (0.3 + Math.random() * 0.5);
+        generateFrostBranch(nx, ny, branchAngle, length * 0.5, depth - 1);
+      }
+      
+      px = nx;
+      py = ny;
+      angle += (Math.random() - 0.5) * 0.3;
+    }
+  }
+
+  function renderFrost() {
+    if (!frostActive) return;
+    
+    effectCtx.lineCap = 'round';
+    
+    for (const f of frostPatterns) {
+      effectCtx.beginPath();
+      effectCtx.moveTo(f.x1, f.y1);
+      effectCtx.lineTo(f.x2, f.y2);
+      effectCtx.strokeStyle = `rgba(220, 240, 255, ${f.opacity})`;
+      effectCtx.lineWidth = f.width;
+      effectCtx.stroke();
+      
+      // Add sparkle
+      if (Math.random() < 0.01) {
+        effectCtx.beginPath();
+        effectCtx.arc(f.x2, f.y2, 2, 0, Math.PI * 2);
+        effectCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        effectCtx.fill();
+      }
+    }
+  }
+
+  // ============ FOG RENDERING ============
+  
+  // Pre-generate noise texture
+  let noiseData = null;
+  function generateNoiseTexture() {
+    const size = W * H * 4;
+    noiseData = new Uint8ClampedArray(size);
+    for (let i = 0; i < size; i += 4) {
+      const v = Math.random() * 30;
+      noiseData[i] = 255;
+      noiseData[i+1] = 255;
+      noiseData[i+2] = 255;
+      noiseData[i+3] = v;
+    }
+  }
+
   function renderFog() {
     const fogAmount = +fogAmountEl.value;
     
-    // Clear fog canvas
     fogCtx.clearRect(0, 0, W, H);
     
     // Draw blurred version as fog base
-    fogCtx.filter = 'blur(12px)';
+    fogCtx.filter = 'blur(10px)';
     fogCtx.globalAlpha = fogAmount;
     fogCtx.drawImage(videoCanvas, 0, 0);
     fogCtx.filter = 'none';
     
-    // Add white overlay for condensation effect
-    fogCtx.globalAlpha = fogAmount * 0.6;
-    fogCtx.fillStyle = '#ffffff';
+    // Add white overlay
+    fogCtx.globalAlpha = fogAmount * 0.55;
+    fogCtx.fillStyle = '#e8f0ff';
     fogCtx.fillRect(0, 0, W, H);
     
-    // Add some noise texture for realism
-    fogCtx.globalAlpha = fogAmount * 0.15;
-    for (let i = 0; i < 2000; i++) {
-      const x = Math.random() * W;
-      const y = Math.random() * H;
-      const size = Math.random() * 2 + 0.5;
-      fogCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.5})`;
-      fogCtx.beginPath();
-      fogCtx.arc(x, y, size, 0, Math.PI * 2);
-      fogCtx.fill();
+    // Add noise texture
+    if (noiseData) {
+      fogCtx.globalAlpha = fogAmount * 0.2;
+      const imgData = new ImageData(noiseData, W, H);
+      fogCtx.putImageData(imgData, 0, 0);
     }
     
     fogCtx.globalAlpha = 1;
     
-    // Cut out the wiped areas using the fog mask
+    // Apply fog mask (cut out wiped areas)
     const imageData = fogCtx.getImageData(0, 0, W, H);
     const data = imageData.data;
     
     for (let i = 0; i < fogMask.length; i++) {
       const clearness = fogMask[i];
       if (clearness > 0) {
-        // Make this pixel more transparent based on how much it's been wiped
         const alphaIdx = i * 4 + 3;
         data[alphaIdx] = Math.floor(data[alphaIdx] * (1 - clearness));
       }
@@ -402,12 +616,8 @@
     fogCtx.putImageData(imageData, 0, 0);
   }
 
-  function renderDrawTrail() {
-    // Draw a subtle trail showing recent finger movement
-    drawCtx.clearRect(0, 0, W, H);
-  }
-
-  // MediaPipe Hands setup
+  // ============ HAND DETECTION ============
+  
   const hands = new Hands({
     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
   });
@@ -419,72 +629,81 @@
     minTrackingConfidence: 0.5
   });
 
-  let fingerTip = null;
-  
-  // Check if a finger is clearly extended
-  // Uses distance threshold for more reliable detection
+  let lastFingerPos = null;
+  let lastPalmPos = null;
+
   function isFingerExtended(landmarks, tipIdx, pipIdx, mcpIdx) {
     const tip = landmarks[tipIdx];
     const pip = landmarks[pipIdx];
     const mcp = landmarks[mcpIdx];
-    
-    // Finger is extended if tip is significantly above PIP
-    // and the finger is relatively straight
-    const tipAbovePip = (pip.y - tip.y) > 0.03; // needs to be clearly above
-    const pipAboveMcp = (mcp.y - pip.y) > 0.01; // PIP above MCP
-    
+    const tipAbovePip = (pip.y - tip.y) > 0.03;
+    const pipAboveMcp = (mcp.y - pip.y) > 0.01;
     return tipAbovePip && pipAboveMcp;
   }
   
-  // Check if finger is clearly folded/curled
   function isFingerFolded(landmarks, tipIdx, pipIdx, mcpIdx) {
     const tip = landmarks[tipIdx];
     const pip = landmarks[pipIdx];
-    const mcp = landmarks[mcpIdx];
-    
-    // Finger is folded if tip is below or near PIP level
     return (tip.y - pip.y) > -0.02;
   }
   
-  // Check if ONLY index finger is extended (pointing gesture)
   function isOnlyIndexFingerUp(landmarks) {
-    // Finger landmark indices:
-    // Index: tip=8, pip=6, mcp=5
-    // Middle: tip=12, pip=10, mcp=9
-    // Ring: tip=16, pip=14, mcp=13
-    // Pinky: tip=20, pip=18, mcp=17
-    
     const indexUp = isFingerExtended(landmarks, 8, 6, 5);
     const middleFolded = isFingerFolded(landmarks, 12, 10, 9);
     const ringFolded = isFingerFolded(landmarks, 16, 14, 13);
     const pinkyFolded = isFingerFolded(landmarks, 20, 18, 17);
-    
-    // Index must be clearly up, AND others must be clearly folded
     return indexUp && middleFolded && ringFolded && pinkyFolded;
+  }
+  
+  function isOpenPalm(landmarks) {
+    const indexUp = isFingerExtended(landmarks, 8, 6, 5);
+    const middleUp = isFingerExtended(landmarks, 12, 10, 9);
+    const ringUp = isFingerExtended(landmarks, 16, 14, 13);
+    const pinkyUp = isFingerExtended(landmarks, 20, 18, 17);
+    return indexUp && middleUp && ringUp && pinkyUp;
+  }
+  
+  function getPalmCenter(landmarks) {
+    // Average of wrist (0), index mcp (5), pinky mcp (17)
+    const pts = [landmarks[0], landmarks[5], landmarks[17], landmarks[9], landmarks[13]];
+    let x = 0, y = 0;
+    for (const p of pts) { x += p.x; y += p.y; }
+    return { x: (1 - x / pts.length) * W, y: (y / pts.length) * H };
   }
   
   hands.onResults((results) => {
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      handDetected = true;
       const landmarks = results.multiHandLandmarks[0];
       
-      // Index finger tip is landmark 8
       const tip = landmarks[8];
-      // Flip X because camera is mirrored
-      fingerTip = {
-        x: (1 - tip.x) * W,
-        y: tip.y * H
-      };
+      const fingerTip = { x: (1 - tip.x) * W, y: tip.y * H };
+      const palmCenter = getPalmCenter(landmarks);
       
-      // Check if ONLY index finger is up (not palm open, not fist)
-      const isPointing = isOnlyIndexFingerUp(landmarks);
-      
-      if (isPointing) {
-        statusText.textContent = '?? Drawing...';
-        const brushRadius = +brushSizeEl.value / 2;
-        wipeFog(fingerTip.x, fingerTip.y, brushRadius);
+      if (isOpenPalm(landmarks)) {
+        // Open palm = wipe with large brush
+        statusText.textContent = '?? Wiping...';
+        const wipeRadius = 80;
+        wipeFog(palmCenter.x, palmCenter.y, wipeRadius, 0.4);
         
-        // Draw line from last position for smooth strokes
+        if (lastPalmPos) {
+          const dx = palmCenter.x - lastPalmPos.x;
+          const dy = palmCenter.y - lastPalmPos.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const steps = Math.ceil(dist / 10);
+          for (let i = 0; i < steps; i++) {
+            const t = i / steps;
+            wipeFog(lastPalmPos.x + dx * t, lastPalmPos.y + dy * t, wipeRadius, 0.4);
+          }
+        }
+        lastPalmPos = { ...palmCenter };
+        lastFingerPos = null;
+        
+      } else if (isOnlyIndexFingerUp(landmarks)) {
+        // Index finger = draw
+        statusText.textContent = '?? Drawing...';
+        const brushRadius = 25;
+        wipeFog(fingerTip.x, fingerTip.y, brushRadius, 0.4);
+        
         if (lastFingerPos) {
           const dx = fingerTip.x - lastFingerPos.x;
           const dy = fingerTip.y - lastFingerPos.y;
@@ -492,41 +711,105 @@
           const steps = Math.ceil(dist / 5);
           for (let i = 0; i < steps; i++) {
             const t = i / steps;
-            const ix = lastFingerPos.x + dx * t;
-            const iy = lastFingerPos.y + dy * t;
-            wipeFog(ix, iy, brushRadius);
+            wipeFog(lastFingerPos.x + dx * t, lastFingerPos.y + dy * t, brushRadius, 0.4);
           }
         }
         lastFingerPos = { ...fingerTip };
-      } else {
-        // Check gesture for status message
-        const indexUp = isFingerExtended(landmarks, 8, 6, 5);
-        const middleFolded = isFingerFolded(landmarks, 12, 10, 9);
-        const ringFolded = isFingerFolded(landmarks, 16, 14, 13);
-        const pinkyFolded = isFingerFolded(landmarks, 20, 18, 17);
+        lastPalmPos = null;
         
-        if (!indexUp) {
-          statusText.textContent = '? Raise index finger';
-        } else if (!middleFolded || !ringFolded || !pinkyFolded) {
-          statusText.textContent = '?? Fold other fingers';
-        } else {
-          statusText.textContent = '?? Point to draw';
-        }
+      } else {
+        statusText.textContent = '?? Point or ?? Palm';
         lastFingerPos = null;
+        lastPalmPos = null;
       }
     } else {
-      handDetected = false;
-      fingerTip = null;
       lastFingerPos = null;
-      statusText.textContent = 'Show your hand...';
+      lastPalmPos = null;
     }
   });
 
+  // ============ FACE DETECTION (BLOW) ============
+  
+  const faceMesh = new FaceMesh({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+  });
+  
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  let isBlowing = false;
+  let blowCooldown = 0;
+  
+  faceMesh.onResults((results) => {
+    if (blowCooldown > 0) {
+      blowCooldown--;
+      return;
+    }
+    
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const landmarks = results.multiFaceLandmarks[0];
+      
+      // Lip landmarks for detecting "blow" mouth shape
+      // Upper lip: 13, Lower lip: 14
+      // Left corner: 61, Right corner: 291
+      // Upper outer: 0, Lower outer: 17
+      
+      const upperLip = landmarks[13];
+      const lowerLip = landmarks[14];
+      const leftCorner = landmarks[61];
+      const rightCorner = landmarks[291];
+      
+      // Mouth opening (vertical)
+      const mouthOpen = Math.abs(lowerLip.y - upperLip.y);
+      
+      // Mouth width
+      const mouthWidth = Math.abs(rightCorner.x - leftCorner.x);
+      
+      // Blow detection: mouth is slightly open and pursed (narrow width)
+      const isPursed = mouthWidth < 0.08;
+      const isSlightlyOpen = mouthOpen > 0.01 && mouthOpen < 0.05;
+      
+      if (isPursed && isSlightlyOpen) {
+        if (!isBlowing) {
+          isBlowing = true;
+          blowIndicator.classList.add('active');
+          statusText.textContent = '? Blowing!';
+          
+          // Add fog around mouth area
+          const mouthX = (1 - (leftCorner.x + rightCorner.x) / 2) * W;
+          const mouthY = ((upperLip.y + lowerLip.y) / 2) * H;
+          
+          // Blow fog outward from mouth
+          for (let angle = -1; angle <= 1; angle += 0.2) {
+            for (let dist = 50; dist < 200; dist += 20) {
+              const x = mouthX + Math.cos(angle) * dist;
+              const y = mouthY + dist * 0.5;
+              addFog(x, y, 40 + dist * 0.2, 0.1);
+            }
+          }
+          
+          blowCooldown = 30; // Cooldown frames
+          
+          setTimeout(() => {
+            blowIndicator.classList.remove('active');
+            isBlowing = false;
+          }, 500);
+        }
+      }
+    }
+  });
+
+  // ============ MAIN LOOP ============
+  
   async function start() {
     if (running) return;
     
     btnStart.disabled = true;
-    btnStart.textContent = 'Starting...';
+    btnStart.textContent = 'Loading...';
     
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
@@ -543,51 +826,61 @@
     videoCanvas.height = H;
     fogCanvas.width = W;
     fogCanvas.height = H;
-    drawCanvas.width = W;
-    drawCanvas.height = H;
+    effectCanvas.width = W;
+    effectCanvas.height = H;
     
     initFogMask();
+    generateNoiseTexture();
     
     running = true;
     btnStart.textContent = 'Running';
     btnClear.disabled = false;
+    btnFrost.disabled = false;
     statusEl.style.display = 'flex';
     hintEl.style.display = 'block';
     
-    setTimeout(() => { hintEl.style.display = 'none'; }, 4000);
+    setTimeout(() => { hintEl.style.display = 'none'; }, 5000);
     
     loop();
   }
 
+  let frameCount = 0;
+  
   async function loop() {
     if (!running) return;
     
-    // Draw video frame (flipped horizontally)
+    frameCount++;
+    
+    // Draw video (flipped)
     videoCtx.save();
     videoCtx.scale(-1, 1);
     videoCtx.drawImage(video, -W, 0, W, H);
     videoCtx.restore();
     
-    // Process hand detection
-    await hands.send({ image: video });
+    // Process detections (alternate to save performance)
+    if (frameCount % 2 === 0) {
+      await hands.send({ image: video });
+    } else {
+      await faceMesh.send({ image: video });
+    }
     
-    // Fade fog back
+    // Update effects
     fadeFog();
+    updateDroplets();
     
-    // Render fog overlay
+    // Render layers
     renderFog();
     
-    // Render finger trail
-    renderDrawTrail();
+    effectCtx.clearRect(0, 0, W, H);
+    renderDroplets();
+    renderFrost();
     
     requestAnimationFrame(loop);
   }
 
   btnStart.addEventListener('click', start);
-  
-  btnClear.addEventListener('click', () => {
-    initFogMask();
-  });
+  btnClear.addEventListener('click', () => { initFogMask(); });
+  btnFrost.addEventListener('click', () => { generateFrost(); });
 })();
 </script>
 </body>
