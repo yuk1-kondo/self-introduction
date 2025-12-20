@@ -410,20 +410,24 @@
   uniform float u_warp;        // distortion strength
   uniform float u_useFreeze;   // 1 when frozen
 
-  // cheap blur on mask to soften edges
+  // dilate + blur mask to catch edges and limbs better
   float blurMask(vec2 uv, float r) {
-    // 9-tap box-ish blur (fast & simple)
+    // 25-tap blur with dilation (max-weighted average)
     float s = 0.0;
+    float maxM = 0.0;
     float w = 0.0;
-    for (int y=-1; y<=1; y++) {
-      for (int x=-1; x<=1; x++) {
-        vec2 o = vec2(float(x), float(y)) * u_texel * r;
+    for (int y=-2; y<=2; y++) {
+      for (int x=-2; x<=2; x++) {
+        vec2 o = vec2(float(x), float(y)) * u_texel * r * 1.5;
         float m = texture(u_mask, uv + o).r;
         s += m;
+        maxM = max(maxM, m);
         w += 1.0;
       }
     }
-    return s / w;
+    // blend between average and max for dilated edges
+    float avg = s / w;
+    return mix(avg, maxM, 0.4);
   }
 
   vec3 sampleWarped(sampler2D tex, vec2 uv, float t, float amp) {
@@ -438,12 +442,12 @@
     float t = float(gl_FragCoord.x + gl_FragCoord.y) * 0.0; // deterministic base
     vec3 now = texture(u_now, v_uv).rgb;
 
-    // edge soften + slight dilate by boosting radius
-    float m = blurMask(v_uv, max(0.0, u_edge));
-    // Make mask sharper for better invisibility
-    m = smoothstep(0.20, 0.55, m);
-    // Boost mask strength
-    m = pow(m, 0.7);
+    // edge soften + dilate to catch arms/hands
+    float m = blurMask(v_uv, max(1.0, u_edge + 2.0));
+    // Lower threshold to include more of person (arms, hands)
+    m = smoothstep(0.10, 0.40, m);
+    // Boost mask strength significantly
+    m = pow(m, 0.5);
 
     // Multi-layer "cloak" from frozen bg + past frames
     // Layer offsets create "multi-stage" diagonal feel
@@ -468,7 +472,7 @@
     }
 
     // subtle edge highlight (refraction effect at cloak boundary)
-    float edge = smoothstep(0.20, 0.45, m) - smoothstep(0.55, 0.80, m);
+    float edge = smoothstep(0.15, 0.35, m) - smoothstep(0.50, 0.75, m);
     cloak += vec3(edge * 0.05);
 
     // apply cloak only on person area
@@ -729,7 +733,7 @@
     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
   });
   selfieSeg.setOptions({
-    modelSelection: 1, // 0: general, 1: landscape (better for environment)
+    modelSelection: 0, // 0: general (more accurate), 1: landscape (faster)
   });
   selfieSeg.onResults((results) => {
     // results.segmentationMask is an HTMLCanvasElement-like
