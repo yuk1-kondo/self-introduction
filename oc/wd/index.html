@@ -218,6 +218,9 @@
     let waterMapTexture, fgTexture, bgTexture;
     let raindrops;
     
+    // Drop images from Codrops (essential for realism)
+    let dropColorImg, dropAlphaImg;
+    
     // Settings
     let isRaining = true;
     let rainIntensity = 0.5;
@@ -245,9 +248,12 @@
     // Raindrops Class (from Codrops raindrops.js)
     // ============================================================
     class Raindrops {
-      constructor(w, h, scale, options = {}) {
+      constructor(w, h, scale, dropAlpha, dropColor, options = {}) {
         this.width = w;
         this.height = h;
+        this.scale = scale;
+        this.dropAlpha = dropAlpha;
+        this.dropColor = dropColor;
         this.scale = scale;
         
         this.options = Object.assign({
@@ -306,89 +312,76 @@
         this.droplets.height = this.height * this.dropletsPixelDensity;
         this.dropletsCtx = this.droplets.getContext('2d');
         
-        // Pre-render drop graphics (normal-mapping style colors)
+        // Pre-render drop graphics using Codrops images
         this.renderDropsGfx();
-        
-        // Clearing graphic for erasing droplets
-        this.clearDropletsGfx = this.createClearGfx();
       }
       
-      createClearGfx() {
-        const size = 64;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        
-        const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-        gradient.addColorStop(0, 'rgba(0,0,0,1)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0)');
-        
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, size, size);
-        
-        return canvas;
-      }
-      
-      // Render drop graphics with normal-mapping colors
-      // R = Y distortion, G = X distortion, B = depth, A = alpha
+      // Render drop graphics with REAL Codrops technique
+      // Uses drop-color.png and drop-alpha.png for proper normal-mapping effect
       renderDropsGfx() {
         const dropSize = 64;
         this.dropsGfx = [];
         
+        // Create buffer canvas for compositing
+        const dropBuffer = document.createElement('canvas');
+        dropBuffer.width = dropSize;
+        dropBuffer.height = dropSize;
+        const dropBufferCtx = dropBuffer.getContext('2d');
+        
+        // Generate 255 drop graphics with varying depth values
         for (let i = 0; i < 255; i++) {
-          const canvas = document.createElement('canvas');
-          canvas.width = dropSize;
-          canvas.height = dropSize;
-          const ctx = canvas.getContext('2d');
+          const drop = document.createElement('canvas');
+          drop.width = dropSize;
+          drop.height = dropSize;
+          const dropCtx = drop.getContext('2d');
           
-          const center = dropSize / 2;
-          const radius = dropSize / 2 - 2;
+          // Clear buffer
+          dropBufferCtx.clearRect(0, 0, dropSize, dropSize);
           
-          // Clear
-          ctx.clearRect(0, 0, dropSize, dropSize);
+          // Step 1: Draw drop-color.png (contains refraction direction in RGB)
+          dropBufferCtx.globalCompositeOperation = 'source-over';
+          dropBufferCtx.drawImage(this.dropColor, 0, 0, dropSize, dropSize);
           
-          // Create gradient for normal-mapping effect
-          // The color encodes the refraction direction
-          const gradient = ctx.createRadialGradient(
-            center - radius * 0.3, center - radius * 0.3, 0,
-            center, center, radius
-          );
+          // Step 2: Add blue overlay for depth (Codrops original technique)
+          // The blue channel encodes the depth/thickness of the drop
+          dropBufferCtx.globalCompositeOperation = 'screen';
+          dropBufferCtx.fillStyle = `rgba(0, 0, ${i}, 1)`;
+          dropBufferCtx.fillRect(0, 0, dropSize, dropSize);
           
-          // Depth value (blue channel)
-          const depth = i / 255;
+          // Step 3: Draw drop-alpha.png as the alpha mask
+          dropCtx.globalCompositeOperation = 'source-over';
+          dropCtx.drawImage(this.dropAlpha, 0, 0, dropSize, dropSize);
           
-          // Center colors (0.5 = no offset)
-          // Edge colors (offset based on position)
-          gradient.addColorStop(0, `rgba(${128 + 60}, ${128 + 60}, ${Math.floor(180 + depth * 75)}, 0.9)`);
-          gradient.addColorStop(0.4, `rgba(128, 128, ${Math.floor(128 + depth * 127)}, 0.85)`);
-          gradient.addColorStop(0.7, `rgba(${128 - 40}, ${128 - 40}, ${Math.floor(100 + depth * 50)}, 0.6)`);
-          gradient.addColorStop(1, `rgba(${128 - 60}, ${128 - 60}, ${Math.floor(50 + depth * 30)}, 0.3)`);
+          // Step 4: Apply the colored buffer using source-in (keeps only overlapping areas)
+          dropCtx.globalCompositeOperation = 'source-in';
+          dropCtx.drawImage(dropBuffer, 0, 0, dropSize, dropSize);
           
-          ctx.beginPath();
-          ctx.arc(center, center, radius, 0, Math.PI * 2);
-          ctx.fillStyle = gradient;
-          ctx.fill();
-          
-          this.dropsGfx.push(canvas);
+          this.dropsGfx.push(drop);
         }
+        
+        // Create circle graphic for clearing droplets
+        this.clearDropletsGfx = document.createElement('canvas');
+        this.clearDropletsGfx.width = 128;
+        this.clearDropletsGfx.height = 128;
+        const clearCtx = this.clearDropletsGfx.getContext('2d');
+        clearCtx.fillStyle = '#000';
+        clearCtx.beginPath();
+        clearCtx.arc(64, 64, 64, 0, Math.PI * 2);
+        clearCtx.fill();
       }
       
       drawDroplet(x, y, r) {
+        // Draw small droplets with proper normal-mapping colors
         const ctx = this.dropletsCtx;
         const px = x * this.dropletsPixelDensity;
         const py = y * this.dropletsPixelDensity;
         const pr = r * this.dropletsPixelDensity;
         
-        const gradient = ctx.createRadialGradient(px, py, 0, px, py, pr);
-        gradient.addColorStop(0, 'rgba(140, 140, 200, 0.8)');
-        gradient.addColorStop(0.5, 'rgba(128, 128, 180, 0.5)');
-        gradient.addColorStop(1, 'rgba(100, 100, 150, 0.2)');
-        
-        ctx.beginPath();
-        ctx.arc(px, py, pr, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
+        // Use random depth for droplets
+        const depthIndex = Math.floor(Math.random() * 128) + 50;
+        if (this.dropsGfx.length > 0 && this.dropsGfx[depthIndex]) {
+          ctx.drawImage(this.dropsGfx[depthIndex], px - pr, py - pr, pr * 2, pr * 2);
+        }
       }
       
       drawDrop(ctx, drop) {
@@ -802,11 +795,39 @@
     }
     
     // ============================================================
+    // Load Codrops drop images
+    // ============================================================
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load ${src}`));
+        img.src = src;
+      });
+    }
+    
+    async function loadDropImages() {
+      const [dropColor, dropAlpha] = await Promise.all([
+        loadImage('https://tympanus.net/Development/RainEffect/img/drop-color.png'),
+        loadImage('https://tympanus.net/Development/RainEffect/img/drop-alpha.png')
+      ]);
+      return { dropColor, dropAlpha };
+    }
+    
+    // ============================================================
     // Initialize
     // ============================================================
     async function init() {
       try {
+        // Load Codrops drop images first
+        loading.querySelector('p').textContent = 'âÊëúÇì«Ç›çûÇ›íÜ...';
+        const { dropColor, dropAlpha } = await loadDropImages();
+        dropColorImg = dropColor;
+        dropAlphaImg = dropAlpha;
+        
         // Get camera
+        loading.querySelector('p').textContent = 'ÉJÉÅÉâÇèâä˙âªíÜ...';
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
         });
@@ -825,8 +846,8 @@
         // Create background textures
         createBackgroundTextures();
         
-        // Create raindrops
-        raindrops = new Raindrops(width, height, dpi, {
+        // Create raindrops with Codrops images
+        raindrops = new Raindrops(width, height, dpi, dropAlphaImg, dropColorImg, {
           minR: 20,
           maxR: 50,
           rainChance: 0.35,
