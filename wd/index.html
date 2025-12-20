@@ -272,7 +272,7 @@
     }
   </script>
 
-  <!-- Fragment Shader - Based on Codrops water.frag -->
+  <!-- Fragment Shader - Based on Codrops water.frag with enhancements -->
   <script id="frag-shader" type="x-shader/x-fragment">
     precision mediump float;
     
@@ -327,14 +327,47 @@
       // Alpha based on gooey effect
       float a = clamp(cur.a * u_alphaMultiply - u_alphaSubtract, 0.0, 1.0);
       
-      // Refraction offset
+      // Base refraction vector
       vec2 refraction = (vec2(x, y) - 0.5) * 2.0;
-      vec2 refractionPos = uv + pixel() * refraction * (u_minRefraction + d * u_refractionDelta);
+      float refractionStrength = u_minRefraction + d * u_refractionDelta;
       
-      // Foreground through refraction (clear camera)
-      vec4 tex = texture2D(u_textureFg, refractionPos);
+      // === CHROMATIC ABERRATION ===
+      // Different refraction for R, G, B channels (like real water)
+      vec2 refractionR = uv + pixel() * refraction * refractionStrength * 0.97;
+      vec2 refractionG = uv + pixel() * refraction * refractionStrength * 1.00;
+      vec2 refractionB = uv + pixel() * refraction * refractionStrength * 1.03;
       
-      vec4 fg = vec4(tex.rgb * u_brightness, a);
+      float texR = texture2D(u_textureFg, refractionR).r;
+      float texG = texture2D(u_textureFg, refractionG).g;
+      float texB = texture2D(u_textureFg, refractionB).b;
+      
+      vec3 refractedColor = vec3(texR, texG, texB) * u_brightness;
+      
+      // === SPECULAR HIGHLIGHT ===
+      // Water drops have a bright spot at the top where light reflects
+      float highlightY = (y - 0.5) * 2.0; // -1 to 1, positive = top of drop
+      float highlightX = abs((x - 0.5) * 2.0); // Distance from center
+      float highlight = pow(max(0.0, highlightY * 0.8 + 0.2), 4.0) * (1.0 - highlightX * 0.5);
+      highlight *= d * 0.6; // Scale by depth
+      
+      // === FRESNEL EFFECT ===
+      // Edges of water drops reflect more (like real water surface tension)
+      float edgeDist = length(refraction); // Distance from center of drop
+      float fresnel = pow(edgeDist, 1.5) * 0.25;
+      
+      // === COMBINE EFFECTS ===
+      // Mix refracted color with background based on fresnel
+      vec3 finalColor = mix(refractedColor, bg.rgb * 1.1, fresnel * a);
+      
+      // Add specular highlight (white)
+      finalColor = mix(finalColor, vec3(1.0), highlight * a * 0.5);
+      
+      // === SUBTLE CAUSTICS (light focusing) ===
+      // Slightly brighten center where light focuses through the drop
+      float caustic = (1.0 - edgeDist) * d * 0.15;
+      finalColor *= 1.0 + caustic;
+      
+      vec4 fg = vec4(finalColor, a);
       
       gl_FragColor = blend(bg, fg);
     }
@@ -549,8 +582,18 @@
         const spreadX = drop.spreadX;
         const spreadY = drop.spreadY;
         
-        const scaleX = 1;
-        const scaleY = 1.5;
+        // === VELOCITY-BASED SHAPE DEFORMATION ===
+        // Faster drops stretch vertically (like real falling water)
+        const speed = Math.abs(drop.momentum);
+        const speedStretch = 1 + Math.min(speed * 0.015, 0.4); // Max 40% stretch
+        
+        // Base scale with speed deformation
+        const scaleX = 1 / Math.sqrt(speedStretch); // Compress horizontally when stretching
+        const scaleY = 1.5 * speedStretch; // Stretch vertically with speed
+        
+        // === GRAVITY-BASED BULGE ===
+        // Larger drops bulge at the bottom due to gravity
+        const gravityBulge = Math.min(r / this.options.maxR, 1) * 0.1;
         
         let d = Math.max(0, Math.min(1, ((r - this.options.minR) / this.deltaR) * 0.9));
         d *= 1 / (((spreadX + spreadY) * 0.5) + 1);
@@ -559,10 +602,13 @@
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
         
+        // Apply slight vertical offset for gravity bulge effect
+        const yOffset = r * gravityBulge * this.scale;
+        
         ctx.drawImage(
           this.dropsGfx[d],
           (x - r * scaleX * (spreadX + 1)) * this.scale,
-          (y - r * scaleY * (spreadY + 1)) * this.scale,
+          (y - r * scaleY * (spreadY + 1)) * this.scale + yOffset,
           r * 2 * scaleX * (spreadX + 1) * this.scale,
           r * 2 * scaleY * (spreadY + 1) * this.scale
         );
