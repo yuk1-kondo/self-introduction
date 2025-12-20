@@ -1,121 +1,238 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Rain Effect - Codrops Style</title>
+  <title>Water Drops - Interactive Rain Effect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #000;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #222;
+      --text: #fff;
+      --text-muted: #666;
     }
-    #container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+    
+    html, body { 
+      background: var(--bg);
+      color: var(--text); 
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
+    
+    .app { 
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .logo {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .btn:hover {
+      background: var(--surface);
+      border-color: #333;
+    }
+    
+    .btn.active {
+      background: var(--text);
+      color: var(--bg);
+    }
+    
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+    
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 80px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--text);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    .stage { 
+      flex: 1;
+      display: grid; 
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
+      position: relative;
+    }
+    
+    #glCanvas { 
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 12px;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    
     video { display: none; }
-    canvas { display: block; }
-    #glCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+    
+    .status { 
+      position: fixed; 
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      padding: 12px 24px; 
+      border-radius: 100px; 
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 100;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
+    
+    .status.active { 
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    
+    .status.active .status-dot {
+      background: var(--bg);
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
     #loading {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: #0a0a0a;
+      background: var(--bg);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 1000;
-      color: #fff;
     }
+    
     .spinner {
       width: 40px; height: 40px;
-      border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: #fff;
+      border: 3px solid var(--border);
+      border-top-color: var(--text);
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #loading p { margin-top: 16px; opacity: 0.7; }
     
-    .controls {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 12px;
-      z-index: 100;
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(10px);
-      padding: 12px 20px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-    .btn {
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.3);
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: all 0.2s;
-    }
-    .btn:hover { background: rgba(255,255,255,0.25); }
-    .btn.active { background: rgba(255,255,255,0.3); }
-    .slider-container {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #fff;
-      font-size: 12px;
-    }
-    .slider-container input[type="range"] {
-      width: 80px;
-      -webkit-appearance: none;
-      background: rgba(255,255,255,0.2);
-      height: 4px;
-      border-radius: 2px;
-    }
-    .slider-container input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 14px; height: 14px;
-      background: #fff;
-      border-radius: 50%;
-      cursor: pointer;
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    #loading p { margin-top: 16px; color: var(--text-muted); }
   </style>
 </head>
 <body>
   <div id="loading">
     <div class="spinner"></div>
-    <p>èâä˙âªíÜ...</p>
+    <p>Initializing...</p>
   </div>
   
-  <div id="container">
-    <video id="video" playsinline></video>
-    <canvas id="glCanvas"></canvas>
-  </div>
-  
-  <div class="controls">
-    <div class="slider-container">
-      <span>Rain</span>
-      <input type="range" id="rainAmount" min="0" max="100" value="50">
+  <div class="app">
+    <header>
+      <div class="logo">WATER DROPS</div>
+      <div class="hint">? Fist = Anti-gravity | ? Swipe = Scatter</div>
+    </header>
+    
+    <div class="controls">
+      <div class="slider">
+        <span class="slider-label">Rain</span>
+        <input type="range" id="rainAmount" min="0" max="100" value="50">
+      </div>
+      <div class="divider"></div>
+      <button class="btn" id="toggleRain">Pause</button>
+      <button class="btn" id="clearBtn">Clear</button>
     </div>
-    <button class="btn" id="toggleRain">Pause</button>
-    <button class="btn" id="clearBtn">Clear</button>
+    
+    <div class="stage">
+      <video id="video" playsinline></video>
+      <canvas id="glCanvas"></canvas>
+    </div>
+    
+    <div class="status" id="gestureStatus">
+      <div class="status-dot"></div>
+      <span>Hand tracking ready</span>
+    </div>
   </div>
 
   <!-- Vertex Shader -->
@@ -233,6 +350,12 @@
     let handPositions = []; // [{x, y, vx, vy}, ...]
     let lastHandPositions = [];
     let handsReady = false;
+    let isFist = false; // Fist gesture detected
+    let antiGravity = false; // Anti-gravity mode
+    
+    // Canvas size (not fullscreen)
+    const CANVAS_WIDTH = 1280;
+    const CANVAS_HEIGHT = 720;
     
     // ============================================================
     // Drop object prototype (from Codrops)
@@ -576,12 +699,18 @@
             drop.spreadX *= Math.pow(0.4, timeScale);
             drop.spreadY *= Math.pow(0.7, timeScale);
             
-            // Update position
+            // Update position (with anti-gravity support)
             const moved = drop.momentum > 0;
+            const gravityDir = antiGravity ? -1 : 1;
+            
             if (moved && !drop.killed) {
-              drop.y += drop.momentum * this.options.globalTimeScale;
+              drop.y += drop.momentum * this.options.globalTimeScale * gravityDir;
               drop.x += drop.momentumX * this.options.globalTimeScale;
-              if (drop.y > this.height / this.scale + drop.r) {
+              
+              // Kill drops that exit the screen
+              if (gravityDir > 0 && drop.y > this.height / this.scale + drop.r) {
+                drop.killed = true;
+              } else if (gravityDir < 0 && drop.y < -drop.r) {
                 drop.killed = true;
               }
             }
@@ -938,8 +1067,8 @@
         // Create background textures
         createBackgroundTextures();
         
-        // Create raindrops with Codrops images
-        raindrops = new Raindrops(width, height, dpi, dropAlphaImg, dropColorImg, {
+        // Create raindrops with Codrops images (scale=1 for fixed resolution)
+        raindrops = new Raindrops(width, height, 1, dropAlphaImg, dropColorImg, {
           minR: 20,
           maxR: 50,
           rainChance: 0.35,
@@ -987,9 +1116,30 @@
         hands.onResults((results) => {
           lastHandPositions = [...handPositions];
           handPositions = [];
+          let fistDetected = false;
           
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
+              // Check for fist gesture
+              // Fist: fingertips are close to palm (below finger base)
+              const wrist = landmarks[0];
+              const indexTip = landmarks[8];
+              const middleTip = landmarks[12];
+              const ringTip = landmarks[16];
+              const pinkyTip = landmarks[20];
+              const indexBase = landmarks[5];
+              const middleBase = landmarks[9];
+              
+              // In a fist, fingertips are closer to wrist than their bases
+              const indexCurled = indexTip.y > indexBase.y;
+              const middleCurled = middleTip.y > middleBase.y;
+              const ringCurled = ringTip.y > landmarks[13].y;
+              const pinkyCurled = pinkyTip.y > landmarks[17].y;
+              
+              if (indexCurled && middleCurled && ringCurled && pinkyCurled) {
+                fistDetected = true;
+              }
+              
               // Use multiple key points for better coverage
               const keyPoints = [
                 landmarks[0],  // wrist
@@ -1009,9 +1159,25 @@
                 });
               });
             });
-            // Debug log (remove in production)
-            console.log('Hands detected:', handPositions.length, 'points');
           }
+          
+          // Update fist state and anti-gravity
+          isFist = fistDetected;
+          antiGravity = fistDetected;
+          
+          // Update status display
+          const statusEl = document.getElementById('gestureStatus');
+          if (fistDetected) {
+            statusEl.classList.add('active');
+            statusEl.querySelector('span').textContent = '? Anti-gravity ON';
+          } else if (handPositions.length > 0) {
+            statusEl.classList.remove('active');
+            statusEl.querySelector('span').textContent = '? Hand detected';
+          } else {
+            statusEl.classList.remove('active');
+            statusEl.querySelector('span').textContent = 'Hand tracking ready';
+          }
+          
           handsReady = true;
         });
         
@@ -1029,12 +1195,12 @@
     }
     
     function resize() {
-      width = window.innerWidth * dpi;
-      height = window.innerHeight * dpi;
+      // Use fixed canvas size (like OC) for better quality
+      width = CANVAS_WIDTH;
+      height = CANVAS_HEIGHT;
       glCanvas.width = width;
       glCanvas.height = height;
-      glCanvas.style.width = window.innerWidth + 'px';
-      glCanvas.style.height = window.innerHeight + 'px';
+      // Don't set style width/height - let CSS handle it
       
       if (gl) {
         gl.viewport(0, 0, width, height);
