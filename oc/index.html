@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Optical Camouflage</title>
+  <style>
+    html, body { margin:0; padding:0; background:#111; color:#eee; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .wrap { display:grid; grid-template-rows:auto 1fr; height:100vh; }
+    .bar {
+      display:flex; gap:12px; align-items:center;
+      padding:10px 12px; background:#1b1b1b; border-bottom:1px solid #2a2a2a;
+      flex-wrap: wrap;
+    }
+    button, input[type="range"] { accent-color: #8bd; }
+    button {
+      background:#2a2a2a; color:#eee; border:1px solid #3a3a3a; border-radius:10px;
+      padding:8px 12px; cursor:pointer;
+    }
+    button:hover { background:#333; }
+    label { display:flex; align-items:center; gap:8px; font-size:14px; opacity:.9; }
+    .stage { position:relative; width:100%; height:100%; display:grid; place-items:center; }
+    canvas { width: min(100vw, 1100px); height:auto; border-radius:14px; box-shadow: 0 10px 35px rgba(0,0,0,.45); }
+    video { display:none; }
+    small { opacity:.75; }
+    .status { 
+      position: fixed; 
+      top: 70px; 
+      right: 20px; 
+      background: rgba(0,0,0,0.7); 
+      padding: 12px 18px; 
+      border-radius: 12px; 
+      font-size: 14px;
+      z-index: 100;
+    }
+    .status.active { background: rgba(0,180,100,0.7); }
+    .gesture-icon { font-size: 24px; margin-right: 8px; }
+    .countdown {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 120px;
+      font-weight: bold;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 0 40px rgba(0,0,0,0.8);
+      z-index: 200;
+      pointer-events: none;
+    }
+    .auto-status {
+      position: fixed;
+      top: 120px;
+      right: 20px;
+      background: rgba(0,100,200,0.7);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      z-index: 100;
+    }
+    .auto-status.ready { background: rgba(0,180,100,0.7); }
+  </style>
+
+  <!-- MediaPipe Selfie Segmentation (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+  <!-- MediaPipe Hands (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <button id="btnStart">Start</button>
+      <button id="btnAutoStart">Auto Start</button>
+      <button id="btnFreeze" disabled>Freeze BG</button>
+      <button id="btnUnfreeze" disabled>Unfreeze</button>
+
+      <label>
+        Cloak
+        <input id="mix" type="range" min="0" max="1" step="0.01" value="0.98" />
+        <small id="mixVal">0.98</small>
+      </label>
+
+      <label>
+        Edge Blur
+        <input id="edge" type="range" min="0" max="10" step="0.1" value="3.0" />
+        <small id="edgeVal">3.0</small>
+      </label>
+
+      <label>
+        Warp
+        <input id="warp" type="range" min="0" max="12" step="0.1" value="4.0" />
+        <small id="warpVal">4.0</small>
+      </label>
+
+      <small>HTTPS required</small>
+      <button id="btnGesture" disabled>Enable Gesture</button>
+    </div>
+
+    <div id="status" class="status" style="display:none;">
+      <span class="gesture-icon">?</span>
+      <span id="statusText">Cloak OFF</span>
+    </div>
+
+    <div id="countdown" class="countdown" style="display:none;"></div>
+    
+    <div id="autoStatus" class="auto-status" style="display:none;">
+      <span id="autoStatusText">Waiting for clear frame...</span>
+    </div>
+
+    <div class="stage">
+      <video id="video" playsinline></video>
+      <canvas id="gl"></canvas>
+    </div>
+  </div>
+
+<script>
+(async () => {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('gl');
+  const btnStart = document.getElementById('btnStart');
+  const btnAutoStart = document.getElementById('btnAutoStart');
+  const btnFreeze = document.getElementById('btnFreeze');
+  const btnUnfreeze = document.getElementById('btnUnfreeze');
+  const countdownEl = document.getElementById('countdown');
+  const autoStatusEl = document.getElementById('autoStatus');
+  const autoStatusText = document.getElementById('autoStatusText');
+
+  const mixEl = document.getElementById('mix');
+  const edgeEl = document.getElementById('edge');
+  const warpEl = document.getElementById('warp');
+  const mixVal = document.getElementById('mixVal');
+  const edgeVal = document.getElementById('edgeVal');
+  const warpVal = document.getElementById('warpVal');
+
+  function syncUI() {
+    mixVal.textContent = (+mixEl.value).toFixed(2);
+    edgeVal.textContent = (+edgeEl.value).toFixed(1);
+    warpVal.textContent = (+warpEl.value).toFixed(1);
+  }
+  [mixEl, edgeEl, warpEl].forEach(el => el.addEventListener('input', syncUI));
+  syncUI();
+
+  // ---------- WebGL2 setup ----------
+  const gl = canvas.getContext('webgl2', { premultipliedAlpha:false, antialias:false });
+  if (!gl) {
+    alert('WebGL2 is not supported in this browser.');
+    return;
+  }
+
+  const vsSrc = `#version 300 es
+  precision highp float;
+  in vec2 a_pos;
+  out vec2 v_uv;
+  void main() {
+    // Flip Y and mirror X for correct camera orientation
+    vec2 uv = (a_pos + 1.0) * 0.5;
+    v_uv = vec2(1.0 - uv.x, 1.0 - uv.y);
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+  }`;
+
+  // 人物領域(=mask)にだけ多段合成した「背景っぽいもの」を描く
+  // maskはMediaPipeのsegmentationMask（人物=1に近い）
+  const fsSrc = `#version 300 es
+  precision highp float;
+  in vec2 v_uv;
+  out vec4 outColor;
+
+  uniform sampler2D u_now;     // current frame
+  uniform sampler2D u_p1;      // past 1
+  uniform sampler2D u_p2;      // past 2
+  uniform sampler2D u_p3;      // past 3
+  uniform sampler2D u_mask;    // segmentation mask (person ~1)
+  uniform sampler2D u_freeze;  // frozen background (optional)
+
+  uniform vec2  u_texel;       // 1/width, 1/height
+  uniform float u_mix;         // cloak strength
+  uniform float u_edge;        // edge blur
+  uniform float u_warp;        // distortion strength
+  uniform float u_useFreeze;   // 1 when frozen
+
+  // cheap blur on mask to soften edges
+  float blurMask(vec2 uv, float r) {
+    // 9-tap box-ish blur (fast & simple)
+    float s = 0.0;
+    float w = 0.0;
+    for (int y=-1; y<=1; y++) {
+      for (int x=-1; x<=1; x++) {
+        vec2 o = vec2(float(x), float(y)) * u_texel * r;
+        float m = texture(u_mask, uv + o).r;
+        s += m;
+        w += 1.0;
+      }
+    }
+    return s / w;
+  }
+
+  vec3 sampleWarped(sampler2D tex, vec2 uv, float t, float amp) {
+    // subtle wave distortion
+    float wx = sin((uv.y * 12.0 + t*1.7)) * amp;
+    float wy = cos((uv.x * 10.0 - t*1.3)) * amp;
+    vec2 duv = uv + vec2(wx, wy) * u_texel;
+    return texture(tex, duv).rgb;
+  }
+
+  void main() {
+    float t = float(gl_FragCoord.x + gl_FragCoord.y) * 0.0; // deterministic base
+    vec3 now = texture(u_now, v_uv).rgb;
+
+    // edge soften + slight dilate by boosting radius
+    float m = blurMask(v_uv, max(0.0, u_edge));
+    // Make mask sharper for better invisibility
+    m = smoothstep(0.20, 0.55, m);
+    // Boost mask strength
+    m = pow(m, 0.7);
+
+    // Multi-layer "cloak" from frozen bg + past frames
+    // Layer offsets create "multi-stage" diagonal feel
+    float amp = u_warp * 0.35;
+
+    vec2 o1 = vec2( 1.5, -1.0) * u_texel * (2.0 + u_warp);
+    vec2 o2 = vec2(-2.0,  1.2) * u_texel * (3.0 + u_warp);
+    vec2 o3 = vec2( 2.2,  2.0) * u_texel * (4.0 + u_warp);
+
+    // choose background source
+    vec3 cloak;
+    
+    if (u_useFreeze > 0.5) {
+      // When frozen: use frozen background directly (full replacement)
+      cloak = texture(u_freeze, v_uv).rgb;
+    } else {
+      // No freeze: use past frames (less effective but still works)
+      vec3 p1 = sampleWarped(u_p1, v_uv + o1, 1.0, amp);
+      vec3 p2 = sampleWarped(u_p2, v_uv + o2, 2.0, amp * 1.2);
+      vec3 p3 = sampleWarped(u_p3, v_uv + o3, 3.0, amp * 1.4);
+      cloak = p1 * 0.5 + p2 * 0.3 + p3 * 0.2;
+    }
+
+    // subtle edge highlight (refraction effect at cloak boundary)
+    float edge = smoothstep(0.20, 0.45, m) - smoothstep(0.55, 0.80, m);
+    cloak += vec3(edge * 0.05);
+
+    // apply cloak only on person area
+    float k = clamp(u_mix, 0.0, 1.0);
+    vec3 outRgb = mix(now, cloak, m * k);
+
+    outColor = vec4(outRgb, 1.0);
+  }`;
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(s));
+      throw new Error('Shader compile failed');
+    }
+    return s;
+  }
+  function link(vs, fs) {
+    const p = gl.createProgram();
+    gl.attachShader(p, vs);
+    gl.attachShader(p, fs);
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      console.error(gl.getProgramInfoLog(p));
+      throw new Error('Program link failed');
+    }
+    return p;
+  }
+
+  const prog = link(compile(gl.VERTEX_SHADER, vsSrc), compile(gl.FRAGMENT_SHADER, fsSrc));
+  gl.useProgram(prog);
+
+  // Fullscreen quad
+  const quad = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,  1, -1, -1,  1,
+    -1,  1,  1, -1,  1,  1
+  ]), gl.STATIC_DRAW);
+
+  const aPos = gl.getAttribLocation(prog, 'a_pos');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  // uniforms
+  const U = {
+    now: gl.getUniformLocation(prog, 'u_now'),
+    p1: gl.getUniformLocation(prog, 'u_p1'),
+    p2: gl.getUniformLocation(prog, 'u_p2'),
+    p3: gl.getUniformLocation(prog, 'u_p3'),
+    mask: gl.getUniformLocation(prog, 'u_mask'),
+    freeze: gl.getUniformLocation(prog, 'u_freeze'),
+    texel: gl.getUniformLocation(prog, 'u_texel'),
+    mix: gl.getUniformLocation(prog, 'u_mix'),
+    edge: gl.getUniformLocation(prog, 'u_edge'),
+    warp: gl.getUniformLocation(prog, 'u_warp'),
+    useFreeze: gl.getUniformLocation(prog, 'u_useFreeze')
+  };
+
+  function makeTex(unit, uniformLoc) {
+    const tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.uniform1i(uniformLoc, unit);
+    return tex;
+  }
+
+  // texture units mapping
+  const TEX = {
+    now: makeTex(0, U.now),
+    p1: makeTex(1, U.p1),
+    p2: makeTex(2, U.p2),
+    p3: makeTex(3, U.p3),
+    mask: makeTex(4, U.mask),
+    freeze: makeTex(5, U.freeze)
+  };
+
+  // ring buffer for past frames (store canvases)
+  const RING = {
+    size: 24,          // keep 24 frames history
+    idx: 0,
+    frames: []         // each is an Offscreen/Canvas
+  };
+  for (let i=0; i<RING.size; i++) {
+    const c = document.createElement('canvas');
+    c.width = 2; c.height = 2;
+    RING.frames.push(c);
+  }
+
+  // work canvases
+  const grab = document.createElement('canvas'); // current frame buffer
+  const grabCtx = grab.getContext('2d', { willReadFrequently:false });
+
+  const freezeCanvas = document.createElement('canvas');
+  const freezeCtx = freezeCanvas.getContext('2d', { willReadFrequently:false });
+  let useFreeze = 0;
+
+  // ---------- Auto Freeze state ----------
+  let autoMode = false;
+  let autoFreezeReady = false;
+  let clearFrameCount = 0;
+  const CLEAR_FRAMES_NEEDED = 10; // Need 10 consecutive clear frames
+
+  function checkIfFrameClear() {
+    // Check if the segmentation mask shows no person (low mask values)
+    if (!segReady) return false;
+    
+    const ctx = segmentationMaskCanvas.getContext('2d');
+    const w = segmentationMaskCanvas.width;
+    const h = segmentationMaskCanvas.height;
+    
+    // Sample some points to check mask coverage
+    const sampleSize = 20;
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    
+    let personPixels = 0;
+    let totalSamples = 0;
+    
+    for (let y = 0; y < h; y += Math.floor(h / sampleSize)) {
+      for (let x = 0; x < w; x += Math.floor(w / sampleSize)) {
+        const idx = (y * w + x) * 4;
+        // Red channel contains mask value (higher = person)
+        if (data[idx] > 128) personPixels++;
+        totalSamples++;
+      }
+    }
+    
+    const personRatio = personPixels / totalSamples;
+    return personRatio < 0.05; // Less than 5% person coverage = clear
+  }
+
+  function doAutoFreeze() {
+    freezeCtx.drawImage(video, 0, 0, freezeCanvas.width, freezeCanvas.height);
+    useFreeze = 1;
+    autoFreezeReady = true;
+    autoStatusEl.classList.add('ready');
+    autoStatusText.textContent = 'Background captured! You can enter now.';
+    
+    // Auto enable gesture mode
+    if (!gestureEnabled) {
+      if (!hands) initHands();
+      gestureEnabled = true;
+      statusEl.style.display = 'block';
+      btnGesture.textContent = 'Disable Gesture';
+      updateCloakStatus();
+    }
+  }
+
+  // ---------- Cloak state (gesture controlled) ----------
+  let cloakEnabled = false;
+  let gestureEnabled = false;
+  let lastGestureTime = 0;
+  const GESTURE_COOLDOWN = 1000; // 1 second cooldown to prevent flickering
+
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const btnGesture = document.getElementById('btnGesture');
+
+  function updateCloakStatus() {
+    if (cloakEnabled) {
+      statusEl.classList.add('active');
+      statusText.textContent = 'Cloak ON';
+      mixEl.value = 1.0;
+    } else {
+      statusEl.classList.remove('active');
+      statusText.textContent = 'Cloak OFF';
+      mixEl.value = 0;
+    }
+    syncUI();
+  }
+
+  // ---------- MediaPipe Hands (Gesture Detection) ----------
+  let hands = null;
+  let handResults = null;
+
+  function isClosedFist(landmarks) {
+    // Check if all fingers are closed (fist)
+    // Compare fingertip positions with knuckle positions
+    // Finger tips: 4(thumb), 8(index), 12(middle), 16(ring), 20(pinky)
+    // Finger PIPs: 3(thumb), 6(index), 10(middle), 14(ring), 18(pinky)
+    
+    const tipIds = [8, 12, 16, 20]; // Index to pinky tips
+    const pipIds = [6, 10, 14, 18]; // Index to pinky PIPs
+    
+    let closedFingers = 0;
+    
+    for (let i = 0; i < tipIds.length; i++) {
+      const tip = landmarks[tipIds[i]];
+      const pip = landmarks[pipIds[i]];
+      // Finger is closed if tip is below (greater Y) than PIP
+      if (tip.y > pip.y) {
+        closedFingers++;
+      }
+    }
+    
+    // Check thumb separately (compare x position for right hand)
+    const thumbTip = landmarks[4];
+    const thumbIp = landmarks[3];
+    const wrist = landmarks[0];
+    
+    // Determine if it's right or left hand based on thumb position relative to wrist
+    const isRightHand = thumbTip.x < wrist.x;
+    
+    let thumbClosed = false;
+    if (isRightHand) {
+      thumbClosed = thumbTip.x > thumbIp.x;
+    } else {
+      thumbClosed = thumbTip.x < thumbIp.x;
+    }
+    
+    // Fist = all 4 fingers closed + thumb closed
+    return closedFingers >= 3 && thumbClosed;
+  }
+
+  function initHands() {
+    hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 0, // 0 = lite, faster
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.5
+    });
+    
+    hands.onResults((results) => {
+      handResults = results;
+      
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+        const now = Date.now();
+        
+        if (isClosedFist(landmarks)) {
+          // Toggle cloak with cooldown
+          if (now - lastGestureTime > GESTURE_COOLDOWN) {
+            cloakEnabled = !cloakEnabled;
+            lastGestureTime = now;
+            updateCloakStatus();
+          }
+        }
+      }
+    });
+  }
+
+  // ---------- MediaPipe Selfie Segmentation ----------
+  let segmentationMaskCanvas = document.createElement('canvas'); // will be drawn by MediaPipe
+  let segReady = false;
+
+  const selfieSeg = new SelfieSegmentation({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+  });
+  selfieSeg.setOptions({
+    modelSelection: 1, // 0: general, 1: landscape (better for environment)
+  });
+  selfieSeg.onResults((results) => {
+    // results.segmentationMask is an HTMLCanvasElement-like
+    // We copy it into our own canvas to use as a texture source.
+    const m = results.segmentationMask;
+    if (!m) return;
+
+    if (segmentationMaskCanvas.width !== m.width || segmentationMaskCanvas.height !== m.height) {
+      segmentationMaskCanvas.width = m.width;
+      segmentationMaskCanvas.height = m.height;
+    }
+    const ctx = segmentationMaskCanvas.getContext('2d');
+    ctx.clearRect(0,0,segmentationMaskCanvas.width, segmentationMaskCanvas.height);
+    ctx.drawImage(m, 0, 0);
+    segReady = true;
+  });
+
+  // ---------- camera & main loop ----------
+  let running = false;
+
+  async function start() {
+    if (running) return;
+    running = true;
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    video.srcObject = stream;
+    await video.play();
+
+    // resize canvases to video
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+
+    // output canvas size (keep original res for best mask edges)
+    canvas.width = w;
+    canvas.height = h;
+
+    grab.width = w; grab.height = h;
+    freezeCanvas.width = w; freezeCanvas.height = h;
+
+    // init ring canvases sizes
+    for (const c of RING.frames) { c.width = w; c.height = h; }
+
+    gl.viewport(0, 0, w, h);
+    gl.uniform2f(U.texel, 1 / w, 1 / h);
+
+    btnFreeze.disabled = false;
+    btnUnfreeze.disabled = false;
+    btnGesture.disabled = false;
+
+    // warm up: fill ring with current
+    for (let i=0; i<RING.size; i++) {
+      const c = RING.frames[i];
+      const cctx = c.getContext('2d');
+      cctx.drawImage(video, 0, 0, w, h);
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  function uploadToTex(tex, source) {
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    // Use texImage2D each time (simple). For perf, texSubImage2D also works.
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  }
+
+  // pick past frames by delays (in frames)
+  function getPastCanvas(delay) {
+    let i = (RING.idx - delay) % RING.size;
+    if (i < 0) i += RING.size;
+    return RING.frames[i];
+  }
+
+  let frameCount = 0;
+  async function loop() {
+    if (!running) return;
+
+    const w = canvas.width, h = canvas.height;
+
+    // 1) grab current frame into grab canvas
+    grabCtx.drawImage(video, 0, 0, w, h);
+
+    // 2) push into ring buffer
+    {
+      const c = RING.frames[RING.idx];
+      const cctx = c.getContext('2d');
+      cctx.drawImage(grab, 0, 0);
+      RING.idx = (RING.idx + 1) % RING.size;
+    }
+
+    // 3) run segmentation occasionally or every frame
+    //   - every frame is best quality, but heavy on low-end devices.
+    //   - if you want lighter, do: if (frameCount % 2 === 0) await...
+    await selfieSeg.send({ image: grab });
+    
+    // 3.5) Auto freeze: check if frame is clear (no person)
+    if (autoMode && !autoFreezeReady) {
+      if (checkIfFrameClear()) {
+        clearFrameCount++;
+        autoStatusText.textContent = `Clear frame detected (${clearFrameCount}/${CLEAR_FRAMES_NEEDED})...`;
+        
+        if (clearFrameCount >= CLEAR_FRAMES_NEEDED) {
+          doAutoFreeze();
+        }
+      } else {
+        clearFrameCount = 0;
+        autoStatusText.textContent = 'Step out of frame to capture background...';
+      }
+    }
+    
+    // 3.6) run hand detection if gesture is enabled
+    if (gestureEnabled && hands && frameCount % 3 === 0) {
+      await hands.send({ image: grab });
+    }
+    
+    frameCount++;
+
+    // 4) upload textures
+    gl.activeTexture(gl.TEXTURE0);
+    uploadToTex(TEX.now, grab);
+
+    // delays: 6, 12, 18 frames (~200/400/600ms at 30fps)
+    gl.activeTexture(gl.TEXTURE1);
+    uploadToTex(TEX.p1, getPastCanvas(6));
+
+    gl.activeTexture(gl.TEXTURE2);
+    uploadToTex(TEX.p2, getPastCanvas(12));
+
+    gl.activeTexture(gl.TEXTURE3);
+    uploadToTex(TEX.p3, getPastCanvas(18));
+
+    gl.activeTexture(gl.TEXTURE4);
+    if (segReady) uploadToTex(TEX.mask, segmentationMaskCanvas);
+    else uploadToTex(TEX.mask, grab); // fallback to prevent crash
+
+    gl.activeTexture(gl.TEXTURE5);
+    uploadToTex(TEX.freeze, freezeCanvas);
+
+    // 5) uniforms from UI
+    gl.uniform1f(U.mix, parseFloat(mixEl.value));
+    gl.uniform1f(U.edge, parseFloat(edgeEl.value));
+    gl.uniform1f(U.warp, parseFloat(warpEl.value));
+    gl.uniform1f(U.useFreeze, useFreeze);
+
+    // 6) draw
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    requestAnimationFrame(loop);
+  }
+
+  btnStart.addEventListener('click', () => start().catch(err => {
+    console.error(err);
+    alert('Failed to start: ' + err.message);
+  }));
+
+  btnAutoStart.addEventListener('click', async () => {
+    // Show countdown
+    countdownEl.style.display = 'block';
+    
+    for (let i = 3; i >= 1; i--) {
+      countdownEl.textContent = i;
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    countdownEl.textContent = 'GO!';
+    await new Promise(r => setTimeout(r, 500));
+    countdownEl.style.display = 'none';
+    
+    // Start camera
+    await start();
+    
+    // Enable auto mode
+    autoMode = true;
+    autoFreezeReady = false;
+    clearFrameCount = 0;
+    autoStatusEl.style.display = 'block';
+    autoStatusText.textContent = 'Step out of frame to capture background...';
+  });
+
+  btnFreeze.addEventListener('click', () => {
+    if (!running) return;
+    freezeCtx.drawImage(video, 0, 0, freezeCanvas.width, freezeCanvas.height);
+    useFreeze = 1;
+  });
+
+  btnUnfreeze.addEventListener('click', () => {
+    useFreeze = 0;
+  });
+
+  btnGesture.addEventListener('click', () => {
+    if (!gestureEnabled) {
+      if (!hands) initHands();
+      gestureEnabled = true;
+      statusEl.style.display = 'block';
+      btnGesture.textContent = 'Disable Gesture';
+      updateCloakStatus();
+    } else {
+      gestureEnabled = false;
+      statusEl.style.display = 'none';
+      btnGesture.textContent = 'Enable Gesture';
+      cloakEnabled = false;
+      mixEl.value = 0.98;
+      syncUI();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
