@@ -199,9 +199,13 @@
     }
   </script>
 
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
   <script>
     // ============================================================
-    // Rain Effect - Faithful Codrops Implementation
+    // Rain Effect - Interactive with MediaPipe
     // Based on https://github.com/codrops/RainEffect
     // ============================================================
     
@@ -224,6 +228,11 @@
     // Settings
     let isRaining = true;
     let rainIntensity = 0.5;
+    
+    // MediaPipe Hands tracking
+    let handPositions = []; // [{x, y, vx, vy}, ...]
+    let lastHandPositions = [];
+    let handsReady = false;
     
     // ============================================================
     // Drop object prototype (from Codrops)
@@ -628,7 +637,58 @@
         this.drops = newDrops;
       }
       
-      update() {
+      // Check collision with hand positions and apply force
+      updateHandInteraction(handPositions) {
+        if (!handPositions || handPositions.length === 0) return;
+        
+        const scaleW = this.width / this.scale;
+        const scaleH = this.height / this.scale;
+        
+        handPositions.forEach(hand => {
+          // Convert normalized coords to drop space (mirrored for selfie camera)
+          const hx = (1 - hand.x) * scaleW;
+          const hy = hand.y * scaleH;
+          const hvx = -(hand.vx || 0) * scaleW * 0.5; // velocity
+          const hvy = (hand.vy || 0) * scaleH * 0.5;
+          const handRadius = 80; // interaction radius
+          const speed = Math.sqrt(hvx * hvx + hvy * hvy);
+          
+          this.drops.forEach(drop => {
+            const dx = drop.x - hx;
+            const dy = drop.y - hy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < handRadius + drop.r) {
+              // Hand is touching this drop
+              if (speed > 5) {
+                // Fast movement - scatter the drop
+                const angle = Math.atan2(dy, dx);
+                const force = Math.min(speed * 0.3, 15);
+                drop.momentumX += Math.cos(angle) * force + hvx * 0.1;
+                drop.momentum += Math.sin(angle) * force * 0.5;
+                drop.spreadX = Math.min(drop.spreadX + 0.5, 2);
+                drop.spreadY = Math.min(drop.spreadY + 0.3, 1.5);
+                
+                // Small drops get killed
+                if (drop.r < 15 && speed > 20) {
+                  drop.shrink = 0.5;
+                }
+              } else {
+                // Slow touch - gently push
+                const pushX = dx / dist * 2;
+                const pushY = dy / dist * 1;
+                drop.momentumX += pushX;
+                drop.momentum = Math.max(0, drop.momentum + pushY * 0.5);
+              }
+              
+              // Clear droplets where hand touches
+              this.clearDroplets(hx, hy, handRadius * 0.5);
+            }
+          });
+        });
+      }
+      
+      update(handPositions) {
         this.clearCanvas();
         
         const now = Date.now();
@@ -638,6 +698,9 @@
         if (timeScale > 1.1) timeScale = 1.1;
         timeScale *= this.options.globalTimeScale;
         this.lastRender = now;
+        
+        // Hand interaction
+        this.updateHandInteraction(handPositions);
         
         this.updateDrops(timeScale);
       }
@@ -777,8 +840,8 @@
     // Main Loop
     // ============================================================
     function render() {
-      // Update raindrops
-      raindrops.update();
+      // Update raindrops with hand interaction
+      raindrops.update(handPositions);
       
       // Generate camera textures
       generateTextures();
@@ -858,6 +921,10 @@
           collisionRadiusIncrease: 0.0002
         });
         
+        // Initialize MediaPipe Hands
+        loading.querySelector('p').textContent = 'Loading hand tracking...';
+        await initMediaPipeHands();
+        
         loading.style.display = 'none';
         
         // Start
@@ -866,9 +933,67 @@
       } catch (err) {
         console.error(err);
         loading.innerHTML = `
-          <p style="color: #ff6b6b;">ÉGÉâÅ[: ${err.message}</p>
+          <p style="color: #ff6b6b;">Error: ${err.message}</p>
         `;
       }
+    }
+    
+    // ============================================================
+    // MediaPipe Hands Setup
+    // ============================================================
+    async function initMediaPipeHands() {
+      return new Promise((resolve, reject) => {
+        const hands = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        
+        hands.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.5
+        });
+        
+        hands.onResults((results) => {
+          lastHandPositions = [...handPositions];
+          handPositions = [];
+          
+          if (results.multiHandLandmarks) {
+            results.multiHandLandmarks.forEach((landmarks, i) => {
+              // Use multiple key points for better coverage
+              const keyPoints = [
+                landmarks[0],  // wrist
+                landmarks[5],  // index finger base
+                landmarks[9],  // middle finger base
+                landmarks[8],  // index finger tip
+                landmarks[12], // middle finger tip
+              ];
+              
+              keyPoints.forEach((point, j) => {
+                const prevHand = lastHandPositions[i * keyPoints.length + j] || { x: point.x, y: point.y };
+                handPositions.push({
+                  x: point.x,
+                  y: point.y,
+                  vx: point.x - prevHand.x,
+                  vy: point.y - prevHand.y
+                });
+              });
+            });
+          }
+          handsReady = true;
+        });
+        
+        // Start processing
+        const camera = new Camera(video, {
+          onFrame: async () => {
+            await hands.send({ image: video });
+          },
+          width: 1280,
+          height: 720
+        });
+        
+        camera.start().then(() => resolve()).catch(reject);
+      });
     }
     
     function resize() {
