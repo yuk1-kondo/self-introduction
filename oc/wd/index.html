@@ -3,17 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Rain Effect - Water Droplets</title>
+  <title>Rain Effect - Codrops Style</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #000;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     #container {
       position: fixed;
@@ -22,70 +18,19 @@
       width: 100%;
       height: 100%;
     }
-    video {
-      display: none;
-    }
-    canvas {
-      display: block;
-    }
-    #mainCanvas {
+    video { display: none; }
+    canvas { display: block; }
+    #glCanvas {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
     }
-    #dropCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-    }
-    
-    /* UI Controls */
-    .controls {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 12px;
-      z-index: 100;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      padding: 12px 20px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    .btn {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn:hover {
-      background: rgba(255, 255, 255, 0.25);
-    }
-    .btn.active {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-    
-    /* Loading */
     #loading {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: #0a0a0a;
       display: flex;
       flex-direction: column;
@@ -95,22 +40,41 @@
       color: #fff;
     }
     .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
+      width: 40px; height: 40px;
+      border: 3px solid rgba(255,255,255,0.1);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    #loading p {
-      margin-top: 16px;
-      opacity: 0.7;
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { margin-top: 16px; opacity: 0.7; }
     
-    /* Slider */
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 100;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 12px 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: rgba(255,255,255,0.25); }
+    .btn.active { background: rgba(255,255,255,0.3); }
     .slider-container {
       display: flex;
       align-items: center;
@@ -121,14 +85,13 @@
     .slider-container input[type="range"] {
       width: 80px;
       -webkit-appearance: none;
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255,255,255,0.2);
       height: 4px;
       border-radius: 2px;
     }
     .slider-container input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 14px;
-      height: 14px;
+      width: 14px; height: 14px;
       background: #fff;
       border-radius: 50%;
       cursor: pointer;
@@ -138,415 +101,800 @@
 <body>
   <div id="loading">
     <div class="spinner"></div>
-    <p>カメラを起動中...</p>
+    <p>初期化中...</p>
   </div>
   
   <div id="container">
     <video id="video" playsinline></video>
-    <canvas id="mainCanvas"></canvas>
-    <canvas id="dropCanvas"></canvas>
+    <canvas id="glCanvas"></canvas>
   </div>
   
   <div class="controls">
     <div class="slider-container">
-      <span>? 雨量</span>
-      <input type="range" id="rainIntensity" min="0" max="100" value="50">
+      <span>?</span>
+      <input type="range" id="rainAmount" min="0" max="100" value="50">
     </div>
-    <button class="btn" id="toggleRain">
-      <span>?</span> 停止
-    </button>
-    <button class="btn" id="clearDrops">
-      <span>?</span> クリア
-    </button>
+    <button class="btn" id="toggleRain">? 停止</button>
+    <button class="btn" id="clearBtn">? クリア</button>
   </div>
 
+  <!-- Vertex Shader -->
+  <script id="vert-shader" type="x-shader/x-vertex">
+    precision mediump float;
+    attribute vec2 a_position;
+    attribute vec2 a_texCoord;
+    varying vec2 v_texCoord;
+    
+    void main() {
+      gl_Position = vec4(a_position, 0.0, 1.0);
+      v_texCoord = a_texCoord;
+    }
+  </script>
+
+  <!-- Fragment Shader - Based on Codrops water.frag -->
+  <script id="frag-shader" type="x-shader/x-fragment">
+    precision mediump float;
+    
+    uniform sampler2D u_waterMap;
+    uniform sampler2D u_textureFg;
+    uniform sampler2D u_textureBg;
+    
+    varying vec2 v_texCoord;
+    uniform vec2 u_resolution;
+    uniform float u_minRefraction;
+    uniform float u_refractionDelta;
+    uniform float u_brightness;
+    uniform float u_alphaMultiply;
+    uniform float u_alphaSubtract;
+    
+    vec2 texCoord() {
+      return vec2(gl_FragCoord.x, u_resolution.y - gl_FragCoord.y) / u_resolution;
+    }
+    
+    vec2 pixel() {
+      return vec2(1.0, 1.0) / u_resolution;
+    }
+    
+    // Alpha blend two colors
+    vec4 blend(vec4 bg, vec4 fg) {
+      vec3 bgm = bg.rgb * bg.a;
+      vec3 fgm = fg.rgb * fg.a;
+      float ia = 1.0 - fg.a;
+      float a = fg.a + bg.a * ia;
+      vec3 rgb;
+      if (a != 0.0) {
+        rgb = (fgm + bgm * ia) / a;
+      } else {
+        rgb = vec3(0.0);
+      }
+      return vec4(rgb, a);
+    }
+    
+    void main() {
+      vec2 uv = texCoord();
+      
+      // Background (blurred camera)
+      vec4 bg = texture2D(u_textureBg, uv);
+      
+      // Water map - RGB encodes refraction direction
+      vec4 cur = texture2D(u_waterMap, uv);
+      
+      float d = cur.b; // depth/thickness
+      float x = cur.g; // x distortion (0.5 = center)
+      float y = cur.r; // y distortion (0.5 = center)
+      
+      // Alpha based on gooey effect
+      float a = clamp(cur.a * u_alphaMultiply - u_alphaSubtract, 0.0, 1.0);
+      
+      // Refraction offset
+      vec2 refraction = (vec2(x, y) - 0.5) * 2.0;
+      vec2 refractionPos = uv + pixel() * refraction * (u_minRefraction + d * u_refractionDelta);
+      
+      // Foreground through refraction (clear camera)
+      vec4 tex = texture2D(u_textureFg, refractionPos);
+      
+      vec4 fg = vec4(tex.rgb * u_brightness, a);
+      
+      gl_FragColor = blend(bg, fg);
+    }
+  </script>
+
   <script>
-    // ========================================
-    // Rain Effect - Realistic Water Droplets
-    // Based on Codrops Rain Effect technique
-    // ========================================
+    // ============================================================
+    // Rain Effect - Faithful Codrops Implementation
+    // Based on https://github.com/codrops/RainEffect
+    // ============================================================
     
     const video = document.getElementById('video');
-    const mainCanvas = document.getElementById('mainCanvas');
-    const dropCanvas = document.getElementById('dropCanvas');
-    const mainCtx = mainCanvas.getContext('2d');
-    const dropCtx = dropCanvas.getContext('2d');
+    const glCanvas = document.getElementById('glCanvas');
     const loading = document.getElementById('loading');
     
+    let gl;
+    let program;
     let width, height;
-    let isRunning = true;
+    let dpi = window.devicePixelRatio || 1;
+    
+    // Textures
+    let waterMapTexture, fgTexture, bgTexture;
+    let raindrops;
+    
+    // Settings
+    let isRaining = true;
     let rainIntensity = 0.5;
     
-    // Drop collections
-    let largeDrops = [];
-    let smallDropsCanvas;
-    let smallDropsCtx;
+    // ============================================================
+    // Drop object prototype (from Codrops)
+    // ============================================================
+    const Drop = {
+      x: 0,
+      y: 0,
+      r: 0,
+      spreadX: 0,
+      spreadY: 0,
+      momentum: 0,
+      momentumX: 0,
+      lastSpawn: 0,
+      nextSpawn: 0,
+      parent: null,
+      isNew: true,
+      killed: false,
+      shrink: 0
+    };
     
-    // ========================================
-    // Drop Class - Large drops with physics
-    // ========================================
-    class Drop {
-      constructor(x, y, radius) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.baseRadius = radius;
-        this.velocity = 0;
-        this.gravity = 0.01 + Math.random() * 0.02;
-        this.trail = [];
-        this.maxTrailLength = 30;
-        this.life = 1;
-        this.dying = false;
-        this.wobble = Math.random() * Math.PI * 2;
-        this.wobbleSpeed = 0.05 + Math.random() * 0.05;
+    // ============================================================
+    // Raindrops Class (from Codrops raindrops.js)
+    // ============================================================
+    class Raindrops {
+      constructor(w, h, scale, options = {}) {
+        this.width = w;
+        this.height = h;
+        this.scale = scale;
+        
+        this.options = Object.assign({
+          minR: 10,
+          maxR: 40,
+          maxDrops: 900,
+          rainChance: 0.3,
+          rainLimit: 3,
+          dropletsRate: 50,
+          dropletsSize: [2, 4],
+          dropletsCleaningRadiusMultiplier: 0.43,
+          raining: true,
+          globalTimeScale: 1,
+          trailRate: 1,
+          autoShrink: true,
+          spawnArea: [-0.1, 0.95],
+          trailScaleRange: [0.2, 0.5],
+          collisionRadius: 0.65,
+          collisionRadiusIncrease: 0.01,
+          dropFallMultiplier: 1,
+          collisionBoostMultiplier: 0.05,
+          collisionBoost: 1
+        }, options);
+        
+        this.drops = [];
+        this.dropletsPixelDensity = 1;
+        this.dropletsCounter = 0;
+        this.textureCleaningIterations = 0;
+        this.lastRender = null;
+        
+        this.init();
       }
       
-      update(deltaTime) {
-        // Wobble effect
-        this.wobble += this.wobbleSpeed;
+      get deltaR() {
+        return this.options.maxR - this.options.minR;
+      }
+      
+      get area() {
+        return (this.width * this.height) / this.scale;
+      }
+      
+      get areaMultiplier() {
+        return Math.sqrt(this.area / (1024 * 768));
+      }
+      
+      init() {
+        // Main canvas for drops
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.ctx = this.canvas.getContext('2d');
         
-        // Accumulate mass from nearby small drops
-        if (!this.dying && Math.random() < 0.02 * rainIntensity) {
-          this.radius += 0.1;
-        }
+        // Small droplets canvas
+        this.droplets = document.createElement('canvas');
+        this.droplets.width = this.width * this.dropletsPixelDensity;
+        this.droplets.height = this.height * this.dropletsPixelDensity;
+        this.dropletsCtx = this.droplets.getContext('2d');
         
-        // Start falling when too heavy
-        if (this.radius > this.baseRadius * 2.5 && !this.dying) {
-          this.dying = true;
-        }
+        // Pre-render drop graphics (normal-mapping style colors)
+        this.renderDropsGfx();
         
-        if (this.dying) {
-          // Accelerate downward
-          this.velocity += this.gravity * deltaTime;
-          this.y += this.velocity * deltaTime;
+        // Clearing graphic for erasing droplets
+        this.clearDropletsGfx = this.createClearGfx();
+      }
+      
+      createClearGfx() {
+        const size = 64;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+        gradient.addColorStop(0, 'rgba(0,0,0,1)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+        
+        return canvas;
+      }
+      
+      // Render drop graphics with normal-mapping colors
+      // R = Y distortion, G = X distortion, B = depth, A = alpha
+      renderDropsGfx() {
+        const dropSize = 64;
+        this.dropsGfx = [];
+        
+        for (let i = 0; i < 255; i++) {
+          const canvas = document.createElement('canvas');
+          canvas.width = dropSize;
+          canvas.height = dropSize;
+          const ctx = canvas.getContext('2d');
           
-          // Leave trail
-          if (this.trail.length === 0 || 
-              Math.abs(this.y - this.trail[this.trail.length - 1].y) > 3) {
-            this.trail.push({
-              x: this.x + Math.sin(this.wobble) * 2,
-              y: this.y,
-              radius: this.radius * 0.3,
-              alpha: 1
+          const center = dropSize / 2;
+          const radius = dropSize / 2 - 2;
+          
+          // Clear
+          ctx.clearRect(0, 0, dropSize, dropSize);
+          
+          // Create gradient for normal-mapping effect
+          // The color encodes the refraction direction
+          const gradient = ctx.createRadialGradient(
+            center - radius * 0.3, center - radius * 0.3, 0,
+            center, center, radius
+          );
+          
+          // Depth value (blue channel)
+          const depth = i / 255;
+          
+          // Center colors (0.5 = no offset)
+          // Edge colors (offset based on position)
+          gradient.addColorStop(0, `rgba(${128 + 60}, ${128 + 60}, ${Math.floor(180 + depth * 75)}, 0.9)`);
+          gradient.addColorStop(0.4, `rgba(128, 128, ${Math.floor(128 + depth * 127)}, 0.85)`);
+          gradient.addColorStop(0.7, `rgba(${128 - 40}, ${128 - 40}, ${Math.floor(100 + depth * 50)}, 0.6)`);
+          gradient.addColorStop(1, `rgba(${128 - 60}, ${128 - 60}, ${Math.floor(50 + depth * 30)}, 0.3)`);
+          
+          ctx.beginPath();
+          ctx.arc(center, center, radius, 0, Math.PI * 2);
+          ctx.fillStyle = gradient;
+          ctx.fill();
+          
+          this.dropsGfx.push(canvas);
+        }
+      }
+      
+      drawDroplet(x, y, r) {
+        const ctx = this.dropletsCtx;
+        const px = x * this.dropletsPixelDensity;
+        const py = y * this.dropletsPixelDensity;
+        const pr = r * this.dropletsPixelDensity;
+        
+        const gradient = ctx.createRadialGradient(px, py, 0, px, py, pr);
+        gradient.addColorStop(0, 'rgba(140, 140, 200, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(128, 128, 180, 0.5)');
+        gradient.addColorStop(1, 'rgba(100, 100, 150, 0.2)');
+        
+        ctx.beginPath();
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      }
+      
+      drawDrop(ctx, drop) {
+        if (this.dropsGfx.length === 0) return;
+        
+        const x = drop.x;
+        const y = drop.y;
+        const r = drop.r;
+        const spreadX = drop.spreadX;
+        const spreadY = drop.spreadY;
+        
+        const scaleX = 1;
+        const scaleY = 1.5;
+        
+        let d = Math.max(0, Math.min(1, ((r - this.options.minR) / this.deltaR) * 0.9));
+        d *= 1 / (((spreadX + spreadY) * 0.5) + 1);
+        d = Math.floor(d * (this.dropsGfx.length - 1));
+        
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+        
+        ctx.drawImage(
+          this.dropsGfx[d],
+          (x - r * scaleX * (spreadX + 1)) * this.scale,
+          (y - r * scaleY * (spreadY + 1)) * this.scale,
+          r * 2 * scaleX * (spreadX + 1) * this.scale,
+          r * 2 * scaleY * (spreadY + 1) * this.scale
+        );
+      }
+      
+      clearDroplets(x, y, r = 30) {
+        const ctx = this.dropletsCtx;
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.drawImage(
+          this.clearDropletsGfx,
+          (x - r) * this.dropletsPixelDensity * this.scale,
+          (y - r) * this.dropletsPixelDensity * this.scale,
+          r * 2 * this.dropletsPixelDensity * this.scale,
+          r * 2 * this.dropletsPixelDensity * this.scale * 1.5
+        );
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      
+      clearCanvas() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+      }
+      
+      createDrop(options) {
+        if (this.drops.length >= this.options.maxDrops * this.areaMultiplier) return null;
+        return Object.assign(Object.create(Drop), options);
+      }
+      
+      addDrop(drop) {
+        if (this.drops.length >= this.options.maxDrops * this.areaMultiplier || drop === null) return false;
+        this.drops.push(drop);
+        return true;
+      }
+      
+      updateRain(timeScale) {
+        const rainDrops = [];
+        if (this.options.raining) {
+          const limit = this.options.rainLimit * timeScale * this.areaMultiplier;
+          let count = 0;
+          
+          while (Math.random() < this.options.rainChance * timeScale * this.areaMultiplier && count < limit) {
+            count++;
+            const r = this.random(this.options.minR, this.options.maxR, n => Math.pow(n, 3));
+            const rainDrop = this.createDrop({
+              x: Math.random() * this.width / this.scale,
+              y: this.random(
+                (this.height / this.scale) * this.options.spawnArea[0],
+                (this.height / this.scale) * this.options.spawnArea[1]
+              ),
+              r: r,
+              momentum: 1 + ((r - this.options.minR) * 0.1) + Math.random() * 2,
+              spreadX: 1.5,
+              spreadY: 1.5
             });
-            
-            // Limit trail length
-            if (this.trail.length > this.maxTrailLength) {
-              this.trail.shift();
+            if (rainDrop !== null) {
+              rainDrops.push(rainDrop);
             }
           }
-          
-          // Shrink while falling
-          this.radius *= 0.995;
-          
-          // Fade trail
-          this.trail.forEach(t => {
-            t.alpha *= 0.98;
-            t.radius *= 0.99;
-          });
         }
-        
-        // Remove dead drops
-        return this.y < height + 50 && this.radius > 1;
+        return rainDrops;
       }
       
-      draw(ctx) {
-        // Draw trail
-        this.trail.forEach(t => {
-          if (t.alpha > 0.1) {
-            this.drawDropShape(ctx, t.x, t.y, t.radius, t.alpha * 0.5);
+      random(from, to, interpolation) {
+        if (interpolation === undefined) {
+          return from + Math.random() * (to - from);
+        }
+        return from + interpolation(Math.random()) * (to - from);
+      }
+      
+      clearDrops() {
+        this.drops.forEach(drop => {
+          setTimeout(() => {
+            drop.shrink = 0.1 + Math.random() * 0.5;
+          }, Math.random() * 1200);
+        });
+        this.textureCleaningIterations = 50;
+      }
+      
+      updateDroplets(timeScale) {
+        // Clean droplets gradually
+        if (this.textureCleaningIterations > 0) {
+          this.textureCleaningIterations -= 1 * timeScale;
+          this.dropletsCtx.globalCompositeOperation = 'destination-out';
+          this.dropletsCtx.fillStyle = `rgba(0,0,0,${0.05 * timeScale})`;
+          this.dropletsCtx.fillRect(0, 0, this.droplets.width, this.droplets.height);
+          this.dropletsCtx.globalCompositeOperation = 'source-over';
+        }
+        
+        // Add new droplets
+        if (this.options.raining) {
+          this.dropletsCounter += this.options.dropletsRate * timeScale * this.areaMultiplier;
+          while (this.dropletsCounter >= 1) {
+            this.dropletsCounter--;
+            this.drawDroplet(
+              Math.random() * this.width / this.scale,
+              Math.random() * this.height / this.scale,
+              this.random(this.options.dropletsSize[0], this.options.dropletsSize[1], n => n * n)
+            );
+          }
+        }
+        
+        // Draw droplets to main canvas
+        this.ctx.drawImage(this.droplets, 0, 0, this.width, this.height);
+      }
+      
+      updateDrops(timeScale) {
+        let newDrops = [];
+        
+        this.updateDroplets(timeScale);
+        const rainDrops = this.updateRain(timeScale);
+        newDrops = newDrops.concat(rainDrops);
+        
+        // Sort drops by position
+        this.drops.sort((a, b) => {
+          const va = (a.y * (this.width / this.scale)) + a.x;
+          const vb = (b.y * (this.width / this.scale)) + b.x;
+          return va > vb ? 1 : va === vb ? 0 : -1;
+        });
+        
+        this.drops.forEach((drop, i) => {
+          if (!drop.killed) {
+            // Gravity - chance of drops creeping down
+            if (Math.random() < (drop.r - this.options.minR * this.options.dropFallMultiplier) * (0.1 / this.deltaR) * timeScale) {
+              drop.momentum += Math.random() * (drop.r / this.options.maxR) * 4;
+            }
+            
+            // Auto shrink small drops
+            if (this.options.autoShrink && drop.r <= this.options.minR && Math.random() < 0.05 * timeScale) {
+              drop.shrink += 0.01;
+            }
+            
+            // Update shrinkage
+            drop.r -= drop.shrink * timeScale;
+            if (drop.r <= 0) drop.killed = true;
+            
+            // Update trails
+            if (this.options.raining) {
+              drop.lastSpawn += drop.momentum * timeScale * this.options.trailRate;
+              if (drop.lastSpawn > drop.nextSpawn) {
+                const trailDrop = this.createDrop({
+                  x: drop.x + this.random(-drop.r, drop.r) * 0.1,
+                  y: drop.y - drop.r * 0.01,
+                  r: drop.r * this.random(this.options.trailScaleRange[0], this.options.trailScaleRange[1]),
+                  spreadY: drop.momentum * 0.1,
+                  parent: drop
+                });
+                
+                if (trailDrop !== null) {
+                  newDrops.push(trailDrop);
+                  drop.r *= Math.pow(0.97, timeScale);
+                  drop.lastSpawn = 0;
+                  drop.nextSpawn = this.random(this.options.minR, this.options.maxR) - 
+                    drop.momentum * 2 * this.options.trailRate + (this.options.maxR - drop.r);
+                }
+              }
+            }
+            
+            // Normalize spread
+            drop.spreadX *= Math.pow(0.4, timeScale);
+            drop.spreadY *= Math.pow(0.7, timeScale);
+            
+            // Update position
+            const moved = drop.momentum > 0;
+            if (moved && !drop.killed) {
+              drop.y += drop.momentum * this.options.globalTimeScale;
+              drop.x += drop.momentumX * this.options.globalTimeScale;
+              if (drop.y > this.height / this.scale + drop.r) {
+                drop.killed = true;
+              }
+            }
+            
+            // Collision detection
+            const checkCollision = (moved || drop.isNew) && !drop.killed;
+            drop.isNew = false;
+            
+            if (checkCollision) {
+              this.drops.slice(i + 1, i + 70).forEach(drop2 => {
+                if (drop !== drop2 && drop.r > drop2.r && 
+                    drop.parent !== drop2 && drop2.parent !== drop && !drop2.killed) {
+                  const dx = drop2.x - drop.x;
+                  const dy = drop2.y - drop.y;
+                  const d = Math.sqrt(dx * dx + dy * dy);
+                  
+                  if (d < (drop.r + drop2.r) * (this.options.collisionRadius + drop.momentum * this.options.collisionRadiusIncrease * timeScale)) {
+                    const r1 = drop.r;
+                    const r2 = drop2.r;
+                    const a1 = Math.PI * r1 * r1;
+                    const a2 = Math.PI * r2 * r2;
+                    let targetR = Math.sqrt((a1 + a2 * 0.8) / Math.PI);
+                    if (targetR > this.options.maxR) targetR = this.options.maxR;
+                    
+                    drop.r = targetR;
+                    drop.momentumX += dx * 0.1;
+                    drop.spreadX = 0;
+                    drop.spreadY = 0;
+                    drop2.killed = true;
+                    drop.momentum = Math.max(drop2.momentum, Math.min(40,
+                      drop.momentum + targetR * this.options.collisionBoostMultiplier + this.options.collisionBoost
+                    ));
+                  }
+                }
+              });
+            }
+            
+            // Slowdown momentum
+            drop.momentum -= Math.max(1, (this.options.minR * 0.5) - drop.momentum) * 0.1 * timeScale;
+            if (drop.momentum < 0) drop.momentum = 0;
+            drop.momentumX *= Math.pow(0.7, timeScale);
+            
+            if (!drop.killed) {
+              newDrops.push(drop);
+              if (moved && this.options.dropletsRate > 0) {
+                this.clearDroplets(drop.x, drop.y, drop.r * this.options.dropletsCleaningRadiusMultiplier);
+              }
+              this.drawDrop(this.ctx, drop);
+            }
           }
         });
         
-        // Draw main drop
-        const wobbleX = Math.sin(this.wobble) * (this.dying ? 2 : 0.5);
-        this.drawDropShape(ctx, this.x + wobbleX, this.y, this.radius, 1);
+        this.drops = newDrops;
       }
       
-      drawDropShape(ctx, x, y, radius, alpha) {
-        // Create gradient for 3D effect (normal mapping simulation)
-        const gradient = ctx.createRadialGradient(
-          x - radius * 0.3, y - radius * 0.3, 0,
-          x, y, radius
-        );
+      update() {
+        this.clearCanvas();
         
-        // RGB encodes normal direction for refraction
-        // G channel = X offset, R channel = Y offset
-        const r = Math.floor(128 + 60 * alpha); // Y distortion
-        const g = Math.floor(128 + 60 * alpha); // X distortion  
-        const b = Math.floor(200 * alpha);
+        const now = Date.now();
+        if (this.lastRender === null) this.lastRender = now;
+        let deltaT = now - this.lastRender;
+        let timeScale = deltaT / ((1 / 60) * 1000);
+        if (timeScale > 1.1) timeScale = 1.1;
+        timeScale *= this.options.globalTimeScale;
+        this.lastRender = now;
         
-        gradient.addColorStop(0, `rgba(${r + 40}, ${g + 40}, ${b + 55}, ${alpha * 0.9})`);
-        gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${alpha * 0.7})`);
-        gradient.addColorStop(1, `rgba(${r - 30}, ${g - 30}, ${b - 30}, ${alpha * 0.3})`);
-        
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
-        
-        // Highlight
-        ctx.beginPath();
-        ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.25, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
-        ctx.fill();
+        this.updateDrops(timeScale);
       }
     }
     
-    // ========================================
+    // ============================================================
+    // WebGL Setup
+    // ============================================================
+    function initWebGL() {
+      gl = glCanvas.getContext('webgl', { alpha: false });
+      if (!gl) {
+        console.error('WebGL not supported');
+        return false;
+      }
+      
+      // Create shaders
+      const vertShader = createShader(gl, 'vert-shader', gl.VERTEX_SHADER);
+      const fragShader = createShader(gl, 'frag-shader', gl.FRAGMENT_SHADER);
+      
+      // Create program
+      program = gl.createProgram();
+      gl.attachShader(program, vertShader);
+      gl.attachShader(program, fragShader);
+      gl.linkProgram(program);
+      gl.useProgram(program);
+      
+      // Create rectangle (full screen quad)
+      const posBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1,  1, -1,  -1, 1,
+        -1,  1,  1, -1,   1, 1
+      ]), gl.STATIC_DRAW);
+      
+      const posLocation = gl.getAttribLocation(program, 'a_position');
+      gl.enableVertexAttribArray(posLocation);
+      gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 0, 0);
+      
+      // Texture coordinates
+      const texBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        0, 0,  1, 0,  0, 1,
+        0, 1,  1, 0,  1, 1
+      ]), gl.STATIC_DRAW);
+      
+      const texLocation = gl.getAttribLocation(program, 'a_texCoord');
+      gl.enableVertexAttribArray(texLocation);
+      gl.vertexAttribPointer(texLocation, 2, gl.FLOAT, false, 0, 0);
+      
+      // Create textures
+      waterMapTexture = createTexture(0);
+      fgTexture = createTexture(1);
+      bgTexture = createTexture(2);
+      
+      // Set uniforms
+      gl.uniform1i(gl.getUniformLocation(program, 'u_waterMap'), 0);
+      gl.uniform1i(gl.getUniformLocation(program, 'u_textureFg'), 1);
+      gl.uniform1i(gl.getUniformLocation(program, 'u_textureBg'), 2);
+      gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), width, height);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_minRefraction'), 256);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_refractionDelta'), 256);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_brightness'), 1.1);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_alphaMultiply'), 6);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_alphaSubtract'), 3);
+      
+      return true;
+    }
+    
+    function createShader(gl, id, type) {
+      const shader = gl.createShader(type);
+      const source = document.getElementById(id).text;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error('Shader error:', gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+    
+    function createTexture(unit) {
+      const texture = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      return texture;
+    }
+    
+    function updateTexture(texture, unit, source) {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    }
+    
+    // ============================================================
+    // Background textures (from camera)
+    // ============================================================
+    let textureFg, textureFgCtx;
+    let textureBg, textureBgCtx;
+    const textureBgSize = { width: 384, height: 256 };
+    const textureFgSize = { width: 192, height: 128 };
+    
+    function createBackgroundTextures() {
+      textureFg = document.createElement('canvas');
+      textureFg.width = textureFgSize.width;
+      textureFg.height = textureFgSize.height;
+      textureFgCtx = textureFg.getContext('2d');
+      
+      textureBg = document.createElement('canvas');
+      textureBg.width = textureBgSize.width;
+      textureBg.height = textureBgSize.height;
+      textureBgCtx = textureBg.getContext('2d');
+    }
+    
+    function generateTextures() {
+      // Draw camera to foreground (clear, for refraction)
+      textureFgCtx.save();
+      textureFgCtx.scale(-1, 1);
+      textureFgCtx.drawImage(video, -textureFgSize.width, 0, textureFgSize.width, textureFgSize.height);
+      textureFgCtx.restore();
+      
+      // Draw camera to background (blurred via small size)
+      textureBgCtx.save();
+      textureBgCtx.scale(-1, 1);
+      textureBgCtx.drawImage(video, -textureBgSize.width, 0, textureBgSize.width, textureBgSize.height);
+      textureBgCtx.restore();
+      
+      // Apply slight darkening to background
+      textureBgCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      textureBgCtx.fillRect(0, 0, textureBgSize.width, textureBgSize.height);
+    }
+    
+    // ============================================================
+    // Main Loop
+    // ============================================================
+    function render() {
+      // Update raindrops
+      raindrops.update();
+      
+      // Generate camera textures
+      generateTextures();
+      
+      // Update WebGL textures
+      updateTexture(waterMapTexture, 0, raindrops.canvas);
+      updateTexture(fgTexture, 1, textureFg);
+      updateTexture(bgTexture, 2, textureBg);
+      
+      // Draw
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      
+      requestAnimationFrame(render);
+    }
+    
+    // ============================================================
     // Initialize
-    // ========================================
+    // ============================================================
     async function init() {
       try {
+        // Get camera
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            facingMode: 'user',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
         });
-        
         video.srcObject = stream;
         await video.play();
         
+        // Setup canvas
         resize();
         window.addEventListener('resize', resize);
         
-        // Create small drops canvas (static background drops)
-        smallDropsCanvas = document.createElement('canvas');
-        smallDropsCtx = smallDropsCanvas.getContext('2d');
+        // Init WebGL
+        if (!initWebGL()) {
+          throw new Error('WebGL init failed');
+        }
+        
+        // Create background textures
+        createBackgroundTextures();
+        
+        // Create raindrops
+        raindrops = new Raindrops(width, height, dpi, {
+          minR: 20,
+          maxR: 50,
+          rainChance: 0.35,
+          rainLimit: 6,
+          dropletsRate: 50,
+          dropletsSize: [3, 5.5],
+          trailRate: 1,
+          trailScaleRange: [0.25, 0.35],
+          collisionRadiusIncrease: 0.0002
+        });
         
         loading.style.display = 'none';
         
-        // Start rain
-        initSmallDrops();
-        requestAnimationFrame(loop);
-        
-        // Periodically add small drops
-        setInterval(() => {
-          if (isRunning) {
-            addSmallDrops(Math.floor(5 * rainIntensity));
-          }
-        }, 100);
+        // Start
+        requestAnimationFrame(render);
         
       } catch (err) {
-        console.error('Camera error:', err);
+        console.error(err);
         loading.innerHTML = `
-          <p style="color: #ff6b6b;">カメラにアクセスできません</p>
-          <p style="margin-top: 8px; font-size: 12px; opacity: 0.6;">${err.message}</p>
+          <p style="color: #ff6b6b;">エラー: ${err.message}</p>
         `;
       }
     }
     
     function resize() {
-      width = window.innerWidth;
-      height = window.innerHeight;
+      width = window.innerWidth * dpi;
+      height = window.innerHeight * dpi;
+      glCanvas.width = width;
+      glCanvas.height = height;
+      glCanvas.style.width = window.innerWidth + 'px';
+      glCanvas.style.height = window.innerHeight + 'px';
       
-      mainCanvas.width = width;
-      mainCanvas.height = height;
-      dropCanvas.width = width;
-      dropCanvas.height = height;
+      if (gl) {
+        gl.viewport(0, 0, width, height);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), width, height);
+      }
       
-      if (smallDropsCanvas) {
-        smallDropsCanvas.width = width;
-        smallDropsCanvas.height = height;
-        initSmallDrops();
+      if (raindrops) {
+        raindrops.width = width;
+        raindrops.height = height;
+        raindrops.canvas.width = width;
+        raindrops.canvas.height = height;
+        raindrops.droplets.width = width * raindrops.dropletsPixelDensity;
+        raindrops.droplets.height = height * raindrops.dropletsPixelDensity;
       }
     }
     
-    // ========================================
-    // Small Drops (static background)
-    // ========================================
-    function initSmallDrops() {
-      if (!smallDropsCtx) return;
-      smallDropsCtx.clearRect(0, 0, width, height);
-      addSmallDrops(Math.floor(200 * rainIntensity));
-    }
-    
-    function addSmallDrops(count) {
-      if (!smallDropsCtx) return;
-      
-      for (let i = 0; i < count; i++) {
-        const x = Math.random() * width;
-        const y = Math.random() * height;
-        const radius = 1 + Math.random() * 2;
-        
-        drawSmallDrop(smallDropsCtx, x, y, radius);
-      }
-    }
-    
-    function drawSmallDrop(ctx, x, y, radius) {
-      const gradient = ctx.createRadialGradient(
-        x - radius * 0.2, y - radius * 0.2, 0,
-        x, y, radius
-      );
-      gradient.addColorStop(0, 'rgba(200, 200, 230, 0.8)');
-      gradient.addColorStop(0.5, 'rgba(150, 150, 180, 0.5)');
-      gradient.addColorStop(1, 'rgba(100, 100, 130, 0.2)');
-      
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = gradient;
-      ctx.fill();
-    }
-    
-    // ========================================
-    // Large Drops Management
-    // ========================================
-    function spawnLargeDrop() {
-      const x = Math.random() * width;
-      const y = Math.random() * (height * 0.3); // Top 30% of screen
-      const radius = 8 + Math.random() * 15;
-      
-      largeDrops.push(new Drop(x, y, radius));
-    }
-    
-    function clearDropsUnderLarge(drop) {
-      if (!smallDropsCtx) return;
-      
-      // Erase small drops under large drop using destination-out
-      smallDropsCtx.globalCompositeOperation = 'destination-out';
-      smallDropsCtx.beginPath();
-      smallDropsCtx.arc(drop.x, drop.y, drop.radius * 1.5, 0, Math.PI * 2);
-      smallDropsCtx.fill();
-      
-      // Also clear along trail
-      drop.trail.forEach(t => {
-        smallDropsCtx.beginPath();
-        smallDropsCtx.arc(t.x, t.y, t.radius * 2, 0, Math.PI * 2);
-        smallDropsCtx.fill();
-      });
-      
-      smallDropsCtx.globalCompositeOperation = 'source-over';
-    }
-    
-    // ========================================
-    // Render Loop
-    // ========================================
-    let lastTime = 0;
-    let spawnTimer = 0;
-    
-    function loop(time) {
-      const deltaTime = Math.min(time - lastTime, 50);
-      lastTime = time;
-      
-      if (isRunning) {
-        // Spawn new large drops
-        spawnTimer += deltaTime;
-        if (spawnTimer > 500 / rainIntensity && largeDrops.length < 30) {
-          spawnLargeDrop();
-          spawnTimer = 0;
-        }
-        
-        // Update large drops
-        largeDrops = largeDrops.filter(drop => {
-          const alive = drop.update(deltaTime);
-          if (drop.dying) {
-            clearDropsUnderLarge(drop);
-          }
-          return alive;
-        });
-      }
-      
-      // Draw
-      render();
-      
-      requestAnimationFrame(loop);
-    }
-    
-    function render() {
-      // Draw video background with blur effect
-      mainCtx.filter = 'blur(3px)';
-      
-      // Flip horizontally (mirror)
-      mainCtx.save();
-      mainCtx.scale(-1, 1);
-      mainCtx.drawImage(video, -width, 0, width, height);
-      mainCtx.restore();
-      
-      mainCtx.filter = 'none';
-      
-      // Apply glass/wet effect overlay
-      mainCtx.fillStyle = 'rgba(100, 120, 140, 0.1)';
-      mainCtx.fillRect(0, 0, width, height);
-      
-      // Draw refraction effect for drops
-      drawRefraction();
-      
-      // Draw drops on separate canvas
-      dropCtx.clearRect(0, 0, width, height);
-      
-      // Draw small drops
-      if (smallDropsCanvas) {
-        dropCtx.drawImage(smallDropsCanvas, 0, 0);
-      }
-      
-      // Draw large drops
-      largeDrops.forEach(drop => drop.draw(dropCtx));
-    }
-    
-    function drawRefraction() {
-      // Create refraction effect - drops show clear (unblurred) background
-      mainCtx.save();
-      
-      // For each large drop, draw clear version of video
-      largeDrops.forEach(drop => {
-        mainCtx.save();
-        
-        // Clip to drop shape
-        mainCtx.beginPath();
-        mainCtx.arc(drop.x, drop.y, drop.radius, 0, Math.PI * 2);
-        drop.trail.forEach(t => {
-          if (t.alpha > 0.3) {
-            mainCtx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
-          }
-        });
-        mainCtx.clip();
-        
-        // Draw unblurred video (flipped + inverted for refraction)
-        mainCtx.translate(drop.x, drop.y);
-        mainCtx.scale(-1.1, -1.1); // Flip and slightly magnify
-        mainCtx.translate(-drop.x, -drop.y);
-        
-        // Slight offset for refraction effect
-        const offsetX = (drop.x / width - 0.5) * 20;
-        const offsetY = (drop.y / height - 0.5) * 20;
-        
-        mainCtx.scale(-1, 1);
-        mainCtx.drawImage(video, -width + offsetX, offsetY, width, height);
-        
-        mainCtx.restore();
-      });
-      
-      mainCtx.restore();
-    }
-    
-    // ========================================
+    // ============================================================
     // UI Controls
-    // ========================================
+    // ============================================================
     document.getElementById('toggleRain').addEventListener('click', function() {
-      isRunning = !isRunning;
-      this.innerHTML = isRunning 
-        ? '<span>?</span> 停止' 
-        : '<span>?</span> 再開';
-      this.classList.toggle('active', !isRunning);
+      isRaining = !isRaining;
+      raindrops.options.raining = isRaining;
+      this.textContent = isRaining ? '? 停止' : '? 再開';
+      this.classList.toggle('active', !isRaining);
     });
     
-    document.getElementById('clearDrops').addEventListener('click', function() {
-      largeDrops = [];
-      if (smallDropsCtx) {
-        smallDropsCtx.clearRect(0, 0, width, height);
-      }
+    document.getElementById('clearBtn').addEventListener('click', function() {
+      raindrops.clearDrops();
     });
     
-    document.getElementById('rainIntensity').addEventListener('input', function() {
+    document.getElementById('rainAmount').addEventListener('input', function() {
       rainIntensity = this.value / 100;
-      if (rainIntensity < 0.1) rainIntensity = 0.1;
+      raindrops.options.rainChance = 0.35 * rainIntensity;
+      raindrops.options.dropletsRate = 50 * rainIntensity;
     });
     
-    // ========================================
     // Start
-    // ========================================
     init();
   </script>
 </body>
