@@ -254,8 +254,8 @@
 
       <div class="slider">
         <span class="slider-label">Fade</span>
-        <input id="fadeSpeed" type="range" min="0" max="0.02" step="0.001" value="0.003" />
-        <span id="fadeVal" class="slider-value">0.003</span>
+        <input id="fadeSpeed" type="range" min="0" max="0.002" step="0.0001" value="0.0005" />
+        <span id="fadeVal" class="slider-value">0.0005</span>
       </div>
     </div>
 
@@ -421,27 +421,46 @@
 
   let fingerTip = null;
   
-  // Check if a finger is extended (tip higher than PIP joint)
-  function isFingerExtended(landmarks, tipIdx, pipIdx) {
-    return landmarks[tipIdx].y < landmarks[pipIdx].y;
+  // Check if a finger is clearly extended
+  // Uses distance threshold for more reliable detection
+  function isFingerExtended(landmarks, tipIdx, pipIdx, mcpIdx) {
+    const tip = landmarks[tipIdx];
+    const pip = landmarks[pipIdx];
+    const mcp = landmarks[mcpIdx];
+    
+    // Finger is extended if tip is significantly above PIP
+    // and the finger is relatively straight
+    const tipAbovePip = (pip.y - tip.y) > 0.03; // needs to be clearly above
+    const pipAboveMcp = (mcp.y - pip.y) > 0.01; // PIP above MCP
+    
+    return tipAbovePip && pipAboveMcp;
+  }
+  
+  // Check if finger is clearly folded/curled
+  function isFingerFolded(landmarks, tipIdx, pipIdx, mcpIdx) {
+    const tip = landmarks[tipIdx];
+    const pip = landmarks[pipIdx];
+    const mcp = landmarks[mcpIdx];
+    
+    // Finger is folded if tip is below or near PIP level
+    return (tip.y - pip.y) > -0.02;
   }
   
   // Check if ONLY index finger is extended (pointing gesture)
   function isOnlyIndexFingerUp(landmarks) {
     // Finger landmark indices:
-    // Index: tip=8, pip=6
-    // Middle: tip=12, pip=10
-    // Ring: tip=16, pip=14
-    // Pinky: tip=20, pip=18
-    // Thumb: tip=4, ip=3, mcp=2 (different check)
+    // Index: tip=8, pip=6, mcp=5
+    // Middle: tip=12, pip=10, mcp=9
+    // Ring: tip=16, pip=14, mcp=13
+    // Pinky: tip=20, pip=18, mcp=17
     
-    const indexUp = isFingerExtended(landmarks, 8, 6);
-    const middleUp = isFingerExtended(landmarks, 12, 10);
-    const ringUp = isFingerExtended(landmarks, 16, 14);
-    const pinkyUp = isFingerExtended(landmarks, 20, 18);
+    const indexUp = isFingerExtended(landmarks, 8, 6, 5);
+    const middleFolded = isFingerFolded(landmarks, 12, 10, 9);
+    const ringFolded = isFingerFolded(landmarks, 16, 14, 13);
+    const pinkyFolded = isFingerFolded(landmarks, 20, 18, 17);
     
-    // Only index finger should be up, others should be down
-    return indexUp && !middleUp && !ringUp && !pinkyUp;
+    // Index must be clearly up, AND others must be clearly folded
+    return indexUp && middleFolded && ringFolded && pinkyFolded;
   }
   
   hands.onResults((results) => {
@@ -480,17 +499,16 @@
         }
         lastFingerPos = { ...fingerTip };
       } else {
-        // Count extended fingers for status message
-        const indexUp = isFingerExtended(landmarks, 8, 6);
-        const middleUp = isFingerExtended(landmarks, 12, 10);
-        const ringUp = isFingerExtended(landmarks, 16, 14);
-        const pinkyUp = isFingerExtended(landmarks, 20, 18);
-        const count = [indexUp, middleUp, ringUp, pinkyUp].filter(x => x).length;
+        // Check gesture for status message
+        const indexUp = isFingerExtended(landmarks, 8, 6, 5);
+        const middleFolded = isFingerFolded(landmarks, 12, 10, 9);
+        const ringFolded = isFingerFolded(landmarks, 16, 14, 13);
+        const pinkyFolded = isFingerFolded(landmarks, 20, 18, 17);
         
-        if (count === 0) {
-          statusText.textContent = '? Fist - raise index finger';
-        } else if (count > 1) {
-          statusText.textContent = '?? Too many fingers - use only ??';
+        if (!indexUp) {
+          statusText.textContent = '? Raise index finger';
+        } else if (!middleFolded || !ringFolded || !pinkyFolded) {
+          statusText.textContent = '?? Fold other fingers';
         } else {
           statusText.textContent = '?? Point to draw';
         }
