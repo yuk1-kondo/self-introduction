@@ -699,19 +699,34 @@
             drop.spreadX *= Math.pow(0.4, timeScale);
             drop.spreadY *= Math.pow(0.7, timeScale);
             
-            // Update position (with anti-gravity support)
-            const moved = drop.momentum > 0;
-            const gravityDir = antiGravity ? -1 : 1;
+            // Update position (with SUPER anti-gravity support)
+            const moved = drop.momentum > 0 || antiGravity;
             
-            if (moved && !drop.killed) {
-              drop.y += drop.momentum * this.options.globalTimeScale * gravityDir;
-              drop.x += drop.momentumX * this.options.globalTimeScale;
-              
-              // Kill drops that exit the screen
-              if (gravityDir > 0 && drop.y > this.height / this.scale + drop.r) {
-                drop.killed = true;
-              } else if (gravityDir < 0 && drop.y < -drop.r) {
-                drop.killed = true;
+            if (!drop.killed) {
+              if (antiGravity) {
+                // SUPER anti-gravity: strong upward force + boost momentum
+                drop.momentum = Math.max(drop.momentum, 3); // Minimum momentum
+                drop.momentum += 0.5 * timeScale; // Accelerate upward!
+                drop.y -= drop.momentum * this.options.globalTimeScale * 2.5; // 2.5x stronger!
+                
+                // Add some wobble for effect
+                drop.momentumX += (Math.random() - 0.5) * 0.5;
+                drop.spreadY = Math.min(drop.spreadY + 0.1, 1.5);
+                
+                // Kill when exits top
+                if (drop.y < -drop.r) {
+                  drop.killed = true;
+                }
+              } else {
+                // Normal gravity
+                if (moved) {
+                  drop.y += drop.momentum * this.options.globalTimeScale;
+                  drop.x += drop.momentumX * this.options.globalTimeScale;
+                  
+                  if (drop.y > this.height / this.scale + drop.r) {
+                    drop.killed = true;
+                  }
+                }
               }
             }
             
