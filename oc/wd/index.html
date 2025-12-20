@@ -111,11 +111,11 @@
   
   <div class="controls">
     <div class="slider-container">
-      <span>?</span>
+      <span>Rain</span>
       <input type="range" id="rainAmount" min="0" max="100" value="50">
     </div>
-    <button class="btn" id="toggleRain">? 停止</button>
-    <button class="btn" id="clearBtn">? クリア</button>
+    <button class="btn" id="toggleRain">Pause</button>
+    <button class="btn" id="clearBtn">Clear</button>
   </div>
 
   <!-- Vertex Shader -->
@@ -820,13 +820,13 @@
     async function init() {
       try {
         // Load Codrops drop images from local files
-        loading.querySelector('p').textContent = '画像を読み込み中...';
+        loading.querySelector('p').textContent = 'Loading images...';
         const { dropColor, dropAlpha } = await loadDropImages();
         dropColorImg = dropColor;
         dropAlphaImg = dropAlpha;
         
         // Get camera
-        loading.querySelector('p').textContent = 'カメラを初期化中...';
+        loading.querySelector('p').textContent = 'Initializing camera...';
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
         });
@@ -900,7 +900,7 @@
     document.getElementById('toggleRain').addEventListener('click', function() {
       isRaining = !isRaining;
       raindrops.options.raining = isRaining;
-      this.textContent = isRaining ? '? 停止' : '? 再開';
+      this.textContent = isRaining ? 'Pause' : 'Resume';
       this.classList.toggle('active', !isRaining);
     });
     
