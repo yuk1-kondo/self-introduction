@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Foggy Window</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #222;
+      --text: #fff;
+      --text-muted: #666;
+    }
+    
+    html, body { 
+      background: var(--bg);
+      color: var(--text); 
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .app { 
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .logo {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .version {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: 8px;
+    }
+    
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .btn:hover {
+      background: var(--surface);
+      border-color: #333;
+    }
+    
+    .btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+    
+    .btn-primary:hover {
+      opacity: 0.9;
+      background: var(--text);
+    }
+    
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+    
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      min-width: 60px;
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 80px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--text);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    
+    .slider-value {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      min-width: 32px;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .stage { 
+      flex: 1;
+      display: grid; 
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
+      position: relative;
+    }
+    
+    .canvas-container {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    
+    canvas { 
+      display: block;
+    }
+    
+    #fogCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    
+    #drawCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    
+    video { display: none; }
+    
+    .status { 
+      position: fixed; 
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      padding: 12px 24px; 
+      border-radius: 100px; 
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 100;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .hint {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.7);
+      padding: 20px 40px;
+      border-radius: 16px;
+      font-size: 18px;
+      font-weight: 500;
+      z-index: 200;
+      text-align: center;
+      pointer-events: none;
+    }
+    
+    @media (max-width: 640px) {
+      header { padding: 16px 20px; }
+      .controls { padding: 12px 20px; gap: 6px; }
+      .btn { padding: 8px 12px; font-size: 12px; }
+      .slider { gap: 8px; }
+      input[type="range"] { width: 60px; }
+      .divider { display: none; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <span class="logo">Foggy Window</span>
+        <span class="version">v1.0</span>
+      </div>
+    </header>
+    
+    <div class="controls">
+      <button id="btnStart" class="btn btn-primary">Start</button>
+      <button id="btnClear" class="btn" disabled>Reset Fog</button>
+      
+      <span class="divider"></span>
+
+      <div class="slider">
+        <span class="slider-label">Fog</span>
+        <input id="fogAmount" type="range" min="0" max="1" step="0.01" value="0.85" />
+        <span id="fogVal" class="slider-value">0.85</span>
+      </div>
+
+      <div class="slider">
+        <span class="slider-label">Brush</span>
+        <input id="brushSize" type="range" min="10" max="80" step="1" value="40" />
+        <span id="brushVal" class="slider-value">40</span>
+      </div>
+
+      <div class="slider">
+        <span class="slider-label">Fade</span>
+        <input id="fadeSpeed" type="range" min="0" max="0.02" step="0.001" value="0.003" />
+        <span id="fadeVal" class="slider-value">0.003</span>
+      </div>
+    </div>
+
+    <div id="hint" class="hint" style="display:none;">
+      ?? Use your finger to draw on the foggy window!
+    </div>
+
+    <div id="status" class="status" style="display:none;">
+      <span id="statusText">Tracking hand...</span>
+    </div>
+
+    <div class="stage">
+      <video id="video" playsinline></video>
+      <div class="canvas-container">
+        <canvas id="videoCanvas"></canvas>
+        <canvas id="fogCanvas"></canvas>
+        <canvas id="drawCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+<script>
+(async () => {
+  const video = document.getElementById('video');
+  const videoCanvas = document.getElementById('videoCanvas');
+  const fogCanvas = document.getElementById('fogCanvas');
+  const drawCanvas = document.getElementById('drawCanvas');
+  const btnStart = document.getElementById('btnStart');
+  const btnClear = document.getElementById('btnClear');
+  const hintEl = document.getElementById('hint');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+
+  const fogAmountEl = document.getElementById('fogAmount');
+  const brushSizeEl = document.getElementById('brushSize');
+  const fadeSpeedEl = document.getElementById('fadeSpeed');
+  const fogVal = document.getElementById('fogVal');
+  const brushVal = document.getElementById('brushVal');
+  const fadeVal = document.getElementById('fadeVal');
+
+  const videoCtx = videoCanvas.getContext('2d');
+  const fogCtx = fogCanvas.getContext('2d');
+  const drawCtx = drawCanvas.getContext('2d');
+
+  let W = 640, H = 480;
+  let running = false;
+  let handDetected = false;
+  let lastFingerPos = null;
+
+  // Fog mask - stores where fog has been wiped away (0 = fog, 1 = clear)
+  let fogMask = null;
+
+  function syncUI() {
+    fogVal.textContent = (+fogAmountEl.value).toFixed(2);
+    brushVal.textContent = (+brushSizeEl.value).toFixed(0);
+    fadeVal.textContent = (+fadeSpeedEl.value).toFixed(3);
+  }
+  [fogAmountEl, brushSizeEl, fadeSpeedEl].forEach(el => el.addEventListener('input', syncUI));
+  syncUI();
+
+  function initFogMask() {
+    fogMask = new Float32Array(W * H);
+    // All fog (0 = full fog)
+    fogMask.fill(0);
+  }
+
+  function wipeFog(x, y, radius) {
+    const r2 = radius * radius;
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const px = ix + dx;
+        const py = iy + dy;
+        if (px < 0 || px >= W || py < 0 || py >= H) continue;
+        
+        const dist2 = dx * dx + dy * dy;
+        if (dist2 < r2) {
+          // Soft brush - center is clearer
+          const softness = 1 - Math.sqrt(dist2) / radius;
+          const idx = py * W + px;
+          fogMask[idx] = Math.min(1, fogMask[idx] + softness * 0.3);
+        }
+      }
+    }
+  }
+
+  function fadeFog() {
+    const fadeSpeed = +fadeSpeedEl.value;
+    if (fadeSpeed <= 0) return;
+    
+    for (let i = 0; i < fogMask.length; i++) {
+      if (fogMask[i] > 0) {
+        fogMask[i] = Math.max(0, fogMask[i] - fadeSpeed);
+      }
+    }
+  }
+
+  function renderFog() {
+    const fogAmount = +fogAmountEl.value;
+    
+    // Clear fog canvas
+    fogCtx.clearRect(0, 0, W, H);
+    
+    // Draw blurred version as fog base
+    fogCtx.filter = 'blur(12px)';
+    fogCtx.globalAlpha = fogAmount;
+    fogCtx.drawImage(videoCanvas, 0, 0);
+    fogCtx.filter = 'none';
+    
+    // Add white overlay for condensation effect
+    fogCtx.globalAlpha = fogAmount * 0.6;
+    fogCtx.fillStyle = '#ffffff';
+    fogCtx.fillRect(0, 0, W, H);
+    
+    // Add some noise texture for realism
+    fogCtx.globalAlpha = fogAmount * 0.15;
+    for (let i = 0; i < 2000; i++) {
+      const x = Math.random() * W;
+      const y = Math.random() * H;
+      const size = Math.random() * 2 + 0.5;
+      fogCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.5})`;
+      fogCtx.beginPath();
+      fogCtx.arc(x, y, size, 0, Math.PI * 2);
+      fogCtx.fill();
+    }
+    
+    fogCtx.globalAlpha = 1;
+    
+    // Cut out the wiped areas using the fog mask
+    const imageData = fogCtx.getImageData(0, 0, W, H);
+    const data = imageData.data;
+    
+    for (let i = 0; i < fogMask.length; i++) {
+      const clearness = fogMask[i];
+      if (clearness > 0) {
+        // Make this pixel more transparent based on how much it's been wiped
+        const alphaIdx = i * 4 + 3;
+        data[alphaIdx] = Math.floor(data[alphaIdx] * (1 - clearness));
+      }
+    }
+    
+    fogCtx.putImageData(imageData, 0, 0);
+  }
+
+  function renderDrawTrail() {
+    // Draw a subtle trail showing recent finger movement
+    drawCtx.clearRect(0, 0, W, H);
+  }
+
+  // MediaPipe Hands setup
+  const hands = new Hands({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  });
+  
+  hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.5
+  });
+
+  let fingerTip = null;
+  
+  hands.onResults((results) => {
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      handDetected = true;
+      const landmarks = results.multiHandLandmarks[0];
+      
+      // Index finger tip is landmark 8
+      const tip = landmarks[8];
+      // Flip X because camera is mirrored
+      fingerTip = {
+        x: (1 - tip.x) * W,
+        y: tip.y * H
+      };
+      
+      // Check if finger is extended (pointing gesture)
+      // Compare index finger tip (8) to index finger PIP (6)
+      const pip = landmarks[6];
+      const isPointing = tip.y < pip.y; // finger extended upward in image space
+      
+      if (isPointing) {
+        statusText.textContent = '?? Drawing...';
+        const brushRadius = +brushSizeEl.value / 2;
+        wipeFog(fingerTip.x, fingerTip.y, brushRadius);
+        
+        // Draw line from last position for smooth strokes
+        if (lastFingerPos) {
+          const dx = fingerTip.x - lastFingerPos.x;
+          const dy = fingerTip.y - lastFingerPos.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const steps = Math.ceil(dist / 5);
+          for (let i = 0; i < steps; i++) {
+            const t = i / steps;
+            const ix = lastFingerPos.x + dx * t;
+            const iy = lastFingerPos.y + dy * t;
+            wipeFog(ix, iy, brushRadius);
+          }
+        }
+        lastFingerPos = { ...fingerTip };
+      } else {
+        statusText.textContent = '?? Point to draw';
+        lastFingerPos = null;
+      }
+    } else {
+      handDetected = false;
+      fingerTip = null;
+      lastFingerPos = null;
+      statusText.textContent = 'Show your hand...';
+    }
+  });
+
+  async function start() {
+    if (running) return;
+    
+    btnStart.disabled = true;
+    btnStart.textContent = 'Starting...';
+    
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    
+    video.srcObject = stream;
+    await video.play();
+    
+    W = video.videoWidth;
+    H = video.videoHeight;
+    
+    videoCanvas.width = W;
+    videoCanvas.height = H;
+    fogCanvas.width = W;
+    fogCanvas.height = H;
+    drawCanvas.width = W;
+    drawCanvas.height = H;
+    
+    initFogMask();
+    
+    running = true;
+    btnStart.textContent = 'Running';
+    btnClear.disabled = false;
+    statusEl.style.display = 'flex';
+    hintEl.style.display = 'block';
+    
+    setTimeout(() => { hintEl.style.display = 'none'; }, 4000);
+    
+    loop();
+  }
+
+  async function loop() {
+    if (!running) return;
+    
+    // Draw video frame (flipped horizontally)
+    videoCtx.save();
+    videoCtx.scale(-1, 1);
+    videoCtx.drawImage(video, -W, 0, W, H);
+    videoCtx.restore();
+    
+    // Process hand detection
+    await hands.send({ image: video });
+    
+    // Fade fog back
+    fadeFog();
+    
+    // Render fog overlay
+    renderFog();
+    
+    // Render finger trail
+    renderDrawTrail();
+    
+    requestAnimationFrame(loop);
+  }
+
+  btnStart.addEventListener('click', start);
+  
+  btnClear.addEventListener('click', () => {
+    initFogMask();
+  });
+})();
+</script>
+</body>
+</html>
