@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Rain Effect - Water Droplets</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    video {
+      display: none;
+    }
+    canvas {
+      display: block;
+    }
+    #mainCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #dropCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    
+    /* UI Controls */
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 12px 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .btn.active {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+    
+    /* Loading */
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      color: #fff;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    #loading p {
+      margin-top: 16px;
+      opacity: 0.7;
+    }
+    
+    /* Slider */
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+      font-size: 12px;
+    }
+    .slider-container input[type="range"] {
+      width: 80px;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.2);
+      height: 4px;
+      border-radius: 2px;
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>カメラを起動中...</p>
+  </div>
+  
+  <div id="container">
+    <video id="video" playsinline></video>
+    <canvas id="mainCanvas"></canvas>
+    <canvas id="dropCanvas"></canvas>
+  </div>
+  
+  <div class="controls">
+    <div class="slider-container">
+      <span>? 雨量</span>
+      <input type="range" id="rainIntensity" min="0" max="100" value="50">
+    </div>
+    <button class="btn" id="toggleRain">
+      <span>?</span> 停止
+    </button>
+    <button class="btn" id="clearDrops">
+      <span>?</span> クリア
+    </button>
+  </div>
+
+  <script>
+    // ========================================
+    // Rain Effect - Realistic Water Droplets
+    // Based on Codrops Rain Effect technique
+    // ========================================
+    
+    const video = document.getElementById('video');
+    const mainCanvas = document.getElementById('mainCanvas');
+    const dropCanvas = document.getElementById('dropCanvas');
+    const mainCtx = mainCanvas.getContext('2d');
+    const dropCtx = dropCanvas.getContext('2d');
+    const loading = document.getElementById('loading');
+    
+    let width, height;
+    let isRunning = true;
+    let rainIntensity = 0.5;
+    
+    // Drop collections
+    let largeDrops = [];
+    let smallDropsCanvas;
+    let smallDropsCtx;
+    
+    // ========================================
+    // Drop Class - Large drops with physics
+    // ========================================
+    class Drop {
+      constructor(x, y, radius) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.baseRadius = radius;
+        this.velocity = 0;
+        this.gravity = 0.01 + Math.random() * 0.02;
+        this.trail = [];
+        this.maxTrailLength = 30;
+        this.life = 1;
+        this.dying = false;
+        this.wobble = Math.random() * Math.PI * 2;
+        this.wobbleSpeed = 0.05 + Math.random() * 0.05;
+      }
+      
+      update(deltaTime) {
+        // Wobble effect
+        this.wobble += this.wobbleSpeed;
+        
+        // Accumulate mass from nearby small drops
+        if (!this.dying && Math.random() < 0.02 * rainIntensity) {
+          this.radius += 0.1;
+        }
+        
+        // Start falling when too heavy
+        if (this.radius > this.baseRadius * 2.5 && !this.dying) {
+          this.dying = true;
+        }
+        
+        if (this.dying) {
+          // Accelerate downward
+          this.velocity += this.gravity * deltaTime;
+          this.y += this.velocity * deltaTime;
+          
+          // Leave trail
+          if (this.trail.length === 0 || 
+              Math.abs(this.y - this.trail[this.trail.length - 1].y) > 3) {
+            this.trail.push({
+              x: this.x + Math.sin(this.wobble) * 2,
+              y: this.y,
+              radius: this.radius * 0.3,
+              alpha: 1
+            });
+            
+            // Limit trail length
+            if (this.trail.length > this.maxTrailLength) {
+              this.trail.shift();
+            }
+          }
+          
+          // Shrink while falling
+          this.radius *= 0.995;
+          
+          // Fade trail
+          this.trail.forEach(t => {
+            t.alpha *= 0.98;
+            t.radius *= 0.99;
+          });
+        }
+        
+        // Remove dead drops
+        return this.y < height + 50 && this.radius > 1;
+      }
+      
+      draw(ctx) {
+        // Draw trail
+        this.trail.forEach(t => {
+          if (t.alpha > 0.1) {
+            this.drawDropShape(ctx, t.x, t.y, t.radius, t.alpha * 0.5);
+          }
+        });
+        
+        // Draw main drop
+        const wobbleX = Math.sin(this.wobble) * (this.dying ? 2 : 0.5);
+        this.drawDropShape(ctx, this.x + wobbleX, this.y, this.radius, 1);
+      }
+      
+      drawDropShape(ctx, x, y, radius, alpha) {
+        // Create gradient for 3D effect (normal mapping simulation)
+        const gradient = ctx.createRadialGradient(
+          x - radius * 0.3, y - radius * 0.3, 0,
+          x, y, radius
+        );
+        
+        // RGB encodes normal direction for refraction
+        // G channel = X offset, R channel = Y offset
+        const r = Math.floor(128 + 60 * alpha); // Y distortion
+        const g = Math.floor(128 + 60 * alpha); // X distortion  
+        const b = Math.floor(200 * alpha);
+        
+        gradient.addColorStop(0, `rgba(${r + 40}, ${g + 40}, ${b + 55}, ${alpha * 0.9})`);
+        gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${alpha * 0.7})`);
+        gradient.addColorStop(1, `rgba(${r - 30}, ${g - 30}, ${b - 30}, ${alpha * 0.3})`);
+        
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        // Highlight
+        ctx.beginPath();
+        ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.25, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+        ctx.fill();
+      }
+    }
+    
+    // ========================================
+    // Initialize
+    // ========================================
+    async function init() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        
+        video.srcObject = stream;
+        await video.play();
+        
+        resize();
+        window.addEventListener('resize', resize);
+        
+        // Create small drops canvas (static background drops)
+        smallDropsCanvas = document.createElement('canvas');
+        smallDropsCtx = smallDropsCanvas.getContext('2d');
+        
+        loading.style.display = 'none';
+        
+        // Start rain
+        initSmallDrops();
+        requestAnimationFrame(loop);
+        
+        // Periodically add small drops
+        setInterval(() => {
+          if (isRunning) {
+            addSmallDrops(Math.floor(5 * rainIntensity));
+          }
+        }, 100);
+        
+      } catch (err) {
+        console.error('Camera error:', err);
+        loading.innerHTML = `
+          <p style="color: #ff6b6b;">カメラにアクセスできません</p>
+          <p style="margin-top: 8px; font-size: 12px; opacity: 0.6;">${err.message}</p>
+        `;
+      }
+    }
+    
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      
+      mainCanvas.width = width;
+      mainCanvas.height = height;
+      dropCanvas.width = width;
+      dropCanvas.height = height;
+      
+      if (smallDropsCanvas) {
+        smallDropsCanvas.width = width;
+        smallDropsCanvas.height = height;
+        initSmallDrops();
+      }
+    }
+    
+    // ========================================
+    // Small Drops (static background)
+    // ========================================
+    function initSmallDrops() {
+      if (!smallDropsCtx) return;
+      smallDropsCtx.clearRect(0, 0, width, height);
+      addSmallDrops(Math.floor(200 * rainIntensity));
+    }
+    
+    function addSmallDrops(count) {
+      if (!smallDropsCtx) return;
+      
+      for (let i = 0; i < count; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const radius = 1 + Math.random() * 2;
+        
+        drawSmallDrop(smallDropsCtx, x, y, radius);
+      }
+    }
+    
+    function drawSmallDrop(ctx, x, y, radius) {
+      const gradient = ctx.createRadialGradient(
+        x - radius * 0.2, y - radius * 0.2, 0,
+        x, y, radius
+      );
+      gradient.addColorStop(0, 'rgba(200, 200, 230, 0.8)');
+      gradient.addColorStop(0.5, 'rgba(150, 150, 180, 0.5)');
+      gradient.addColorStop(1, 'rgba(100, 100, 130, 0.2)');
+      
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+    
+    // ========================================
+    // Large Drops Management
+    // ========================================
+    function spawnLargeDrop() {
+      const x = Math.random() * width;
+      const y = Math.random() * (height * 0.3); // Top 30% of screen
+      const radius = 8 + Math.random() * 15;
+      
+      largeDrops.push(new Drop(x, y, radius));
+    }
+    
+    function clearDropsUnderLarge(drop) {
+      if (!smallDropsCtx) return;
+      
+      // Erase small drops under large drop using destination-out
+      smallDropsCtx.globalCompositeOperation = 'destination-out';
+      smallDropsCtx.beginPath();
+      smallDropsCtx.arc(drop.x, drop.y, drop.radius * 1.5, 0, Math.PI * 2);
+      smallDropsCtx.fill();
+      
+      // Also clear along trail
+      drop.trail.forEach(t => {
+        smallDropsCtx.beginPath();
+        smallDropsCtx.arc(t.x, t.y, t.radius * 2, 0, Math.PI * 2);
+        smallDropsCtx.fill();
+      });
+      
+      smallDropsCtx.globalCompositeOperation = 'source-over';
+    }
+    
+    // ========================================
+    // Render Loop
+    // ========================================
+    let lastTime = 0;
+    let spawnTimer = 0;
+    
+    function loop(time) {
+      const deltaTime = Math.min(time - lastTime, 50);
+      lastTime = time;
+      
+      if (isRunning) {
+        // Spawn new large drops
+        spawnTimer += deltaTime;
+        if (spawnTimer > 500 / rainIntensity && largeDrops.length < 30) {
+          spawnLargeDrop();
+          spawnTimer = 0;
+        }
+        
+        // Update large drops
+        largeDrops = largeDrops.filter(drop => {
+          const alive = drop.update(deltaTime);
+          if (drop.dying) {
+            clearDropsUnderLarge(drop);
+          }
+          return alive;
+        });
+      }
+      
+      // Draw
+      render();
+      
+      requestAnimationFrame(loop);
+    }
+    
+    function render() {
+      // Draw video background with blur effect
+      mainCtx.filter = 'blur(3px)';
+      
+      // Flip horizontally (mirror)
+      mainCtx.save();
+      mainCtx.scale(-1, 1);
+      mainCtx.drawImage(video, -width, 0, width, height);
+      mainCtx.restore();
+      
+      mainCtx.filter = 'none';
+      
+      // Apply glass/wet effect overlay
+      mainCtx.fillStyle = 'rgba(100, 120, 140, 0.1)';
+      mainCtx.fillRect(0, 0, width, height);
+      
+      // Draw refraction effect for drops
+      drawRefraction();
+      
+      // Draw drops on separate canvas
+      dropCtx.clearRect(0, 0, width, height);
+      
+      // Draw small drops
+      if (smallDropsCanvas) {
+        dropCtx.drawImage(smallDropsCanvas, 0, 0);
+      }
+      
+      // Draw large drops
+      largeDrops.forEach(drop => drop.draw(dropCtx));
+    }
+    
+    function drawRefraction() {
+      // Create refraction effect - drops show clear (unblurred) background
+      mainCtx.save();
+      
+      // For each large drop, draw clear version of video
+      largeDrops.forEach(drop => {
+        mainCtx.save();
+        
+        // Clip to drop shape
+        mainCtx.beginPath();
+        mainCtx.arc(drop.x, drop.y, drop.radius, 0, Math.PI * 2);
+        drop.trail.forEach(t => {
+          if (t.alpha > 0.3) {
+            mainCtx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+          }
+        });
+        mainCtx.clip();
+        
+        // Draw unblurred video (flipped + inverted for refraction)
+        mainCtx.translate(drop.x, drop.y);
+        mainCtx.scale(-1.1, -1.1); // Flip and slightly magnify
+        mainCtx.translate(-drop.x, -drop.y);
+        
+        // Slight offset for refraction effect
+        const offsetX = (drop.x / width - 0.5) * 20;
+        const offsetY = (drop.y / height - 0.5) * 20;
+        
+        mainCtx.scale(-1, 1);
+        mainCtx.drawImage(video, -width + offsetX, offsetY, width, height);
+        
+        mainCtx.restore();
+      });
+      
+      mainCtx.restore();
+    }
+    
+    // ========================================
+    // UI Controls
+    // ========================================
+    document.getElementById('toggleRain').addEventListener('click', function() {
+      isRunning = !isRunning;
+      this.innerHTML = isRunning 
+        ? '<span>?</span> 停止' 
+        : '<span>?</span> 再開';
+      this.classList.toggle('active', !isRunning);
+    });
+    
+    document.getElementById('clearDrops').addEventListener('click', function() {
+      largeDrops = [];
+      if (smallDropsCtx) {
+        smallDropsCtx.clearRect(0, 0, width, height);
+      }
+    });
+    
+    document.getElementById('rainIntensity').addEventListener('input', function() {
+      rainIntensity = this.value / 100;
+      if (rainIntensity < 0.1) rainIntensity = 0.1;
+    });
+    
+    // ========================================
+    // Start
+    // ========================================
+    init();
+  </script>
+</body>
+</html>
