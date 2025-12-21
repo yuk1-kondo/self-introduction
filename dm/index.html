@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Distortion Mirror - Ultra Q Style</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #222;
+      --text: #fff;
+      --text-muted: #666;
+      --accent: #8b5cf6;
+    }
+    
+    html, body { 
+      background: var(--bg);
+      color: var(--text); 
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .app { 
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .logo {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .btn:hover {
+      background: var(--surface);
+      border-color: #333;
+    }
+    
+    .btn.active {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+    
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 80px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--text);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    .stage { 
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .canvas-container {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #glCanvas { 
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    video { display: none; }
+    
+    .status { 
+      position: fixed; 
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      padding: 12px 24px; 
+      border-radius: 100px; 
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 100;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .status.active { 
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    
+    .status.active .status-dot {
+      background: var(--bg);
+      animation: pulse 0.5s infinite alternate;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.3); opacity: 0.7; }
+    }
+    
+    #loading {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    #loading p { margin-top: 16px; color: var(--text-muted); }
+    
+    /* Distortion indicator */
+    .distortion-meter {
+      position: fixed;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 200px;
+      background: var(--surface);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    
+    .distortion-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: linear-gradient(to top, var(--accent), #c084fc);
+      border-radius: 4px;
+      transition: height 0.1s ease;
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 640px) {
+      header { 
+        padding: 16px 20px; 
+        flex-direction: column;
+        gap: 8px;
+      }
+      .hint { font-size: 10px; }
+      .controls { 
+        padding: 12px 20px; 
+        gap: 6px; 
+      }
+      .btn { padding: 8px 12px; font-size: 12px; }
+      .slider { gap: 8px; }
+      input[type="range"] { width: 60px; }
+      .divider { display: none; }
+      .status { 
+        padding: 10px 16px; 
+        font-size: 12px;
+        bottom: 16px;
+      }
+      .distortion-meter {
+        right: 12px;
+        height: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Initializing...</p>
+  </div>
+  
+  <div class="app">
+    <header>
+      <div class="logo">DISTORTION MIRROR</div>
+      <div class="hint">✊ Fist = Activate Distortion | Hold to increase</div>
+    </header>
+    
+    <div class="controls">
+      <div class="slider">
+        <span class="slider-label">Max Strength</span>
+        <input type="range" id="strengthSlider" min="1" max="10" value="5">
+      </div>
+      <div class="divider"></div>
+      <button class="btn" id="modeSwirl">Swirl</button>
+      <button class="btn" id="modeBulge">Bulge</button>
+      <button class="btn" id="modeWave">Wave</button>
+      <div class="divider"></div>
+      <button class="btn" id="resetBtn">Reset</button>
+    </div>
+    
+    <div class="stage">
+      <div class="canvas-container">
+        <video id="video" playsinline></video>
+        <canvas id="glCanvas"></canvas>
+      </div>
+    </div>
+    
+    <div class="distortion-meter">
+      <div class="distortion-fill" id="distortionFill" style="height: 0%"></div>
+    </div>
+    
+    <div class="status" id="gestureStatus">
+      <div class="status-dot"></div>
+      <span>Hand tracking ready</span>
+    </div>
+  </div>
+
+  <!-- Vertex Shader -->
+  <script id="vert-shader" type="x-shader/x-vertex">
+    precision mediump float;
+    attribute vec2 a_position;
+    attribute vec2 a_texCoord;
+    varying vec2 v_texCoord;
+    
+    void main() {
+      gl_Position = vec4(a_position, 0.0, 1.0);
+      v_texCoord = a_texCoord;
+    }
+  </script>
+
+  <!-- Fragment Shader - Ultra Q Style Distortion -->
+  <script id="frag-shader" type="x-shader/x-fragment">
+    precision mediump float;
+    
+    uniform sampler2D u_texture;
+    uniform vec2 u_resolution;
+    uniform float u_time;
+    uniform float u_distortion;  // 0.0 - 1.0
+    uniform int u_mode;          // 0: swirl, 1: bulge, 2: wave
+    uniform vec2 u_center;       // distortion center (normalized)
+    
+    varying vec2 v_texCoord;
+    
+    const float PI = 3.14159265359;
+    
+    // Swirl effect (Ultra Q style)
+    vec2 swirl(vec2 uv, vec2 center, float strength) {
+      vec2 delta = uv - center;
+      float dist = length(delta);
+      float maxDist = 0.7;
+      
+      if (dist < maxDist) {
+        float factor = 1.0 - (dist / maxDist);
+        float angle = factor * factor * strength * 4.0 * PI;
+        
+        float s = sin(angle);
+        float c = cos(angle);
+        delta = vec2(
+          delta.x * c - delta.y * s,
+          delta.x * s + delta.y * c
+        );
+      }
+      
+      return center + delta;
+    }
+    
+    // Bulge effect (fisheye-like)
+    vec2 bulge(vec2 uv, vec2 center, float strength) {
+      vec2 delta = uv - center;
+      float dist = length(delta);
+      float maxDist = 0.6;
+      
+      if (dist < maxDist && dist > 0.0) {
+        float factor = dist / maxDist;
+        float bulgeAmount = pow(factor, 1.0 + strength * 2.0);
+        delta = delta * (bulgeAmount / factor);
+      }
+      
+      return center + delta;
+    }
+    
+    // Wave effect
+    vec2 wave(vec2 uv, vec2 center, float strength, float time) {
+      vec2 delta = uv - center;
+      float dist = length(delta);
+      
+      float wave1 = sin(dist * 20.0 - time * 3.0) * strength * 0.03;
+      float wave2 = sin(dist * 15.0 + time * 2.0) * strength * 0.02;
+      
+      vec2 offset = normalize(delta + 0.001) * (wave1 + wave2);
+      
+      return uv + offset;
+    }
+    
+    void main() {
+      // Flip UV for selfie camera
+      vec2 uv = vec2(1.0 - v_texCoord.x, v_texCoord.y);
+      
+      vec2 distortedUV = uv;
+      
+      if (u_distortion > 0.001) {
+        vec2 center = vec2(1.0 - u_center.x, u_center.y);
+        
+        if (u_mode == 0) {
+          // Swirl (Ultra Q style)
+          distortedUV = swirl(uv, center, u_distortion);
+        } else if (u_mode == 1) {
+          // Bulge
+          distortedUV = bulge(uv, center, u_distortion);
+        } else {
+          // Wave
+          distortedUV = wave(uv, center, u_distortion, u_time);
+        }
+      }
+      
+      // Clamp UV to valid range
+      distortedUV = clamp(distortedUV, 0.0, 1.0);
+      
+      vec4 color = texture2D(u_texture, distortedUV);
+      
+      // Add slight vignette effect when distorting
+      if (u_distortion > 0.001) {
+        vec2 vignetteUV = uv * 2.0 - 1.0;
+        float vignette = 1.0 - dot(vignetteUV, vignetteUV) * 0.3 * u_distortion;
+        color.rgb *= vignette;
+        
+        // Add subtle purple tint for style
+        color.rgb = mix(color.rgb, color.rgb * vec3(1.0, 0.95, 1.05), u_distortion * 0.3);
+      }
+      
+      gl_FragColor = color;
+    }
+  </script>
+
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+  <script>
+    // ============================================================
+    // Distortion Mirror - Ultra Q Style
+    // ============================================================
+    
+    const video = document.getElementById('video');
+    const glCanvas = document.getElementById('glCanvas');
+    const loading = document.getElementById('loading');
+    const distortionFill = document.getElementById('distortionFill');
+    
+    let gl;
+    let program;
+    let width, height;
+    
+    // Textures
+    let videoTexture;
+    
+    // Uniforms
+    let u_texture, u_resolution, u_time, u_distortion, u_mode, u_center;
+    
+    // State
+    let currentDistortion = 0;
+    let targetDistortion = 0;
+    let distortionMode = 0; // 0: swirl, 1: bulge, 2: wave
+    let maxStrength = 5;
+    let handCenter = { x: 0.5, y: 0.5 };
+    let isFist = false;
+    let startTime = Date.now();
+    
+    // ============================================================
+    // WebGL Setup
+    // ============================================================
+    function initWebGL() {
+      gl = glCanvas.getContext('webgl', { alpha: false, preserveDrawingBuffer: true });
+      if (!gl) {
+        console.error('WebGL not supported');
+        return false;
+      }
+      
+      // Create shaders
+      const vertShader = createShader(gl, 'vert-shader', gl.VERTEX_SHADER);
+      const fragShader = createShader(gl, 'frag-shader', gl.FRAGMENT_SHADER);
+      
+      // Create program
+      program = gl.createProgram();
+      gl.attachShader(program, vertShader);
+      gl.attachShader(program, fragShader);
+      gl.linkProgram(program);
+      gl.useProgram(program);
+      
+      // Create rectangle (full screen quad)
+      const posBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1,  1, -1,  -1, 1,
+        -1,  1,  1, -1,   1, 1
+      ]), gl.STATIC_DRAW);
+      
+      const posLocation = gl.getAttribLocation(program, 'a_position');
+      gl.enableVertexAttribArray(posLocation);
+      gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 0, 0);
+      
+      // Texture coordinates
+      const texBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        0, 0,  1, 0,  0, 1,
+        0, 1,  1, 0,  1, 1
+      ]), gl.STATIC_DRAW);
+      
+      const texLocation = gl.getAttribLocation(program, 'a_texCoord');
+      gl.enableVertexAttribArray(texLocation);
+      gl.vertexAttribPointer(texLocation, 2, gl.FLOAT, false, 0, 0);
+      
+      // Create video texture
+      videoTexture = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      
+      // Get uniform locations
+      u_texture = gl.getUniformLocation(program, 'u_texture');
+      u_resolution = gl.getUniformLocation(program, 'u_resolution');
+      u_time = gl.getUniformLocation(program, 'u_time');
+      u_distortion = gl.getUniformLocation(program, 'u_distortion');
+      u_mode = gl.getUniformLocation(program, 'u_mode');
+      u_center = gl.getUniformLocation(program, 'u_center');
+      
+      // Set initial uniforms
+      gl.uniform1i(u_texture, 0);
+      gl.uniform2f(u_resolution, width, height);
+      gl.uniform1f(u_time, 0);
+      gl.uniform1f(u_distortion, 0);
+      gl.uniform1i(u_mode, 0);
+      gl.uniform2f(u_center, 0.5, 0.5);
+      
+      return true;
+    }
+    
+    function createShader(gl, id, type) {
+      const shader = gl.createShader(type);
+      const source = document.getElementById(id).text;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error('Shader error:', gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+    
+    // ============================================================
+    // Main Loop
+    // ============================================================
+    function render() {
+      // Smooth distortion transition
+      const speed = isFist ? 0.05 : 0.08;
+      currentDistortion += (targetDistortion - currentDistortion) * speed;
+      
+      // Update distortion meter UI
+      distortionFill.style.height = (currentDistortion / maxStrength * 100) + '%';
+      
+      // Update video texture
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+      
+      // Update uniforms
+      const time = (Date.now() - startTime) / 1000;
+      gl.uniform1f(u_time, time);
+      gl.uniform1f(u_distortion, currentDistortion);
+      gl.uniform1i(u_mode, distortionMode);
+      gl.uniform2f(u_center, handCenter.x, handCenter.y);
+      
+      // Draw
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      
+      requestAnimationFrame(render);
+    }
+    
+    // ============================================================
+    // Initialize
+    // ============================================================
+    async function init() {
+      try {
+        // Get camera
+        loading.querySelector('p').textContent = 'Initializing camera...';
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        video.srcObject = stream;
+        await video.play();
+        
+        // Setup canvas
+        resize();
+        window.addEventListener('resize', resize);
+        
+        // Init WebGL
+        if (!initWebGL()) {
+          throw new Error('WebGL init failed');
+        }
+        
+        // Initialize MediaPipe Hands
+        loading.querySelector('p').textContent = 'Loading hand tracking...';
+        await initMediaPipeHands();
+        
+        loading.style.display = 'none';
+        
+        // Start
+        requestAnimationFrame(render);
+        
+      } catch (err) {
+        console.error(err);
+        loading.innerHTML = `
+          <p style="color: #ff6b6b;">Error: ${err.message}</p>
+        `;
+      }
+    }
+    
+    // ============================================================
+    // MediaPipe Hands Setup
+    // ============================================================
+    async function initMediaPipeHands() {
+      return new Promise((resolve, reject) => {
+        const hands = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        
+        hands.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.5
+        });
+        
+        hands.onResults((results) => {
+          let fistDetected = false;
+          
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const landmarks = results.multiHandLandmarks[0];
+            
+            // Get hand center (palm)
+            const palm = landmarks[9]; // Middle finger base
+            handCenter = { x: palm.x, y: palm.y };
+            
+            // Check for fist gesture
+            const wrist = landmarks[0];
+            const indexTip = landmarks[8];
+            const middleTip = landmarks[12];
+            const ringTip = landmarks[16];
+            const pinkyTip = landmarks[20];
+            const indexBase = landmarks[5];
+            const middleBase = landmarks[9];
+            
+            // In a fist, fingertips are closer to wrist than their bases
+            const indexCurled = indexTip.y > indexBase.y;
+            const middleCurled = middleTip.y > middleBase.y;
+            const ringCurled = ringTip.y > landmarks[13].y;
+            const pinkyCurled = pinkyTip.y > landmarks[17].y;
+            
+            if (indexCurled && middleCurled && ringCurled && pinkyCurled) {
+              fistDetected = true;
+            }
+          }
+          
+          // Update state
+          isFist = fistDetected;
+          
+          if (isFist) {
+            // Increase distortion while holding fist
+            targetDistortion = Math.min(targetDistortion + 0.1, maxStrength);
+          } else {
+            // Slowly decrease when not fist
+            targetDistortion = Math.max(targetDistortion - 0.15, 0);
+          }
+          
+          // Update status display
+          const statusEl = document.getElementById('gestureStatus');
+          if (fistDetected) {
+            statusEl.classList.add('active');
+            statusEl.querySelector('span').textContent = '🌀 Distorting...';
+          } else if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            statusEl.classList.remove('active');
+            statusEl.querySelector('span').textContent = '✋ Hand detected';
+          } else {
+            statusEl.classList.remove('active');
+            statusEl.querySelector('span').textContent = 'Hand tracking ready';
+          }
+        });
+        
+        // Start processing
+        const camera = new Camera(video, {
+          onFrame: async () => {
+            await hands.send({ image: video });
+          },
+          width: 1280,
+          height: 720
+        });
+        
+        camera.start().then(() => resolve()).catch(reject);
+      });
+    }
+    
+    function resize() {
+      const container = document.querySelector('.canvas-container');
+      const containerWidth = container.clientWidth || window.innerWidth;
+      const containerHeight = container.clientHeight || window.innerHeight;
+      
+      const aspectRatio = 16 / 9;
+      let newWidth, newHeight;
+      
+      if (containerWidth / containerHeight > aspectRatio) {
+        newHeight = containerHeight;
+        newWidth = newHeight * aspectRatio;
+      } else {
+        newWidth = containerWidth;
+        newHeight = newWidth / aspectRatio;
+      }
+      
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      
+      width = Math.floor(newWidth * dpr);
+      height = Math.floor(newHeight * dpr);
+      
+      glCanvas.width = width;
+      glCanvas.height = height;
+      glCanvas.style.width = newWidth + 'px';
+      glCanvas.style.height = newHeight + 'px';
+      
+      if (gl) {
+        gl.viewport(0, 0, width, height);
+        gl.uniform2f(u_resolution, width, height);
+      }
+    }
+    
+    // ============================================================
+    // UI Controls
+    // ============================================================
+    document.getElementById('modeSwirl').addEventListener('click', function() {
+      distortionMode = 0;
+      updateModeButtons();
+    });
+    
+    document.getElementById('modeBulge').addEventListener('click', function() {
+      distortionMode = 1;
+      updateModeButtons();
+    });
+    
+    document.getElementById('modeWave').addEventListener('click', function() {
+      distortionMode = 2;
+      updateModeButtons();
+    });
+    
+    document.getElementById('resetBtn').addEventListener('click', function() {
+      targetDistortion = 0;
+      currentDistortion = 0;
+    });
+    
+    document.getElementById('strengthSlider').addEventListener('input', function() {
+      maxStrength = parseFloat(this.value);
+    });
+    
+    function updateModeButtons() {
+      document.getElementById('modeSwirl').classList.toggle('active', distortionMode === 0);
+      document.getElementById('modeBulge').classList.toggle('active', distortionMode === 1);
+      document.getElementById('modeWave').classList.toggle('active', distortionMode === 2);
+    }
+    
+    // Initialize mode buttons
+    updateModeButtons();
+    
+    // Start
+    init();
+  </script>
+</body>
+</html>
+
