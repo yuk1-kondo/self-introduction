@@ -397,6 +397,9 @@
     // Based on https://github.com/codrops/RainEffect
     // ============================================================
     
+    // Global: viewport判定（モバイル用解像度・レイアウト調整に使用）
+    const isMobile = window.innerWidth <= 640;
+
     const video = document.getElementById('video');
     const glCanvas = document.getElementById('glCanvas');
     const loading = document.getElementById('loading');
