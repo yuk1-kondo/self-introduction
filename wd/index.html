@@ -121,25 +121,17 @@
     
     .stage { 
       flex: 1;
-      display: flex;
-      flex-direction: column;
+      display: grid; 
+      place-items: center;
+      padding: 24px;
       background: var(--bg);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .canvas-container {
-      position: relative;
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
     
     #glCanvas { 
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 12px;
+      box-shadow: 0 0 0 1px var(--border);
     }
     
     video { display: none; }
@@ -255,10 +247,8 @@
     </div>
     
     <div class="stage">
-      <div class="canvas-container">
-        <video id="video" playsinline></video>
-        <canvas id="glCanvas"></canvas>
-      </div>
+      <video id="video" playsinline></video>
+      <canvas id="glCanvas"></canvas>
     </div>
     
     <div class="status" id="gestureStatus">
@@ -1288,35 +1278,13 @@
     }
     
     function resize() {
-      // Get container size for responsive layout
-      const container = document.querySelector('.canvas-container');
-      const containerWidth = container.clientWidth || window.innerWidth;
-      const containerHeight = container.clientHeight || window.innerHeight;
-      
-      // Use video aspect ratio (16:9) but fit to container
-      const aspectRatio = 16 / 9;
-      let newWidth, newHeight;
-      
-      if (containerWidth / containerHeight > aspectRatio) {
-        // Container is wider than 16:9, fit to height
-        newHeight = containerHeight;
-        newWidth = newHeight * aspectRatio;
-      } else {
-        // Container is taller than 16:9, fit to width
-        newWidth = containerWidth;
-        newHeight = newWidth / aspectRatio;
-      }
-      
-      // Use device pixel ratio for crisp rendering, but cap at 2 for performance
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      
-      width = Math.floor(newWidth * dpr);
-      height = Math.floor(newHeight * dpr);
+      // Use video dimensions for canvas size (like /oc)
+      width = CANVAS_WIDTH;
+      height = CANVAS_HEIGHT;
       
       glCanvas.width = width;
       glCanvas.height = height;
-      glCanvas.style.width = newWidth + 'px';
-      glCanvas.style.height = newHeight + 'px';
+      // Let CSS handle the display size with max-width/max-height
       
       if (gl) {
         gl.viewport(0, 0, width, height);
