@@ -124,25 +124,28 @@
     
     .stage { 
       flex: 1;
-      display: flex;
-      flex-direction: column;
+      display: grid; 
+      place-items: center;
+      padding: 24px;
       background: var(--bg);
       position: relative;
-      overflow: hidden;
     }
     
     .canvas-container {
       position: relative;
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px var(--border);
     }
     
     #glCanvas { 
+      display: block;
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      height: auto;
+      max-height: 100%;
+      object-fit: contain;
     }
     
     video { display: none; }
@@ -251,6 +254,10 @@
       .slider { gap: 8px; }
       input[type="range"] { width: 60px; }
       .divider { display: none; }
+      .canvas-container {
+        max-width: 90%;
+        max-height: 70vh;
+      }
       .status { 
         padding: 10px 16px; 
         font-size: 12px;
@@ -383,13 +390,13 @@
     }
     
     void main() {
-      // Flip UV for selfie camera
-      vec2 uv = vec2(1.0 - v_texCoord.x, v_texCoord.y);
+      // Keep UV as-is (selfie-like orientation handled in JS if needed)
+      vec2 uv = v_texCoord;
       
       vec2 distortedUV = uv;
       
       if (u_distortion > 0.001) {
-        vec2 center = vec2(1.0 - u_center.x, u_center.y);
+        vec2 center = u_center;
         
         if (u_mode == 0) {
           // Swirl (Ultra Q style)
@@ -575,8 +582,13 @@
       try {
         // Get camera
         loading.querySelector('p').textContent = 'Initializing camera...';
+        const isMobile = window.innerWidth <= 640;
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+          video: { 
+            facingMode: 'user', 
+            width: { ideal: isMobile ? 640 : 1280 }, 
+            height: { ideal: isMobile ? 480 : 720 } 
+          }
         });
         video.srcObject = stream;
         await video.play();
@@ -683,8 +695,8 @@
           onFrame: async () => {
             await hands.send({ image: video });
           },
-          width: 1280,
-          height: 720
+          width: isMobile ? 640 : 1280,
+          height: isMobile ? 480 : 720
         });
         
         camera.start().then(() => resolve()).catch(reject);
@@ -692,30 +704,12 @@
     }
     
     function resize() {
-      const container = document.querySelector('.canvas-container');
-      const containerWidth = container.clientWidth || window.innerWidth;
-      const containerHeight = container.clientHeight || window.innerHeight;
-      
-      const aspectRatio = 16 / 9;
-      let newWidth, newHeight;
-      
-      if (containerWidth / containerHeight > aspectRatio) {
-        newHeight = containerHeight;
-        newWidth = newHeight * aspectRatio;
-      } else {
-        newWidth = containerWidth;
-        newHeight = newWidth / aspectRatio;
-      }
-      
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      
-      width = Math.floor(newWidth * dpr);
-      height = Math.floor(newHeight * dpr);
+      // Fixed internal resolution (16:9), CSS handles display scaling
+      width = 1280;
+      height = 720;
       
       glCanvas.width = width;
       glCanvas.height = height;
-      glCanvas.style.width = newWidth + 'px';
-      glCanvas.style.height = newHeight + 'px';
       
       if (gl) {
         gl.viewport(0, 0, width, height);
