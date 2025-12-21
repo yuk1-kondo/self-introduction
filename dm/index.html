@@ -576,13 +576,17 @@
     }
     
     // ============================================================
+    // Global viewport flag
+    // ============================================================
+    const isMobile = window.innerWidth <= 640;
+    
+    // ============================================================
     // Initialize
     // ============================================================
     async function init() {
       try {
         // Get camera
         loading.querySelector('p').textContent = 'Initializing camera...';
-        const isMobile = window.innerWidth <= 640;
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
             facingMode: 'user', 
