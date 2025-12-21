@@ -543,8 +543,8 @@
     // Main Loop
     // ============================================================
     function render() {
-      // Smooth distortion transition
-      const speed = isFist ? 0.05 : 0.08;
+      // Smooth distortion transition (slower for dramatic effect)
+      const speed = isFist ? 0.02 : 0.05;
       currentDistortion += (targetDistortion - currentDistortion) * speed;
       
       // Update distortion meter UI
@@ -657,11 +657,11 @@
           isFist = fistDetected;
           
           if (isFist) {
-            // Increase distortion while holding fist
-            targetDistortion = Math.min(targetDistortion + 0.1, maxStrength);
+            // Increase distortion while holding fist (slower for dramatic build-up)
+            targetDistortion = Math.min(targetDistortion + 0.03, maxStrength);
           } else {
             // Slowly decrease when not fist
-            targetDistortion = Math.max(targetDistortion - 0.15, 0);
+            targetDistortion = Math.max(targetDistortion - 0.06, 0);
           }
           
           // Update status display
