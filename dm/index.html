@@ -599,7 +599,7 @@
         video.srcObject = stream;
         await video.play();
         
-        // Setup canvas
+        // Setup canvas (after video has dimensions)
         resize();
         window.addEventListener('resize', resize);
         
@@ -710,9 +710,11 @@
     }
     
     function resize() {
-      // Fixed internal resolution (16:9), CSS handles display scaling
-      width = 1280;
-      height = 720;
+      // Match canvas resolution to actual video to avoid aspect stretch
+      const vidW = video.videoWidth || 1280;
+      const vidH = video.videoHeight || 720;
+      width = vidW;
+      height = vidH;
       
       glCanvas.width = width;
       glCanvas.height = height;
