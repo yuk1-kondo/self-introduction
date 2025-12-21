@@ -139,6 +139,9 @@
     
     #glCanvas { 
       display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
     
     video { display: none; }
@@ -1145,8 +1148,13 @@
         
         // Get camera
         loading.querySelector('p').textContent = 'Initializing camera...';
+        const isMobile = window.innerWidth <= 640;
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+          video: { 
+            facingMode: 'user', 
+            width: { ideal: isMobile ? 640 : 1280 }, 
+            height: { ideal: isMobile ? 480 : 720 } 
+          }
         });
         video.srcObject = stream;
         await video.play();
@@ -1282,8 +1290,8 @@
           onFrame: async () => {
             await hands.send({ image: video });
           },
-          width: 1280,
-          height: 720
+          width: isMobile ? 640 : 1280,
+          height: isMobile ? 480 : 720
         });
         
         camera.start().then(() => resolve()).catch(reject);
