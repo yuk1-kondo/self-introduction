@@ -78,25 +78,25 @@ const mouse = {
 // ===========================
 function switchLanguage(lang) {
     currentLang = lang;
-    
+
     // Update UI texts
     if (typeof portfolioData !== 'undefined' && portfolioData.uiTexts) {
         const texts = portfolioData.uiTexts[currentLang];
         const titleEl = document.getElementById('main-title');
         const subtitleEl = document.getElementById('main-subtitle');
         const instructionsEl = document.getElementById('instructions');
-        
+
         if (titleEl) titleEl.textContent = texts.title;
         if (subtitleEl) subtitleEl.textContent = texts.subtitle;
         if (instructionsEl) instructionsEl.textContent = texts.instructions;
     }
-    
+
     // Update toggle button active state
     const langToggle = document.getElementById('lang-toggle');
     if (langToggle) {
         langToggle.classList.toggle('lang-ja-active', currentLang === 'ja');
     }
-    
+
     // Save preference to localStorage
     localStorage.setItem('preferredLang', currentLang);
 }
@@ -110,7 +110,7 @@ function initLanguage() {
         // Default to English
         currentLang = 'en';
     }
-    
+
     // Apply initial language
     switchLanguage(currentLang);
 }
@@ -118,8 +118,8 @@ function initLanguage() {
 // Detect mobile device once
 function detectMobile() {
     isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-               ('ontouchstart' in window) ||
-               (navigator.maxTouchPoints > 0);
+        ('ontouchstart' in window) ||
+        (navigator.maxTouchPoints > 0);
 }
 
 // ===========================
@@ -171,7 +171,7 @@ class Particle {
                 const forceDirectionX = dx / distance;
                 const forceDirectionY = dy / distance;
                 const force = (MOUSE_DISTANCE - distance) / MOUSE_DISTANCE;
-                
+
                 if (mouse.isPressed) {
                     // Strong attraction when pressed
                     const attractStrength = force * 4;
@@ -343,8 +343,8 @@ class ProjectNode {
             ctx.textBaseline = 'middle';
 
             // Get localized title
-            const title = typeof this.data.title === 'object' 
-                ? (this.data.title[currentLang] || this.data.title.en || '') 
+            const title = typeof this.data.title === 'object'
+                ? (this.data.title[currentLang] || this.data.title.en || '')
                 : this.data.title;
 
             // Draw label text with scaled size
@@ -399,15 +399,20 @@ function init() {
 }
 
 function resize() {
+    const dpr = window.devicePixelRatio || 1;
     width = window.innerWidth;
     height = window.innerHeight;
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
 
     // Optimize canvas rendering for smooth text
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.textRendering = 'optimizeLegibility';
+    // ctx.textRendering = 'optimizeLegibility'; // Canvas 2D context doesn't support textRendering, removing to avoid potential warnings
+
+    ctx.scale(dpr, dpr);
 }
 
 function animate() {
@@ -492,7 +497,7 @@ function openModal(data) {
         }
         return field || '';
     };
-    
+
     modalTitle.innerText = getLocalizedText(data.title);
     modalCategory.innerText = getLocalizedText(data.category);
     modalDescription.innerText = getLocalizedText(data.description);
@@ -531,8 +536,8 @@ function openModal(data) {
     modalLink.removeAttribute('target');
 
     // Get localized button texts
-    const buttonTexts = typeof portfolioData !== 'undefined' && portfolioData.uiTexts 
-        ? portfolioData.uiTexts[currentLang] 
+    const buttonTexts = typeof portfolioData !== 'undefined' && portfolioData.uiTexts
+        ? portfolioData.uiTexts[currentLang]
         : { sendEmail: 'Send Email', viewOnGitHub: 'View on GitHub', viewProject: 'View Project' };
 
     // Change button text based on project type
@@ -727,6 +732,57 @@ init();
 animate();
 
 // ===========================
+// Magnetic Button Effect
+// ===========================
+class MagneticButton {
+    constructor(el, strength = 20, textStrength = 20) {
+        this.el = el;
+        this.strength = strength;
+        this.textStrength = textStrength;
+        this.text = el.querySelector('span') || el;
+        this.boundingBox = el.getBoundingClientRect();
+
+        this.init();
+    }
+
+    init() {
+        this.el.addEventListener('mousemove', (e) => this.move(e));
+        this.el.addEventListener('mouseleave', (e) => this.reset(e));
+        window.addEventListener('resize', () => this.resize());
+    }
+
+    resize() {
+        this.boundingBox = this.el.getBoundingClientRect();
+    }
+
+    move(e) {
+        const x = e.clientX - this.boundingBox.left - this.boundingBox.width / 2;
+        const y = e.clientY - this.boundingBox.top - this.boundingBox.height / 2;
+
+        // Move button
+        this.el.style.transform = `translate(${x / this.strength}px, ${y / this.strength}px)`;
+
+        // Move text (if separate)
+        if (this.text !== this.el) {
+            this.text.style.transform = `translate(${x / this.textStrength}px, ${y / this.textStrength}px)`;
+        }
+    }
+
+    reset(e) {
+        this.el.style.transform = 'translate(0px, 0px)';
+        if (this.text !== this.el) {
+            this.text.style.transform = 'translate(0px, 0px)';
+        }
+    }
+}
+
+// Initialize Magnetic Buttons for main page
+const magneticButtons = document.querySelectorAll('.btn, .btn-enter, .lang-toggle, .back-to-top, .close-btn');
+magneticButtons.forEach(btn => {
+    new MagneticButton(btn, 10, 10); // Strength 10 for subtle effect
+});
+
+// ===========================
 // Cursor/Touch Glow Effect
 // ===========================
 const glowEffect = document.getElementById('glow-effect');
@@ -754,65 +810,65 @@ if (glowEffect) {
     }
 
     if (!isMobile) {
-    // Desktop: Mouse glow with smooth interpolation
-    let isMouseIn = false;
+        // Desktop: Mouse glow with smooth interpolation
+        let isMouseIn = false;
 
-    window.addEventListener('mousemove', (e) => {
-        glowTargetX = e.clientX;
-        glowTargetY = e.clientY;
+        window.addEventListener('mousemove', (e) => {
+            glowTargetX = e.clientX;
+            glowTargetY = e.clientY;
 
-        if (!isMouseIn) {
-            isMouseIn = true;
-            glowX = e.clientX;
-            glowY = e.clientY;
-            glowEffect.classList.add('active');
-        }
+            if (!isMouseIn) {
+                isMouseIn = true;
+                glowX = e.clientX;
+                glowY = e.clientY;
+                glowEffect.classList.add('active');
+            }
 
-        if (!glowAnimationFrame) {
-            glowAnimationFrame = requestAnimationFrame(updateGlowPosition);
-        }
-    });
+            if (!glowAnimationFrame) {
+                glowAnimationFrame = requestAnimationFrame(updateGlowPosition);
+            }
+        });
 
-    window.addEventListener('mouseout', () => {
-        isMouseIn = false;
-        glowEffect.classList.remove('active');
-        if (glowAnimationFrame) {
-            cancelAnimationFrame(glowAnimationFrame);
-            glowAnimationFrame = null;
-        }
-    });
+        window.addEventListener('mouseout', () => {
+            isMouseIn = false;
+            glowEffect.classList.remove('active');
+            if (glowAnimationFrame) {
+                cancelAnimationFrame(glowAnimationFrame);
+                glowAnimationFrame = null;
+            }
+        });
 
-    window.addEventListener('mousedown', () => {
-        glowEffect.classList.add('pulse');
-        setTimeout(() => glowEffect.classList.remove('pulse'), 500);
-    });
-} else {
-    // Mobile: Touch glow (instant, no interpolation needed)
-    let touchGlowTimeout;
+        window.addEventListener('mousedown', () => {
+            glowEffect.classList.add('pulse');
+            setTimeout(() => glowEffect.classList.remove('pulse'), 500);
+        });
+    } else {
+        // Mobile: Touch glow (instant, no interpolation needed)
+        let touchGlowTimeout;
 
-    window.addEventListener('touchstart', (e) => {
-        const touch = e.touches[0];
-        glowEffect.style.transform = `translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%)`;
-        glowEffect.classList.add('active', 'pulse');
+        window.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            glowEffect.style.transform = `translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%)`;
+            glowEffect.classList.add('active', 'pulse');
 
-        clearTimeout(touchGlowTimeout);
-        touchGlowTimeout = setTimeout(() => {
-            glowEffect.classList.remove('active', 'pulse');
-        }, 500);
-    });
+            clearTimeout(touchGlowTimeout);
+            touchGlowTimeout = setTimeout(() => {
+                glowEffect.classList.remove('active', 'pulse');
+            }, 500);
+        });
 
-    window.addEventListener('touchmove', (e) => {
-        const touch = e.touches[0];
-        glowEffect.style.transform = `translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%)`;
-    });
+        window.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            glowEffect.style.transform = `translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%)`;
+        });
 
-    window.addEventListener('touchend', () => {
-        clearTimeout(touchGlowTimeout);
-        touchGlowTimeout = setTimeout(() => {
-            glowEffect.classList.remove('active', 'pulse');
-        }, 500);
-    });
-}
+        window.addEventListener('touchend', () => {
+            clearTimeout(touchGlowTimeout);
+            touchGlowTimeout = setTimeout(() => {
+                glowEffect.classList.remove('active', 'pulse');
+            }, 500);
+        });
+    }
 }
 
 // ===========================

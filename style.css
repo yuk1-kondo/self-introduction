@@ -1,9 +1,10 @@
 :root {
-    --bg-color: #f0f0f0;
-    --text-color: #333;
+    --bg-color: #f9f9f9;
+    --text-color: #1a1a1a;
+    --sub-text-color: #4a4a4a;
     --accent-color: #000;
-    --glass-bg: rgba(255, 255, 255, 0.92); /* Slightly transparent to let background show through */
-    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-bg: rgba(249, 249, 249, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.08);
 }
 
 body {
@@ -13,6 +14,67 @@ body {
     background-color: var(--bg-color);
     font-family: 'Outfit', sans-serif;
     color: var(--text-color);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Grain Texture for Film-like feel */
+body::before {
+    content: "";
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuNjUiIG51bU9jdGF2ZXM9IjMiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbm9pc2UpIiBvcGFjaXR5PSIwLjAzIi8+PC9zdmc+');
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 9999;
+    animation: grain 8s steps(10) infinite;
+}
+
+@keyframes grain {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    10% {
+        transform: translate(-5%, -10%);
+    }
+
+    20% {
+        transform: translate(-15%, 5%);
+    }
+
+    30% {
+        transform: translate(7%, -25%);
+    }
+
+    40% {
+        transform: translate(-5%, 25%);
+    }
+
+    50% {
+        transform: translate(-15%, 10%);
+    }
+
+    60% {
+        transform: translate(15%, 0%);
+    }
+
+    70% {
+        transform: translate(0%, 15%);
+    }
+
+    80% {
+        transform: translate(3%, 35%);
+    }
+
+    90% {
+        transform: translate(-10%, 10%);
+    }
 }
 
 canvas {
@@ -30,9 +92,11 @@ canvas {
     /* transform: translate(-50%, -50%); Removed centering */
     text-align: left;
     z-index: 1;
-    pointer-events: none; /* Let clicks pass through to canvas */
+    pointer-events: none;
+    /* Let clicks pass through to canvas */
     mix-blend-mode: difference;
-    color: white; /* Invert against light bg if using difference, or just style normally */
+    color: white;
+    /* Invert against light bg if using difference, or just style normally */
 }
 
 /* Reset mix-blend-mode for cleaner look if preferred, 
@@ -43,18 +107,40 @@ canvas {
 }
 
 h1 {
-    font-weight: 500;
-    font-size: 2rem; /* Reduced from 4rem */
-    letter-spacing: 0.2em;
+    font-weight: 600;
+    font-size: 2.2rem;
+    letter-spacing: 0.15em;
     margin: 0;
     text-transform: uppercase;
+    color: var(--text-color);
+    opacity: 0;
+    animation: revealUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: 0.1s;
 }
 
 p {
     font-weight: 300;
-    font-size: 0.9rem; /* Reduced from 1.2rem */
-    letter-spacing: 0.1em;
-    margin-top: 5px;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    /* Tighter for readability */
+    margin-top: 8px;
+    color: var(--sub-text-color);
+    line-height: 1.6;
+    opacity: 0;
+    animation: revealUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: 0.3s;
+}
+
+@keyframes revealUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 #instructions {
@@ -130,9 +216,17 @@ p {
 }
 
 @keyframes pulse {
-    0% { opacity: 0.4; }
-    50% { opacity: 0.8; }
-    100% { opacity: 0.4; }
+    0% {
+        opacity: 0.4;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+
+    100% {
+        opacity: 0.4;
+    }
 }
 
 /* Modal Styles */
@@ -146,8 +240,10 @@ p {
     justify-content: center;
     align-items: center;
     z-index: 10;
-    background: rgba(240, 240, 240, 0.4); /* More transparent overlay to see particles and glow */
-    backdrop-filter: blur(4px); /* Lighter blur for better visibility */
+    background: rgba(240, 240, 240, 0.4);
+    /* More transparent overlay to see particles and glow */
+    backdrop-filter: blur(4px);
+    /* Lighter blur for better visibility */
     opacity: 1;
     transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s ease;
 }
@@ -161,13 +257,14 @@ p {
 .modal-content {
     background: var(--glass-bg);
     padding: 3rem;
-    border-radius: 2px; /* Sharp geometric edges */
+    border-radius: 2px;
+    /* Sharp geometric edges */
     border: 1px solid var(--text-color);
     max-width: 500px;
     width: 90%;
     position: relative;
     text-align: center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -176,6 +273,7 @@ p {
         opacity: 0;
         transform: translateY(-20px) scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -318,13 +416,11 @@ p {
     width: 200px;
     height: 200px;
     border-radius: 50%;
-    background: radial-gradient(
-        circle,
-        rgba(255,255,255,0.25) 0%,
-        rgba(255,255,255,0.15) 30%,
-        rgba(255,255,255,0.05) 50%,
-        transparent 70%
-    );
+    background: radial-gradient(circle,
+            rgba(255, 255, 255, 0.25) 0%,
+            rgba(255, 255, 255, 0.15) 30%,
+            rgba(255, 255, 255, 0.05) 50%,
+            transparent 70%);
     pointer-events: none;
     mix-blend-mode: screen;
     transition: opacity 0.3s ease;
@@ -346,6 +442,7 @@ p {
         transform: translate(-50%, -50%) scale(1);
         opacity: 1;
     }
+
     100% {
         transform: translate(-50%, -50%) scale(1.5);
         opacity: 0;
@@ -367,11 +464,15 @@ p {
     #ui-layer {
         top: 20px;
         left: 20px;
+        padding-top: env(safe-area-inset-top);
+        /* Safe Area */
     }
 
     #instructions {
         font-size: 0.7rem;
         bottom: 20px;
+        padding-bottom: env(safe-area-inset-bottom);
+        /* Safe Area */
     }
 
     /* Language toggle mobile positioning */
@@ -380,68 +481,100 @@ p {
         right: 20px;
         padding: 6px 12px;
         font-size: 0.75rem;
+        padding-top: max(6px, env(safe-area-inset-top));
+        /* Safe Area check */
+    }
+
+    .modal {
+        align-items: flex-end;
+        /* Align to bottom for sheet */
+        padding: 0;
     }
 
     .modal-content {
-        padding: 1.2rem;
-        width: 85%;
-        max-width: 340px;
-        max-height: 75vh;
+        padding: 2rem 1.5rem;
+        width: 100%;
+        max-width: 100%;
+        max-height: 85vh;
         overflow-y: auto;
+        border-radius: 20px 20px 0 0;
+        /* Rounded top corners only */
+        border: none;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+        animation: sheetSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        margin: 0;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding-bottom: max(2rem, env(safe-area-inset-bottom) + 1rem);
+        /* Safe Area */
+    }
+
+    @keyframes sheetSlideUp {
+        from {
+            transform: translateY(100%);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
 
     .modal-content h2 {
-        font-size: 1.3rem;
-        margin: 0 0 0.3rem 0;
+        font-size: 1.5rem;
+        margin: 0 0 0.5rem 0;
         line-height: 1.3;
     }
 
     .modal-content p {
-        font-size: 0.85rem;
-        margin: 0.4rem 0;
+        font-size: 0.9rem;
+        margin: 0.5rem 0;
         line-height: 1.6;
     }
 
     #modal-description {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         margin-top: 1rem;
         line-height: 1.7;
     }
 
     .subtitle {
-        font-size: 0.72rem;
-        margin-bottom: 0.6rem;
+        font-size: 0.75rem;
+        margin-bottom: 0.8rem;
         letter-spacing: 0.15em;
     }
 
     .modal-image {
-        width: 115%;
-        height: 115%;
+        width: 100%;
+        height: 100%;
     }
 
     .modal-image-wrapper {
-        width: 80px;
-        height: 80px;
+        width: 90px;
+        height: 90px;
         padding: 0;
-        margin-bottom: 0.8rem;
+        margin-bottom: 1rem;
     }
 
     .btn {
-        margin-top: 0.8rem;
-        padding: 10px 22px;
-        font-size: 0.85rem;
-        min-height: 44px;
-        display: inline-flex;
+        margin-top: 1.2rem;
+        padding: 12px 0;
+        font-size: 0.9rem;
+        width: 100%;
+        /* Full width button on mobile */
+        display: flex;
         align-items: center;
         justify-content: center;
     }
 
     .close-btn {
-        font-size: 2rem;
-        top: 3px;
-        right: 8px;
-        padding: 5px;
+        font-size: 1.8rem;
+        top: 15px;
+        right: 15px;
+        padding: 10px;
         line-height: 1;
+        background: rgba(0, 0, 0, 0.05);
+        /* Slight background for visibility */
     }
 
     .back-to-top {
@@ -451,6 +584,7 @@ p {
         font-size: 0.65rem;
         gap: 5px;
         border-radius: 20px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
     }
 
     .back-to-top .back-arrow {

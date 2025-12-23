@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Water Drops - Interactive Rain Effect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #222;
+      --text: #fff;
+      --text-muted: #666;
+    }
+    
+    html, body { 
+      background: var(--bg);
+      color: var(--text); 
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .app { 
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .logo {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .btn:hover {
+      background: var(--surface);
+      border-color: #333;
+    }
+    
+    .btn.active {
+      background: var(--text);
+      color: var(--bg);
+    }
+    
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+    
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 80px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--text);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    .stage { 
+      flex: 1;
+      display: grid; 
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
+      position: relative;
+    }
+    
+    #glCanvas { 
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 12px;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    
+    video { display: none; }
+    
+    .status { 
+      position: fixed; 
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      padding: 12px 24px; 
+      border-radius: 100px; 
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 100;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .status.active { 
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    
+    .status.active .status-dot {
+      background: var(--bg);
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
+    #loading {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--text);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    #loading p { margin-top: 16px; color: var(--text-muted); }
+    
+    /* Mobile responsive */
+    @media (max-width: 640px) {
+      header { 
+        padding: 16px 20px; 
+        flex-direction: column;
+        gap: 8px;
+      }
+      .hint { font-size: 10px; }
+      .controls { 
+        padding: 12px 20px; 
+        gap: 6px; 
+      }
+      .btn { padding: 8px 12px; font-size: 12px; }
+      .slider { gap: 8px; }
+      input[type="range"] { width: 60px; }
+      .divider { display: none; }
+      .stage { padding: 12px; }
+      .status { 
+        padding: 10px 16px; 
+        font-size: 12px;
+        bottom: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Initializing...</p>
+  </div>
+  
+  <div class="app">
+    <header>
+      <div class="logo">WATER DROPS</div>
+      <div class="hint">? Fist = Anti-gravity | ? Swipe = Scatter</div>
+    </header>
+    
+    <div class="controls">
+      <div class="slider">
+        <span class="slider-label">Rain</span>
+        <input type="range" id="rainAmount" min="0" max="100" value="50">
+      </div>
+      <div class="divider"></div>
+      <button class="btn" id="toggleRain">Pause</button>
+      <button class="btn" id="clearBtn">Clear</button>
+    </div>
+    
+    <div class="stage">
+      <video id="video" playsinline></video>
+      <canvas id="glCanvas"></canvas>
+    </div>
+    
+    <div class="status" id="gestureStatus">
+      <div class="status-dot"></div>
+      <span>Hand tracking ready</span>
+    </div>
+  </div>
+
+  <!-- Vertex Shader -->
+  <script id="vert-shader" type="x-shader/x-vertex">
+    precision mediump float;
+    attribute vec2 a_position;
+    attribute vec2 a_texCoord;
+    varying vec2 v_texCoord;
+    
+    void main() {
+      gl_Position = vec4(a_position, 0.0, 1.0);
+      v_texCoord = a_texCoord;
+    }
+  </script>
+
+  <!-- Fragment Shader - Based on Codrops water.frag -->
+  <script id="frag-shader" type="x-shader/x-fragment">
+    precision mediump float;
+    
+    uniform sampler2D u_waterMap;
+    uniform sampler2D u_textureFg;
+    uniform sampler2D u_textureBg;
+    
+    varying vec2 v_texCoord;
+    uniform vec2 u_resolution;
+    uniform float u_minRefraction;
+    uniform float u_refractionDelta;
+    uniform float u_brightness;
+    uniform float u_alphaMultiply;
+    uniform float u_alphaSubtract;
+    
+    vec2 texCoord() {
+      return vec2(gl_FragCoord.x, u_resolution.y - gl_FragCoord.y) / u_resolution;
+    }
+    
+    vec2 pixel() {
+      return vec2(1.0, 1.0) / u_resolution;
+    }
+    
+    // Alpha blend two colors
+    vec4 blend(vec4 bg, vec4 fg) {
+      vec3 bgm = bg.rgb * bg.a;
+      vec3 fgm = fg.rgb * fg.a;
+      float ia = 1.0 - fg.a;
+      float a = fg.a + bg.a * ia;
+      vec3 rgb;
+      if (a != 0.0) {
+        rgb = (fgm + bgm * ia) / a;
+      } else {
+        rgb = vec3(0.0);
+      }
+      return vec4(rgb, a);
+    }
+    
+    void main() {
+      vec2 uv = texCoord();
+      
+      // Background (blurred camera)
+      vec4 bg = texture2D(u_textureBg, uv);
+      
+      // Water map - RGB encodes refraction direction
+      vec4 cur = texture2D(u_waterMap, uv);
+      
+      float d = cur.b; // depth/thickness
+      float x = cur.g; // x distortion (0.5 = center)
+      float y = cur.r; // y distortion (0.5 = center)
+      
+      // Alpha based on gooey effect
+      float a = clamp(cur.a * u_alphaMultiply - u_alphaSubtract, 0.0, 1.0);
+      
+      // Refraction offset
+      vec2 refraction = (vec2(x, y) - 0.5) * 2.0;
+      vec2 refractionPos = uv + pixel() * refraction * (u_minRefraction + d * u_refractionDelta);
+      
+      // Foreground through refraction (clear camera)
+      vec4 tex = texture2D(u_textureFg, refractionPos);
+      
+      vec4 fg = vec4(tex.rgb * u_brightness, a);
+      
+      gl_FragColor = blend(bg, fg);
+    }
+  </script>
+
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+  <script>
+    // ============================================================
+    // Rain Effect - Interactive with MediaPipe
+    // Based on https://github.com/codrops/RainEffect
+    // ============================================================
+    
+    const video = document.getElementById('video');
+    const glCanvas = document.getElementById('glCanvas');
+    const loading = document.getElementById('loading');
+    
+    let gl;
+    let program;
+    let width, height;
+    let dpi = window.devicePixelRatio || 1;
+    
+    // Textures
+    let waterMapTexture, fgTexture, bgTexture;
+    let raindrops;
+    
+    // Drop images from Codrops (essential for realism)
+    let dropColorImg, dropAlphaImg;
+    
+    // Settings
+    let isRaining = true;
+    let rainIntensity = 0.5;
+    
+    // MediaPipe Hands tracking
+    let handPositions = []; // [{x, y, vx, vy}, ...]
+    let lastHandPositions = [];
+    let handsReady = false;
+    let isFist = false; // Fist gesture detected
+    let antiGravity = false; // Anti-gravity mode
+    
+    // Canvas size (not fullscreen)
+    const CANVAS_WIDTH = 1280;
+    const CANVAS_HEIGHT = 720;
+    
+    // ============================================================
+    // Drop object prototype (from Codrops)
+    // ============================================================
+    const Drop = {
+      x: 0,
+      y: 0,
+      r: 0,
+      spreadX: 0,
+      spreadY: 0,
+      momentum: 0,
+      momentumX: 0,
+      lastSpawn: 0,
+      nextSpawn: 0,
+      parent: null,
+      isNew: true,
+      killed: false,
+      shrink: 0
+    };
+    
+    // ============================================================
+    // Raindrops Class (from Codrops raindrops.js)
+    // ============================================================
+    class Raindrops {
+      constructor(w, h, scale, dropAlpha, dropColor, options = {}) {
+        this.width = w;
+        this.height = h;
+        this.scale = scale;
+        this.dropAlpha = dropAlpha;
+        this.dropColor = dropColor;
+        this.scale = scale;
+        
+        this.options = Object.assign({
+          minR: 10,
+          maxR: 40,
+          maxDrops: 900,
+          rainChance: 0.3,
+          rainLimit: 3,
+          dropletsRate: 50,
+          dropletsSize: [2, 4],
+          dropletsCleaningRadiusMultiplier: 0.43,
+          raining: true,
+          globalTimeScale: 1,
+          trailRate: 1,
+          autoShrink: true,
+          spawnArea: [-0.1, 0.95],
+          trailScaleRange: [0.2, 0.5],
+          collisionRadius: 0.65,
+          collisionRadiusIncrease: 0.01,
+          dropFallMultiplier: 1,
+          collisionBoostMultiplier: 0.05,
+          collisionBoost: 1
+        }, options);
+        
+        this.drops = [];
+        this.dropletsPixelDensity = 1;
+        this.dropletsCounter = 0;
+        this.textureCleaningIterations = 0;
+        this.lastRender = null;
+        
+        this.init();
+      }
+      
+      get deltaR() {
+        return this.options.maxR - this.options.minR;
+      }
+      
+      get area() {
+        return (this.width * this.height) / this.scale;
+      }
+      
+      get areaMultiplier() {
+        return Math.sqrt(this.area / (1024 * 768));
+      }
+      
+      init() {
+        // Main canvas for drops
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Small droplets canvas
+        this.droplets = document.createElement('canvas');
+        this.droplets.width = this.width * this.dropletsPixelDensity;
+        this.droplets.height = this.height * this.dropletsPixelDensity;
+        this.dropletsCtx = this.droplets.getContext('2d');
+        
+        // Pre-render drop graphics using Codrops images
+        this.renderDropsGfx();
+      }
+      
+      // Render drop graphics with REAL Codrops technique
+      // Uses drop-color.png and drop-alpha.png for proper normal-mapping effect
+      renderDropsGfx() {
+        const dropSize = 64;
+        this.dropsGfx = [];
+        
+        // Create buffer canvas for compositing
+        const dropBuffer = document.createElement('canvas');
+        dropBuffer.width = dropSize;
+        dropBuffer.height = dropSize;
+        const dropBufferCtx = dropBuffer.getContext('2d');
+        
+        // Generate 255 drop graphics with varying depth values
+        for (let i = 0; i < 255; i++) {
+          const drop = document.createElement('canvas');
+          drop.width = dropSize;
+          drop.height = dropSize;
+          const dropCtx = drop.getContext('2d');
+          
+          // Clear buffer
+          dropBufferCtx.clearRect(0, 0, dropSize, dropSize);
+          
+          // Step 1: Draw drop-color.png (contains refraction direction in RGB)
+          dropBufferCtx.globalCompositeOperation = 'source-over';
+          dropBufferCtx.drawImage(this.dropColor, 0, 0, dropSize, dropSize);
+          
+          // Step 2: Add blue overlay for depth (Codrops original technique)
+          // The blue channel encodes the depth/thickness of the drop
+          dropBufferCtx.globalCompositeOperation = 'screen';
+          dropBufferCtx.fillStyle = `rgba(0, 0, ${i}, 1)`;
+          dropBufferCtx.fillRect(0, 0, dropSize, dropSize);
+          
+          // Step 3: Draw drop-alpha.png as the alpha mask
+          dropCtx.globalCompositeOperation = 'source-over';
+          dropCtx.drawImage(this.dropAlpha, 0, 0, dropSize, dropSize);
+          
+          // Step 4: Apply the colored buffer using source-in (keeps only overlapping areas)
+          dropCtx.globalCompositeOperation = 'source-in';
+          dropCtx.drawImage(dropBuffer, 0, 0, dropSize, dropSize);
+          
+          this.dropsGfx.push(drop);
+        }
+        
+        // Create circle graphic for clearing droplets
+        this.clearDropletsGfx = document.createElement('canvas');
+        this.clearDropletsGfx.width = 128;
+        this.clearDropletsGfx.height = 128;
+        const clearCtx = this.clearDropletsGfx.getContext('2d');
+        clearCtx.fillStyle = '#000';
+        clearCtx.beginPath();
+        clearCtx.arc(64, 64, 64, 0, Math.PI * 2);
+        clearCtx.fill();
+      }
+      
+      drawDroplet(x, y, r) {
+        // Draw small droplets with proper normal-mapping colors
+        const ctx = this.dropletsCtx;
+        const px = x * this.dropletsPixelDensity;
+        const py = y * this.dropletsPixelDensity;
+        const pr = r * this.dropletsPixelDensity;
+        
+        // Use random depth for droplets
+        const depthIndex = Math.floor(Math.random() * 128) + 50;
+        if (this.dropsGfx.length > 0 && this.dropsGfx[depthIndex]) {
+          ctx.drawImage(this.dropsGfx[depthIndex], px - pr, py - pr, pr * 2, pr * 2);
+        }
+      }
+      
+      drawDrop(ctx, drop) {
+        if (this.dropsGfx.length === 0) return;
+        
+        const x = drop.x;
+        const y = drop.y;
+        const r = drop.r;
+        const spreadX = drop.spreadX;
+        const spreadY = drop.spreadY;
+        
+        const scaleX = 1;
+        const scaleY = 1.5;
+        
+        let d = Math.max(0, Math.min(1, ((r - this.options.minR) / this.deltaR) * 0.9));
+        d *= 1 / (((spreadX + spreadY) * 0.5) + 1);
+        d = Math.floor(d * (this.dropsGfx.length - 1));
+        
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+        
+        ctx.drawImage(
+          this.dropsGfx[d],
+          (x - r * scaleX * (spreadX + 1)) * this.scale,
+          (y - r * scaleY * (spreadY + 1)) * this.scale,
+          r * 2 * scaleX * (spreadX + 1) * this.scale,
+          r * 2 * scaleY * (spreadY + 1) * this.scale
+        );
+      }
+      
+      clearDroplets(x, y, r = 30) {
+        const ctx = this.dropletsCtx;
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.drawImage(
+          this.clearDropletsGfx,
+          (x - r) * this.dropletsPixelDensity * this.scale,
+          (y - r) * this.dropletsPixelDensity * this.scale,
+          r * 2 * this.dropletsPixelDensity * this.scale,
+          r * 2 * this.dropletsPixelDensity * this.scale * 1.5
+        );
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      
+      clearCanvas() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+      }
+      
+      createDrop(options) {
+        if (this.drops.length >= this.options.maxDrops * this.areaMultiplier) return null;
+        return Object.assign(Object.create(Drop), options);
+      }
+      
+      addDrop(drop) {
+        if (this.drops.length >= this.options.maxDrops * this.areaMultiplier || drop === null) return false;
+        this.drops.push(drop);
+        return true;
+      }
+      
+      updateRain(timeScale) {
+        const rainDrops = [];
+        if (this.options.raining) {
+          const limit = this.options.rainLimit * timeScale * this.areaMultiplier;
+          let count = 0;
+          
+          while (Math.random() < this.options.rainChance * timeScale * this.areaMultiplier && count < limit) {
+            count++;
+            const r = this.random(this.options.minR, this.options.maxR, n => Math.pow(n, 3));
+            const rainDrop = this.createDrop({
+              x: Math.random() * this.width / this.scale,
+              y: this.random(
+                (this.height / this.scale) * this.options.spawnArea[0],
+                (this.height / this.scale) * this.options.spawnArea[1]
+              ),
+              r: r,
+              momentum: 1 + ((r - this.options.minR) * 0.1) + Math.random() * 2,
+              spreadX: 1.5,
+              spreadY: 1.5
+            });
+            if (rainDrop !== null) {
+              rainDrops.push(rainDrop);
+            }
+          }
+        }
+        return rainDrops;
+      }
+      
+      random(from, to, interpolation) {
+        if (interpolation === undefined) {
+          return from + Math.random() * (to - from);
+        }
+        return from + interpolation(Math.random()) * (to - from);
+      }
+      
+      clearDrops() {
+        this.drops.forEach(drop => {
+          setTimeout(() => {
+            drop.shrink = 0.1 + Math.random() * 0.5;
+          }, Math.random() * 1200);
+        });
+        this.textureCleaningIterations = 50;
+      }
+      
+      updateDroplets(timeScale) {
+        // Clean droplets gradually
+        if (this.textureCleaningIterations > 0) {
+          this.textureCleaningIterations -= 1 * timeScale;
+          this.dropletsCtx.globalCompositeOperation = 'destination-out';
+          this.dropletsCtx.fillStyle = `rgba(0,0,0,${0.05 * timeScale})`;
+          this.dropletsCtx.fillRect(0, 0, this.droplets.width, this.droplets.height);
+          this.dropletsCtx.globalCompositeOperation = 'source-over';
+        }
+        
+        // Add new droplets
+        if (this.options.raining) {
+          this.dropletsCounter += this.options.dropletsRate * timeScale * this.areaMultiplier;
+          while (this.dropletsCounter >= 1) {
+            this.dropletsCounter--;
+            this.drawDroplet(
+              Math.random() * this.width / this.scale,
+              Math.random() * this.height / this.scale,
+              this.random(this.options.dropletsSize[0], this.options.dropletsSize[1], n => n * n)
+            );
+          }
+        }
+        
+        // Draw droplets to main canvas
+        this.ctx.drawImage(this.droplets, 0, 0, this.width, this.height);
+      }
+      
+      updateDrops(timeScale) {
+        let newDrops = [];
+        
+        this.updateDroplets(timeScale);
+        const rainDrops = this.updateRain(timeScale);
+        newDrops = newDrops.concat(rainDrops);
+        
+        // Sort drops by position
+        this.drops.sort((a, b) => {
+          const va = (a.y * (this.width / this.scale)) + a.x;
+          const vb = (b.y * (this.width / this.scale)) + b.x;
+          return va > vb ? 1 : va === vb ? 0 : -1;
+        });
+        
+        this.drops.forEach((drop, i) => {
+          if (!drop.killed) {
+            // Gravity - chance of drops creeping down
+            if (Math.random() < (drop.r - this.options.minR * this.options.dropFallMultiplier) * (0.1 / this.deltaR) * timeScale) {
+              drop.momentum += Math.random() * (drop.r / this.options.maxR) * 4;
+            }
+            
+            // Auto shrink small drops
+            if (this.options.autoShrink && drop.r <= this.options.minR && Math.random() < 0.05 * timeScale) {
+              drop.shrink += 0.01;
+            }
+            
+            // Update shrinkage
+            drop.r -= drop.shrink * timeScale;
+            if (drop.r <= 0) drop.killed = true;
+            
+            // Update trails
+            if (this.options.raining) {
+              drop.lastSpawn += drop.momentum * timeScale * this.options.trailRate;
+              if (drop.lastSpawn > drop.nextSpawn) {
+                const trailDrop = this.createDrop({
+                  x: drop.x + this.random(-drop.r, drop.r) * 0.1,
+                  y: drop.y - drop.r * 0.01,
+                  r: drop.r * this.random(this.options.trailScaleRange[0], this.options.trailScaleRange[1]),
+                  spreadY: drop.momentum * 0.1,
+                  parent: drop
+                });
+                
+                if (trailDrop !== null) {
+                  newDrops.push(trailDrop);
+                  drop.r *= Math.pow(0.97, timeScale);
+                  drop.lastSpawn = 0;
+                  drop.nextSpawn = this.random(this.options.minR, this.options.maxR) - 
+                    drop.momentum * 2 * this.options.trailRate + (this.options.maxR - drop.r);
+                }
+              }
+            }
+            
+            // Normalize spread
+            drop.spreadX *= Math.pow(0.4, timeScale);
+            drop.spreadY *= Math.pow(0.7, timeScale);
+            
+            // Update position (with SUPER anti-gravity support)
+            const moved = drop.momentum > 0 || antiGravity;
+            
+            if (!drop.killed) {
+              if (antiGravity) {
+                // SUPER anti-gravity: strong upward force + boost momentum
+                drop.momentum = Math.max(drop.momentum, 3); // Minimum momentum
+                drop.momentum += 0.5 * timeScale; // Accelerate upward!
+                drop.y -= drop.momentum * this.options.globalTimeScale * 2.5; // 2.5x stronger!
+                
+                // Add some wobble for effect
+                drop.momentumX += (Math.random() - 0.5) * 0.5;
+                drop.spreadY = Math.min(drop.spreadY + 0.1, 1.5);
+                
+                // Kill when exits top
+                if (drop.y < -drop.r) {
+                  drop.killed = true;
+                }
+              } else {
+                // Normal gravity
+                if (moved) {
+                  drop.y += drop.momentum * this.options.globalTimeScale;
+                  drop.x += drop.momentumX * this.options.globalTimeScale;
+                  
+                  if (drop.y > this.height / this.scale + drop.r) {
+                    drop.killed = true;
+                  }
+                }
+              }
+            }
+            
+            // Collision detection
+            const checkCollision = (moved || drop.isNew) && !drop.killed;
+            drop.isNew = false;
+            
+            if (checkCollision) {
+              this.drops.slice(i + 1, i + 70).forEach(drop2 => {
+                if (drop !== drop2 && drop.r > drop2.r && 
+                    drop.parent !== drop2 && drop2.parent !== drop && !drop2.killed) {
+                  const dx = drop2.x - drop.x;
+                  const dy = drop2.y - drop.y;
+                  const d = Math.sqrt(dx * dx + dy * dy);
+                  
+                  if (d < (drop.r + drop2.r) * (this.options.collisionRadius + drop.momentum * this.options.collisionRadiusIncrease * timeScale)) {
+                    const r1 = drop.r;
+                    const r2 = drop2.r;
+                    const a1 = Math.PI * r1 * r1;
+                    const a2 = Math.PI * r2 * r2;
+                    let targetR = Math.sqrt((a1 + a2 * 0.8) / Math.PI);
+                    if (targetR > this.options.maxR) targetR = this.options.maxR;
+                    
+                    drop.r = targetR;
+                    drop.momentumX += dx * 0.1;
+                    drop.spreadX = 0;
+                    drop.spreadY = 0;
+                    drop2.killed = true;
+                    drop.momentum = Math.max(drop2.momentum, Math.min(40,
+                      drop.momentum + targetR * this.options.collisionBoostMultiplier + this.options.collisionBoost
+                    ));
+                  }
+                }
+              });
+            }
+            
+            // Slowdown momentum
+            drop.momentum -= Math.max(1, (this.options.minR * 0.5) - drop.momentum) * 0.1 * timeScale;
+            if (drop.momentum < 0) drop.momentum = 0;
+            drop.momentumX *= Math.pow(0.7, timeScale);
+            
+            if (!drop.killed) {
+              newDrops.push(drop);
+              if (moved && this.options.dropletsRate > 0) {
+                this.clearDroplets(drop.x, drop.y, drop.r * this.options.dropletsCleaningRadiusMultiplier);
+              }
+              this.drawDrop(this.ctx, drop);
+            }
+          }
+        });
+        
+        this.drops = newDrops;
+      }
+      
+      // Check collision with hand positions and apply force
+      updateHandInteraction(handPositions) {
+        if (!handPositions || handPositions.length === 0) return;
+        
+        // Drop coordinates are in unscaled space (width/scale, height/scale)
+        const dropSpaceW = this.width / this.scale;
+        const dropSpaceH = this.height / this.scale;
+        
+        handPositions.forEach(hand => {
+          // Convert normalized coords (0-1) to drop space (mirrored for selfie camera)
+          const hx = (1 - hand.x) * dropSpaceW;
+          const hy = hand.y * dropSpaceH;
+          
+          // Velocity in drop space (amplified for better response)
+          const hvx = -(hand.vx || 0) * dropSpaceW * 2;
+          const hvy = (hand.vy || 0) * dropSpaceH * 2;
+          const speed = Math.sqrt(hvx * hvx + hvy * hvy);
+          
+          // Larger interaction radius for better feel
+          const handRadius = 60;
+          
+          this.drops.forEach(drop => {
+            const dx = drop.x - hx;
+            const dy = drop.y - hy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < handRadius + drop.r) {
+              // Hand is touching this drop!
+              if (speed > 2) {
+                // Movement - scatter the drop
+                const angle = Math.atan2(dy, dx);
+                const force = Math.min(speed * 0.5, 20);
+                drop.momentumX += Math.cos(angle) * force + hvx * 0.2;
+                drop.momentum += force * 0.3;
+                drop.spreadX = Math.min(drop.spreadX + 0.8, 2);
+                drop.spreadY = Math.min(drop.spreadY + 0.5, 1.5);
+                
+                // Drops get killed when hit hard
+                if (speed > 15) {
+                  drop.shrink = 0.3 + Math.random() * 0.3;
+                }
+              } else {
+                // Slow touch - push away
+                if (dist > 0) {
+                  const pushX = dx / dist * 3;
+                  const pushY = dy / dist * 2;
+                  drop.momentumX += pushX;
+                  drop.momentum = Math.max(0, drop.momentum + pushY);
+                }
+              }
+              
+              // Clear small droplets where hand touches
+              this.clearDroplets(hx, hy, handRadius);
+            }
+          });
+        });
+      }
+      
+      // Debug: draw hand positions on canvas
+      drawHandDebug(handPositions) {
+        if (!handPositions || handPositions.length === 0) return;
+        
+        const dropSpaceW = this.width / this.scale;
+        const dropSpaceH = this.height / this.scale;
+        
+        this.ctx.save();
+        handPositions.forEach(hand => {
+          const hx = (1 - hand.x) * dropSpaceW * this.scale;
+          const hy = hand.y * dropSpaceH * this.scale;
+          
+          this.ctx.beginPath();
+          this.ctx.arc(hx, hy, 30, 0, Math.PI * 2);
+          this.ctx.fillStyle = 'rgba(255, 100, 100, 0.5)';
+          this.ctx.fill();
+        });
+        this.ctx.restore();
+      }
+      
+      update(handPositions) {
+        this.clearCanvas();
+        
+        const now = Date.now();
+        if (this.lastRender === null) this.lastRender = now;
+        let deltaT = now - this.lastRender;
+        let timeScale = deltaT / ((1 / 60) * 1000);
+        if (timeScale > 1.1) timeScale = 1.1;
+        timeScale *= this.options.globalTimeScale;
+        this.lastRender = now;
+        
+        // Hand interaction
+        this.updateHandInteraction(handPositions);
+        
+        this.updateDrops(timeScale);
+        
+        // Debug: show hand positions (uncomment to debug)
+        // this.drawHandDebug(handPositions);
+      }
+    }
+    
+    // ============================================================
+    // WebGL Setup
+    // ============================================================
+    function initWebGL() {
+      gl = glCanvas.getContext('webgl', { alpha: false });
+      if (!gl) {
+        console.error('WebGL not supported');
+        return false;
+      }
+      
+      // Create shaders
+      const vertShader = createShader(gl, 'vert-shader', gl.VERTEX_SHADER);
+      const fragShader = createShader(gl, 'frag-shader', gl.FRAGMENT_SHADER);
+      
+      // Create program
+      program = gl.createProgram();
+      gl.attachShader(program, vertShader);
+      gl.attachShader(program, fragShader);
+      gl.linkProgram(program);
+      gl.useProgram(program);
+      
+      // Create rectangle (full screen quad)
+      const posBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1,  1, -1,  -1, 1,
+        -1,  1,  1, -1,   1, 1
+      ]), gl.STATIC_DRAW);
+      
+      const posLocation = gl.getAttribLocation(program, 'a_position');
+      gl.enableVertexAttribArray(posLocation);
+      gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 0, 0);
+      
+      // Texture coordinates
+      const texBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        0, 0,  1, 0,  0, 1,
+        0, 1,  1, 0,  1, 1
+      ]), gl.STATIC_DRAW);
+      
+      const texLocation = gl.getAttribLocation(program, 'a_texCoord');
+      gl.enableVertexAttribArray(texLocation);
+      gl.vertexAttribPointer(texLocation, 2, gl.FLOAT, false, 0, 0);
+      
+      // Create textures
+      waterMapTexture = createTexture(0);
+      fgTexture = createTexture(1);
+      bgTexture = createTexture(2);
+      
+      // Set uniforms
+      gl.uniform1i(gl.getUniformLocation(program, 'u_waterMap'), 0);
+      gl.uniform1i(gl.getUniformLocation(program, 'u_textureFg'), 1);
+      gl.uniform1i(gl.getUniformLocation(program, 'u_textureBg'), 2);
+      gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), width, height);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_minRefraction'), 256);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_refractionDelta'), 256);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_brightness'), 1.1);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_alphaMultiply'), 6);
+      gl.uniform1f(gl.getUniformLocation(program, 'u_alphaSubtract'), 3);
+      
+      return true;
+    }
+    
+    function createShader(gl, id, type) {
+      const shader = gl.createShader(type);
+      const source = document.getElementById(id).text;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error('Shader error:', gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+    
+    function createTexture(unit) {
+      const texture = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      return texture;
+    }
+    
+    function updateTexture(texture, unit, source) {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    }
+    
+    // ============================================================
+    // Background textures (from camera)
+    // ============================================================
+    let textureFg, textureFgCtx;
+    let textureBg, textureBgCtx;
+    const textureBgSize = { width: 384, height: 256 };
+    const textureFgSize = { width: 192, height: 128 };
+    
+    function createBackgroundTextures() {
+      textureFg = document.createElement('canvas');
+      textureFg.width = textureFgSize.width;
+      textureFg.height = textureFgSize.height;
+      textureFgCtx = textureFg.getContext('2d');
+      
+      textureBg = document.createElement('canvas');
+      textureBg.width = textureBgSize.width;
+      textureBg.height = textureBgSize.height;
+      textureBgCtx = textureBg.getContext('2d');
+    }
+    
+    function generateTextures() {
+      // Draw camera to foreground (clear, for refraction)
+      textureFgCtx.save();
+      textureFgCtx.scale(-1, 1);
+      textureFgCtx.drawImage(video, -textureFgSize.width, 0, textureFgSize.width, textureFgSize.height);
+      textureFgCtx.restore();
+      
+      // Draw camera to background (blurred via small size)
+      textureBgCtx.save();
+      textureBgCtx.scale(-1, 1);
+      textureBgCtx.drawImage(video, -textureBgSize.width, 0, textureBgSize.width, textureBgSize.height);
+      textureBgCtx.restore();
+      
+      // Apply slight darkening to background
+      textureBgCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      textureBgCtx.fillRect(0, 0, textureBgSize.width, textureBgSize.height);
+    }
+    
+    // ============================================================
+    // Main Loop
+    // ============================================================
+    function render() {
+      // Update raindrops with hand interaction
+      raindrops.update(handPositions);
+      
+      // Generate camera textures
+      generateTextures();
+      
+      // Update WebGL textures
+      updateTexture(waterMapTexture, 0, raindrops.canvas);
+      updateTexture(fgTexture, 1, textureFg);
+      updateTexture(bgTexture, 2, textureBg);
+      
+      // Draw
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      
+      requestAnimationFrame(render);
+    }
+    
+    // ============================================================
+    // Load Codrops drop images from embedded Base64
+    // ============================================================
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load image`));
+        img.src = src;
+      });
+    }
+    
+    async function loadDropImages() {
+      const [dropColor, dropAlpha] = await Promise.all([
+        loadImage('./img/drop-color.png'),
+        loadImage('./img/drop-alpha.png')
+      ]);
+      return { dropColor, dropAlpha };
+    }
+    
+    // ============================================================
+    // Initialize
+    // ============================================================
+    async function init() {
+      try {
+        // Load Codrops drop images from local files
+        loading.querySelector('p').textContent = 'Loading images...';
+        const { dropColor, dropAlpha } = await loadDropImages();
+        dropColorImg = dropColor;
+        dropAlphaImg = dropAlpha;
+        
+        // Get camera
+        loading.querySelector('p').textContent = 'Initializing camera...';
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        video.srcObject = stream;
+        await video.play();
+        
+        // Setup canvas
+        resize();
+        window.addEventListener('resize', resize);
+        
+        // Init WebGL
+        if (!initWebGL()) {
+          throw new Error('WebGL init failed');
+        }
+        
+        // Create background textures
+        createBackgroundTextures();
+        
+        // Create raindrops with Codrops images (scale=1 for fixed resolution)
+        raindrops = new Raindrops(width, height, 1, dropAlphaImg, dropColorImg, {
+          minR: 20,
+          maxR: 50,
+          rainChance: 0.35,
+          rainLimit: 6,
+          dropletsRate: 50,
+          dropletsSize: [3, 5.5],
+          trailRate: 1,
+          trailScaleRange: [0.25, 0.35],
+          collisionRadiusIncrease: 0.0002
+        });
+        
+        // Initialize MediaPipe Hands
+        loading.querySelector('p').textContent = 'Loading hand tracking...';
+        await initMediaPipeHands();
+        
+        loading.style.display = 'none';
+        
+        // Start
+        requestAnimationFrame(render);
+        
+      } catch (err) {
+        console.error(err);
+        loading.innerHTML = `
+          <p style="color: #ff6b6b;">Error: ${err.message}</p>
+        `;
+      }
+    }
+    
+    // ============================================================
+    // MediaPipe Hands Setup
+    // ============================================================
+    async function initMediaPipeHands() {
+      return new Promise((resolve, reject) => {
+        const hands = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        
+        hands.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.5
+        });
+        
+        hands.onResults((results) => {
+          lastHandPositions = [...handPositions];
+          handPositions = [];
+          let fistDetected = false;
+          
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            results.multiHandLandmarks.forEach((landmarks, i) => {
+              // Check for fist gesture
+              // Fist: fingertips are close to palm (below finger base)
+              const wrist = landmarks[0];
+              const indexTip = landmarks[8];
+              const middleTip = landmarks[12];
+              const ringTip = landmarks[16];
+              const pinkyTip = landmarks[20];
+              const indexBase = landmarks[5];
+              const middleBase = landmarks[9];
+              
+              // In a fist, fingertips are closer to wrist than their bases
+              const indexCurled = indexTip.y > indexBase.y;
+              const middleCurled = middleTip.y > middleBase.y;
+              const ringCurled = ringTip.y > landmarks[13].y;
+              const pinkyCurled = pinkyTip.y > landmarks[17].y;
+              
+              if (indexCurled && middleCurled && ringCurled && pinkyCurled) {
+                fistDetected = true;
+              }
+              
+              // Use multiple key points for better coverage
+              const keyPoints = [
+                landmarks[0],  // wrist
+                landmarks[5],  // index finger base
+                landmarks[9],  // middle finger base
+                landmarks[8],  // index finger tip
+                landmarks[12], // middle finger tip
+              ];
+              
+              keyPoints.forEach((point, j) => {
+                const prevHand = lastHandPositions[i * keyPoints.length + j] || { x: point.x, y: point.y };
+                handPositions.push({
+                  x: point.x,
+                  y: point.y,
+                  vx: point.x - prevHand.x,
+                  vy: point.y - prevHand.y
+                });
+              });
+            });
+          }
+          
+          // Update fist state and anti-gravity
+          isFist = fistDetected;
+          antiGravity = fistDetected;
+          
+          // Update status display
+          const statusEl = document.getElementById('gestureStatus');
+          if (fistDetected) {
+            statusEl.classList.add('active');
+            statusEl.querySelector('span').textContent = '? Anti-gravity ON';
+          } else if (handPositions.length > 0) {
+            statusEl.classList.remove('active');
+            statusEl.querySelector('span').textContent = '? Hand detected';
+          } else {
+            statusEl.classList.remove('active');
+            statusEl.querySelector('span').textContent = 'Hand tracking ready';
+          }
+          
+          handsReady = true;
+        });
+        
+        // Start processing
+        const camera = new Camera(video, {
+          onFrame: async () => {
+            await hands.send({ image: video });
+          },
+          width: 1280,
+          height: 720
+        });
+        
+        camera.start().then(() => resolve()).catch(reject);
+      });
+    }
+    
+    function resize() {
+      // Use fixed canvas size (like OC) for better quality
+      width = CANVAS_WIDTH;
+      height = CANVAS_HEIGHT;
+      glCanvas.width = width;
+      glCanvas.height = height;
+      // Don't set style width/height - let CSS handle it
+      
+      if (gl) {
+        gl.viewport(0, 0, width, height);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), width, height);
+      }
+      
+      if (raindrops) {
+        raindrops.width = width;
+        raindrops.height = height;
+        raindrops.canvas.width = width;
+        raindrops.canvas.height = height;
+        raindrops.droplets.width = width * raindrops.dropletsPixelDensity;
+        raindrops.droplets.height = height * raindrops.dropletsPixelDensity;
+      }
+    }
+    
+    // ============================================================
+    // UI Controls
+    // ============================================================
+    document.getElementById('toggleRain').addEventListener('click', function() {
+      isRaining = !isRaining;
+      raindrops.options.raining = isRaining;
+      this.textContent = isRaining ? 'Pause' : 'Resume';
+      this.classList.toggle('active', !isRaining);
+    });
+    
+    document.getElementById('clearBtn').addEventListener('click', function() {
+      raindrops.clearDrops();
+    });
+    
+    document.getElementById('rainAmount').addEventListener('input', function() {
+      rainIntensity = this.value / 100;
+      raindrops.options.rainChance = 0.35 * rainIntensity;
+      raindrops.options.dropletsRate = 50 * rainIntensity;
+    });
+    
+    // Start
+    init();
+  </script>
+</body>
+</html>
