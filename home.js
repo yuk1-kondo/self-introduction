@@ -36,9 +36,20 @@ const EFFECT_PAGES = [
     { id: 'wd', name: 'Water', icon: '◯', url: '/wd/', color: '#2196F3' },
     { id: 'fg', name: 'Fog', icon: '≋', url: '/fg/', color: '#607D8B' },
     { id: 'dm', name: 'Mirror', icon: '◇', url: '/dm/', color: '#E91E63' },
-    { id: 'oc', name: 'Cloak', icon: '◈', url: '/oc/', color: '#FF5722' },
-    { id: 'oo', name: 'Social', icon: '@', url: '/oo/', color: '#FFC107' }
+    { id: 'oc', name: 'Cloak', icon: '◈', url: '/oc/', color: '#FF5722' }
 ];
+
+// Utility: HEX -> rgba string (avoid browser differences in #RRGGBBAA)
+function hexToRgba(hex, alpha = 1) {
+    const normalized = hex.replace('#', '');
+    const bigint = parseInt(normalized, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
 // State
 let width, height;
@@ -190,7 +201,7 @@ class EffectNode {
         this.radius += (this.targetRadius - this.radius) * 0.15;
         
         // Glow intensity
-        this.glowIntensity += (this.isHovered ? 1 : 0 - this.glowIntensity) * 0.1;
+        this.glowIntensity += ((this.isHovered ? 1 : 0) - this.glowIntensity) * 0.1;
     }
 
     draw() {
@@ -202,7 +213,7 @@ class EffectNode {
                 this.x, this.y, this.radius * 0.5,
                 this.x, this.y, this.radius * 2
             );
-            gradient.addColorStop(0, `${this.data.color}${Math.floor(this.glowIntensity * 40).toString(16).padStart(2, '0')}`);
+            gradient.addColorStop(0, hexToRgba(this.data.color, clamp(this.glowIntensity * 0.16, 0, 0.25)));
             gradient.addColorStop(1, 'transparent');
             ctx.fillStyle = gradient;
             ctx.beginPath();
@@ -219,9 +230,9 @@ class EffectNode {
             this.x - this.radius * 0.3, this.y - this.radius * 0.3, 0,
             this.x, this.y, this.radius
         );
-        const alpha = this.isHovered ? 'ff' : 'cc';
-        bgGradient.addColorStop(0, `${this.data.color}${alpha}`);
-        bgGradient.addColorStop(1, `${this.data.color}99`);
+        const baseAlpha = this.isHovered ? 0.95 : 0.8;
+        bgGradient.addColorStop(0, hexToRgba(this.data.color, clamp(baseAlpha, 0, 1)));
+        bgGradient.addColorStop(1, hexToRgba(this.data.color, 0.6));
         ctx.fillStyle = bgGradient;
         ctx.fill();
         
@@ -293,6 +304,7 @@ function resize() {
     canvas.height = height * dpr;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // reset before scaling to avoid cumulative scale
     ctx.scale(dpr, dpr);
     
     // Update effect node positions
@@ -343,8 +355,8 @@ function animate() {
             const dy = node.y - p.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < CONNECTION_DISTANCE * 1.5) {
-                const alpha = (1 - dist / (CONNECTION_DISTANCE * 1.5)) * 0.1;
-                ctx.strokeStyle = `${node.data.color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+                const alpha = clamp((1 - dist / (CONNECTION_DISTANCE * 1.5)) * 0.1, 0, 0.12);
+                ctx.strokeStyle = hexToRgba(node.data.color, alpha);
                 ctx.beginPath();
                 ctx.moveTo(node.x, node.y);
                 ctx.lineTo(p.x, p.y);
