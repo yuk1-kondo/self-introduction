@@ -12,14 +12,12 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     :root {
-      --bg: #050510;
-      --surface: #0a0a1a;
-      --border: #1a1a3a;
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #222;
       --text: #fff;
       --text-muted: #666;
-      --accent1: #00ffff;
-      --accent2: #ff00ff;
-      --accent3: #ffff00;
+      --accent: #fff;
     }
     
     html, body { 
@@ -41,82 +39,75 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 32px;
-      background: rgba(5, 5, 16, 0.9);
-      backdrop-filter: blur(10px);
+      padding: 20px 32px;
       border-bottom: 1px solid var(--border);
-      z-index: 10;
     }
     
     .logo {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
-      letter-spacing: 2px;
-      background: linear-gradient(90deg, var(--accent1), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      letter-spacing: 0.5px;
     }
     
     .hint {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-muted);
-      text-align: center;
     }
     
     .controls {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 16px;
-      padding: 12px 32px;
-      background: rgba(5, 5, 16, 0.9);
-      backdrop-filter: blur(10px);
+      gap: 8px;
+      padding: 16px 32px;
       border-bottom: 1px solid var(--border);
       flex-wrap: wrap;
-      z-index: 10;
     }
     
     .btn {
       font-family: inherit;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 500;
-      padding: 8px 16px;
+      padding: 10px 18px;
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: 8px;
       background: transparent;
       color: var(--text);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
     
     .btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: var(--accent1);
+      background: var(--surface);
+      border-color: #333;
     }
     
     .btn.active {
-      background: linear-gradient(135deg, var(--accent1), var(--accent2));
-      border-color: transparent;
+      background: var(--text);
       color: var(--bg);
+    }
+    
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 8px;
     }
     
     .slider {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
     }
     
     .slider-label {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text-muted);
-      text-transform: uppercase;
     }
     
     input[type="range"] {
       -webkit-appearance: none;
-      width: 60px;
-      height: 3px;
+      width: 80px;
+      height: 4px;
       background: var(--border);
       border-radius: 2px;
       outline: none;
@@ -124,200 +115,152 @@
     
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 12px;
-      height: 12px;
-      background: var(--accent1);
+      width: 14px;
+      height: 14px;
+      background: var(--text);
       border-radius: 50%;
       cursor: pointer;
     }
     
     .stage { 
       flex: 1;
+      display: grid; 
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
       position: relative;
-      overflow: hidden;
     }
     
-    #mainCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .canvas-container {
+      position: relative;
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    
+    #mainCanvas { 
+      display: block;
       width: 100%;
-      height: 100%;
+      height: auto;
+      max-height: 100%;
+      object-fit: contain;
     }
     
     video { display: none; }
     
-    /* Guide overlays */
-    .guide-left, .guide-right {
-      position: fixed;
-      top: 50%;
-      transform: translateY(-50%);
-      padding: 16px;
-      background: rgba(0, 0, 0, 0.6);
-      border-radius: 12px;
-      font-size: 11px;
-      color: var(--text-muted);
-      text-align: center;
-      pointer-events: none;
-      z-index: 20;
+    .status { 
+      position: fixed; 
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      padding: 12px 24px; 
+      border-radius: 100px; 
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 100;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     
-    .guide-left {
-      left: 20px;
+    .status.active { 
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
     }
     
-    .guide-right {
-      right: 20px;
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
     }
     
-    .guide-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-      color: var(--accent1);
+    .status.active .status-dot {
+      background: var(--bg);
+      animation: blink 1s infinite;
     }
     
-    .guide-value {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--text);
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
     
     /* Note display */
     .note-display {
       position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8);
-      padding: 16px 32px;
-      border-radius: 100px;
+      top: 50%;
+      right: 24px;
+      transform: translateY(-50%);
+      background: var(--surface);
+      padding: 20px;
+      border-radius: 12px;
       border: 1px solid var(--border);
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    
-    .current-note {
-      font-size: 32px;
-      font-weight: 700;
-      min-width: 60px;
       text-align: center;
-      background: linear-gradient(135deg, var(--accent1), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    
-    .current-freq {
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-    
-    /* Scale display */
-    .scale-display {
-      position: fixed;
-      left: 50%;
-      top: 120px;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 4px;
       z-index: 20;
     }
     
-    .scale-note {
-      width: 40px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 600;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      transition: all 0.1s ease;
+    .note-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
     }
     
-    .scale-note.active {
-      background: linear-gradient(135deg, var(--accent1), var(--accent2));
-      color: var(--bg);
-      transform: scale(1.1);
-      box-shadow: 0 0 20px var(--accent1);
-    }
-    
-    .scale-note.black {
-      background: rgba(0, 0, 0, 0.5);
-      height: 40px;
-      margin-top: -10px;
-    }
-    
-    .scale-note.black.active {
-      background: linear-gradient(135deg, var(--accent2), var(--accent1));
-    }
-    
-    /* Start overlay */
-    .start-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: var(--bg);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      gap: 20px;
-    }
-    
-    .start-overlay.hidden {
-      display: none;
-    }
-    
-    .start-title {
+    .note-value {
       font-size: 36px;
       font-weight: 700;
-      background: linear-gradient(90deg, var(--accent1), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      letter-spacing: 2px;
     }
     
-    .start-subtitle {
-      color: var(--text);
-      font-size: 16px;
-    }
-    
-    .start-hint {
+    .note-freq {
+      font-size: 12px;
       color: var(--text-muted);
-      font-size: 13px;
+      margin-top: 4px;
     }
     
-    .start-btn {
-      font-family: inherit;
-      font-size: 18px;
-      font-weight: 600;
-      padding: 18px 50px;
-      border: none;
-      border-radius: 100px;
-      background: linear-gradient(135deg, var(--accent1), var(--accent2));
-      color: var(--bg);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      margin-top: 20px;
+    /* Volume meter */
+    .volume-meter {
+      position: fixed;
+      left: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 200px;
+      background: var(--surface);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      z-index: 20;
     }
     
-    .start-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 10px 40px rgba(0, 255, 255, 0.3);
+    .volume-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: var(--text);
+      border-radius: 4px;
+      transition: height 0.05s ease;
+    }
+    
+    .volume-label {
+      position: fixed;
+      left: 24px;
+      top: calc(50% + 115px);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
     
     /* Loading */
-    .loading-spinner {
+    #loading {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
@@ -327,98 +270,125 @@
       justify-content: center;
       align-items: center;
       z-index: 1000;
-      gap: 20px;
     }
     
     .spinner {
-      width: 50px; height: 50px;
+      width: 40px; height: 40px;
       border: 3px solid var(--border);
-      border-top-color: var(--accent1);
+      border-top-color: var(--text);
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
     
     @keyframes spin { to { transform: rotate(360deg); } }
     
-    .loading-spinner p { color: var(--text-muted); font-size: 14px; }
+    #loading p { margin-top: 16px; color: var(--text-muted); }
+    
+    #loading.hidden { display: none; }
     
     /* Mobile responsive */
     @media (max-width: 640px) {
-      header { padding: 12px 16px; flex-direction: column; gap: 8px; }
-      .logo { font-size: 14px; }
-      .controls { padding: 10px 16px; gap: 8px; }
-      .btn { padding: 6px 12px; font-size: 11px; }
-      .guide-left, .guide-right { padding: 12px; font-size: 10px; }
-      .guide-value { font-size: 18px; }
-      .note-display { padding: 12px 24px; }
-      .current-note { font-size: 24px; }
-      .scale-display { display: none; }
+      header { 
+        padding: 16px 20px; 
+        flex-direction: column;
+        gap: 8px;
+      }
+      .hint { font-size: 10px; text-align: center; }
+      .controls { 
+        padding: 12px 20px; 
+        gap: 6px;
+        justify-content: center;
+      }
+      .btn { padding: 8px 12px; font-size: 12px; }
+      .slider { gap: 8px; }
+      input[type="range"] { width: 60px; }
+      .divider { display: none; }
+      .canvas-container {
+        max-width: 95%;
+        max-height: 60vh;
+      }
+      .status { 
+        padding: 10px 16px; 
+        font-size: 12px;
+        bottom: 16px;
+      }
+      .note-display {
+        right: 12px;
+        padding: 12px;
+      }
+      .note-value { font-size: 24px; }
+      .volume-meter {
+        left: 12px;
+        height: 150px;
+      }
+      .volume-label {
+        left: 12px;
+        top: calc(50% + 90px);
+      }
     }
   </style>
 </head>
 <body>
-  <div id="startOverlay" class="start-overlay">
-    <h1 class="start-title">✨ AIR INSTRUMENT</h1>
-    <p class="start-subtitle">Play music with your hands in the air!</p>
-    <p class="start-hint">Right hand = Pitch | Left hand = Volume</p>
-    <button class="start-btn" id="startBtn">🎤 START</button>
-  </div>
-  
-  <div id="loading" class="loading-spinner" style="display: none;">
+  <div id="loading">
     <div class="spinner"></div>
-    <p>Loading hand tracking...</p>
+    <p>Click Start to begin</p>
   </div>
   
   <div class="app">
     <header>
-      <div class="logo">✨ AIR INSTRUMENT</div>
-      <div class="hint">Move hands in the air to create music • Right = Pitch • Left = Volume</div>
+      <div class="logo">AIR INSTRUMENT</div>
+      <div class="hint">✋ Right = Pitch | ✋ Left = Volume | Move hands to play</div>
     </header>
     
     <div class="controls">
+      <button class="btn" id="startBtn">▶ Start</button>
+      
+      <div class="divider"></div>
+      
       <button class="btn active" id="scaleMajor">Major</button>
       <button class="btn" id="scaleMinor">Minor</button>
-      <button class="btn" id="scalePenta">Pentatonic</button>
+      <button class="btn" id="scalePenta">Penta</button>
       <button class="btn" id="scaleChromatic">Chromatic</button>
       
-      <div class="slider">
-        <span class="slider-label">Reverb</span>
-        <input type="range" id="reverb" min="0" max="1" step="0.1" value="0.3">
-      </div>
+      <div class="divider"></div>
+      
+      <button class="btn active" id="waveformSaw">Saw</button>
+      <button class="btn" id="waveformSine">Sine</button>
+      <button class="btn" id="waveformSquare">Square</button>
+      
+      <div class="divider"></div>
       
       <div class="slider">
         <span class="slider-label">Octave</span>
         <input type="range" id="octave" min="2" max="6" step="1" value="4">
       </div>
       
-      <button class="btn" id="waveformSine">Sine</button>
-      <button class="btn active" id="waveformSaw">Saw</button>
-      <button class="btn" id="waveformSquare">Square</button>
+      <div class="slider">
+        <span class="slider-label">Reverb</span>
+        <input type="range" id="reverb" min="0" max="1" step="0.1" value="0.3">
+      </div>
     </div>
     
     <div class="stage">
-      <canvas id="mainCanvas"></canvas>
+      <div class="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+      </div>
     </div>
     
-    <div class="guide-left">
-      <div class="guide-label">Left Hand</div>
-      <div class="guide-value" id="volumeValue">--</div>
-      <div>Volume</div>
+    <div class="volume-meter">
+      <div class="volume-fill" id="volumeFill"></div>
     </div>
-    
-    <div class="guide-right">
-      <div class="guide-label">Right Hand</div>
-      <div class="guide-value" id="pitchValue">--</div>
-      <div>Pitch</div>
-    </div>
-    
-    <div class="scale-display" id="scaleDisplay">
-      <!-- Generated by JS -->
-    </div>
+    <div class="volume-label">Vol</div>
     
     <div class="note-display">
-      <div class="current-note" id="currentNote">--</div>
-      <div class="current-freq" id="currentFreq">-- Hz</div>
+      <div class="note-label">Note</div>
+      <div class="note-value" id="currentNote">--</div>
+      <div class="note-freq" id="currentFreq">-- Hz</div>
+    </div>
+    
+    <div class="status" id="status">
+      <div class="status-dot"></div>
+      <span id="statusText">Hand tracking ready</span>
     </div>
   </div>
 
@@ -433,17 +403,20 @@
     
     const canvas = document.getElementById('mainCanvas');
     const ctx = canvas.getContext('2d');
-    const startOverlay = document.getElementById('startOverlay');
     const loading = document.getElementById('loading');
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+    const volumeFill = document.getElementById('volumeFill');
     const video = document.createElement('video');
     video.playsInline = true;
+    
+    let isStarted = false;
     
     // Audio
     let audioContext;
     let oscillator;
     let gainNode;
     let reverbNode;
-    let analyser;
     let isPlaying = false;
     let waveform = 'sawtooth';
     let reverbAmount = 0.3;
@@ -453,7 +426,7 @@
     const SCALES = {
       major: [0, 2, 4, 5, 7, 9, 11, 12],
       minor: [0, 2, 3, 5, 7, 8, 10, 12],
-      pentatonic: [0, 2, 4, 7, 9, 12],
+      penta: [0, 2, 4, 7, 9, 12],
       chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     };
     
@@ -463,16 +436,15 @@
     const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     
     // Hand tracking state
-    let leftHand = null;  // Volume control
-    let rightHand = null; // Pitch control
+    let leftHand = null;
+    let rightHand = null;
     let smoothedPitch = 0;
     let smoothedVolume = 0;
     let targetPitch = 0;
     let targetVolume = 0;
     
-    // Visual effects
-    let particles = [];
-    let trails = { left: [], right: [] };
+    // Canvas dimensions
+    let width, height;
     
     // Get frequency from note number
     function noteToFreq(note) {
@@ -488,7 +460,6 @@
     
     // Quantize to scale
     function quantizeToScale(value, scale) {
-      // value: 0-1 -> map to scale notes
       const scaleNotes = SCALES[scale];
       const index = Math.floor(value * scaleNotes.length);
       const clampedIndex = Math.max(0, Math.min(scaleNotes.length - 1, index));
@@ -499,12 +470,10 @@
     function initAudio() {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       
-      // Create nodes
       oscillator = audioContext.createOscillator();
       gainNode = audioContext.createGain();
-      analyser = audioContext.createAnalyser();
       
-      // Create simple reverb using delay
+      // Simple reverb using delay
       const delay = audioContext.createDelay();
       const feedback = audioContext.createGain();
       const wet = audioContext.createGain();
@@ -515,7 +484,6 @@
       wet.gain.value = reverbAmount;
       dry.gain.value = 1 - reverbAmount * 0.5;
       
-      // Connect reverb
       oscillator.connect(dry);
       oscillator.connect(delay);
       delay.connect(feedback);
@@ -525,10 +493,8 @@
       dry.connect(gainNode);
       wet.connect(gainNode);
       
-      gainNode.connect(analyser);
-      analyser.connect(audioContext.destination);
+      gainNode.connect(audioContext.destination);
       
-      // Initialize
       oscillator.type = waveform;
       oscillator.frequency.value = 440;
       gainNode.gain.value = 0;
@@ -542,34 +508,29 @@
     function updateAudio() {
       if (!audioContext) return;
       
-      // Smooth transitions
       smoothedPitch += (targetPitch - smoothedPitch) * 0.15;
       smoothedVolume += (targetVolume - smoothedVolume) * 0.2;
       
+      // Update volume meter
+      volumeFill.style.height = (smoothedVolume * 100) + '%';
+      
       if (rightHand && leftHand) {
-        // Get quantized note
         const semitone = quantizeToScale(1 - smoothedPitch, currentScale);
-        const midiNote = (baseOctave + 1) * 12 + semitone; // C of the octave + scale note
+        const midiNote = (baseOctave + 1) * 12 + semitone;
         const freq = noteToFreq(midiNote);
         
-        // Update oscillator
         oscillator.frequency.setTargetAtTime(freq, audioContext.currentTime, 0.05);
         gainNode.gain.setTargetAtTime(smoothedVolume * 0.5, audioContext.currentTime, 0.05);
         
-        // Update display
         document.getElementById('currentNote').textContent = midiToNoteName(midiNote);
         document.getElementById('currentFreq').textContent = Math.round(freq) + ' Hz';
-        document.getElementById('pitchValue').textContent = NOTE_NAMES[semitone % 12];
-        document.getElementById('volumeValue').textContent = Math.round(smoothedVolume * 100) + '%';
-        
-        // Update scale display
-        updateScaleDisplay(semitone);
         
         if (!isPlaying) {
           isPlaying = true;
+          statusEl.classList.add('active');
+          statusText.textContent = '🎵 Playing';
         }
       } else {
-        // Fade out when hands not detected
         gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
         
         if (isPlaying && gainNode.gain.value < 0.01) {
@@ -578,247 +539,93 @@
         
         document.getElementById('currentNote').textContent = '--';
         document.getElementById('currentFreq').textContent = '-- Hz';
-        document.getElementById('pitchValue').textContent = '--';
-        document.getElementById('volumeValue').textContent = '--';
       }
-    }
-    
-    // Update scale display
-    function updateScaleDisplay(activeNote) {
-      const scaleNotes = SCALES[currentScale];
-      const container = document.getElementById('scaleDisplay');
-      
-      const notes = container.querySelectorAll('.scale-note');
-      notes.forEach((note, i) => {
-        const isActive = scaleNotes[i] === activeNote;
-        note.classList.toggle('active', isActive);
-      });
-    }
-    
-    // Create scale display
-    function createScaleDisplay() {
-      const container = document.getElementById('scaleDisplay');
-      container.innerHTML = '';
-      
-      const scaleNotes = SCALES[currentScale];
-      scaleNotes.forEach((semitone, i) => {
-        const note = document.createElement('div');
-        const noteName = NOTE_NAMES[semitone % 12];
-        note.className = 'scale-note' + (noteName.includes('#') ? ' black' : '');
-        note.textContent = noteName;
-        container.appendChild(note);
-      });
     }
     
     // Hand tracking results
     function onHandResults(results) {
-      // Reset hands
-      leftHand = null;
-      rightHand = null;
-      
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        results.multiHandLandmarks.forEach((landmarks, i) => {
-          const handedness = results.multiHandedness[i];
-          const isRight = handedness.label === 'Right'; // Note: mirrored
-          
-          // Use palm center (landmark 9) for position
-          const palm = landmarks[9];
-          const indexTip = landmarks[8];
-          
-          // Mirrored coordinates
-          const x = 1 - palm.x;
-          const y = palm.y;
-          
-          if (isRight) {
-            // Right hand controls pitch (use Y position)
-            rightHand = { x, y, landmarks };
-            targetPitch = y;
-          } else {
-            // Left hand controls volume (use Y position - higher = louder)
-            leftHand = { x, y, landmarks };
-            targetVolume = Math.max(0, 1 - y);
-          }
-        });
-      }
-    }
-    
-    // Resize canvas
-    function resize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    
-    // Visual rendering
-    function render() {
-      const width = canvas.width;
-      const height = canvas.height;
-      
-      // Clear with fade
-      ctx.fillStyle = 'rgba(5, 5, 16, 0.15)';
+      // Clear canvas
+      ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, width, height);
       
-      // Draw grid lines for pitch reference
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 1;
+      // Draw camera feed (mirrored, semi-transparent)
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -width, 0, width, height);
+      ctx.restore();
       
-      const gridLines = 12;
-      for (let i = 0; i <= gridLines; i++) {
-        const y = (i / gridLines) * height;
+      // Draw grid lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 8; i++) {
+        const y = (i / 8) * height;
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(width, y);
         ctx.stroke();
       }
       
-      // Draw hands and trails
-      if (rightHand) {
-        const x = rightHand.x * width;
-        const y = rightHand.y * height;
+      // Reset hands
+      leftHand = null;
+      rightHand = null;
+      
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        statusText.textContent = '✋ Hands detected';
         
-        // Add to trail
-        trails.right.push({ x, y, life: 1 });
-        if (trails.right.length > 30) trails.right.shift();
-        
-        // Draw trail
-        ctx.beginPath();
-        trails.right.forEach((point, i) => {
-          point.life -= 0.03;
-          if (i === 0) {
-            ctx.moveTo(point.x, point.y);
+        results.multiHandLandmarks.forEach((landmarks, i) => {
+          const handedness = results.multiHandedness[i];
+          const isRight = handedness.label === 'Right';
+          
+          const palm = landmarks[9];
+          const x = 1 - palm.x;
+          const y = palm.y;
+          
+          if (isRight) {
+            rightHand = { x, y, landmarks };
+            targetPitch = y;
           } else {
-            ctx.lineTo(point.x, point.y);
+            leftHand = { x, y, landmarks };
+            targetVolume = Math.max(0, 1 - y);
           }
+          
+          // Draw hand skeleton
+          drawHandSkeleton(landmarks, isRight ? '#ffffff' : '#888888');
         });
-        ctx.strokeStyle = `rgba(0, 255, 255, 0.5)`;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        // Draw hand skeleton
-        drawHandSkeleton(rightHand.landmarks, width, height, '#00ffff');
-        
-        // Draw pitch indicator
+      } else {
+        if (!isPlaying) {
+          statusEl.classList.remove('active');
+          statusText.textContent = 'Show both hands to play';
+        }
+      }
+      
+      // Draw pitch indicator line
+      if (rightHand) {
         const pitchY = smoothedPitch * height;
         ctx.beginPath();
         ctx.moveTo(0, pitchY);
         ctx.lineTo(width, pitchY);
-        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.lineWidth = 2;
         ctx.stroke();
-        
-        // Glow at hand position
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, 100);
-        gradient.addColorStop(0, 'rgba(0, 255, 255, 0.4)');
-        gradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(x, y, 100, 0, Math.PI * 2);
-        ctx.fill();
       }
       
-      if (leftHand) {
-        const x = leftHand.x * width;
-        const y = leftHand.y * height;
-        
-        // Add to trail
-        trails.left.push({ x, y, life: 1 });
-        if (trails.left.length > 30) trails.left.shift();
-        
-        // Draw trail
-        ctx.beginPath();
-        trails.left.forEach((point, i) => {
-          point.life -= 0.03;
-          if (i === 0) {
-            ctx.moveTo(point.x, point.y);
-          } else {
-            ctx.lineTo(point.x, point.y);
-          }
-        });
-        ctx.strokeStyle = `rgba(255, 0, 255, 0.5)`;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        // Draw hand skeleton
-        drawHandSkeleton(leftHand.landmarks, width, height, '#ff00ff');
-        
-        // Volume bar on left
-        const volHeight = smoothedVolume * height * 0.8;
-        const gradient = ctx.createLinearGradient(40, height, 40, height - volHeight);
-        gradient.addColorStop(0, 'rgba(255, 0, 255, 0.8)');
-        gradient.addColorStop(1, 'rgba(255, 0, 255, 0.2)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(30, height - volHeight, 20, volHeight);
-        
-        // Glow at hand position
-        const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, 80 + smoothedVolume * 50);
-        glowGradient.addColorStop(0, `rgba(255, 0, 255, ${0.3 + smoothedVolume * 0.3})`);
-        glowGradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = glowGradient;
-        ctx.beginPath();
-        ctx.arc(x, y, 80 + smoothedVolume * 50, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      
-      // Spawn particles when playing
-      if (isPlaying && rightHand && leftHand) {
-        if (Math.random() < smoothedVolume * 0.5) {
-          const x = rightHand.x * width;
-          const y = rightHand.y * height;
-          particles.push({
-            x,
-            y,
-            vx: (Math.random() - 0.5) * 4,
-            vy: (Math.random() - 0.5) * 4,
-            size: 2 + Math.random() * 4,
-            life: 1,
-            color: Math.random() > 0.5 ? '#00ffff' : '#ff00ff'
-          });
-        }
-      }
-      
-      // Update and draw particles
-      particles = particles.filter(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.02;
-        p.vx *= 0.98;
-        p.vy *= 0.98;
-        
-        if (p.life > 0) {
-          ctx.globalAlpha = p.life;
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-          ctx.fill();
-          return true;
-        }
-        return false;
-      });
-      ctx.globalAlpha = 1;
-      
-      // Clean up old trail points
-      trails.left = trails.left.filter(p => p.life > 0);
-      trails.right = trails.right.filter(p => p.life > 0);
-      
-      // Update audio
       updateAudio();
-      
-      requestAnimationFrame(render);
     }
     
     // Draw hand skeleton
-    function drawHandSkeleton(landmarks, width, height, color) {
+    function drawHandSkeleton(landmarks, color) {
       const connections = [
-        [0, 1], [1, 2], [2, 3], [3, 4],       // Thumb
-        [0, 5], [5, 6], [6, 7], [7, 8],       // Index
-        [0, 9], [9, 10], [10, 11], [11, 12],  // Middle
-        [0, 13], [13, 14], [14, 15], [15, 16], // Ring
-        [0, 17], [17, 18], [18, 19], [19, 20], // Pinky
-        [5, 9], [9, 13], [13, 17]              // Palm
+        [0, 1], [1, 2], [2, 3], [3, 4],
+        [0, 5], [5, 6], [6, 7], [7, 8],
+        [0, 9], [9, 10], [10, 11], [11, 12],
+        [0, 13], [13, 14], [14, 15], [15, 16],
+        [0, 17], [17, 18], [18, 19], [19, 20],
+        [5, 9], [9, 13], [13, 17]
       ];
       
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
-      ctx.globalAlpha = 0.7;
       
       connections.forEach(([i, j]) => {
         const start = landmarks[i];
@@ -830,7 +637,6 @@
         ctx.stroke();
       });
       
-      // Draw joints
       landmarks.forEach((point, i) => {
         const x = (1 - point.x) * width;
         const y = point.y * height;
@@ -841,27 +647,38 @@
         ctx.fillStyle = [4, 8, 12, 16, 20].includes(i) ? color : color + '99';
         ctx.fill();
       });
+    }
+    
+    // Resize
+    function resize() {
+      const container = document.querySelector('.canvas-container');
+      const rect = container.getBoundingClientRect();
       
-      ctx.globalAlpha = 1;
+      // Match video aspect ratio
+      const videoAspect = video.videoWidth / video.videoHeight || 16/9;
+      
+      if (rect.width / rect.height > videoAspect) {
+        height = rect.height;
+        width = height * videoAspect;
+      } else {
+        width = rect.width;
+        height = width / videoAspect;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
     }
     
     // Initialize
     async function init() {
+      if (isStarted) return;
+      isStarted = true;
+      
+      loading.querySelector('p').textContent = 'Initializing camera...';
+      
       try {
-        // Hide start overlay, show loading
-        startOverlay.classList.add('hidden');
-        loading.style.display = 'flex';
-        
-        resize();
-        window.addEventListener('resize', resize);
-        
-        // Initialize audio
         initAudio();
         
-        // Create scale display
-        createScaleDisplay();
-        
-        // Get camera
         const isMobile = window.innerWidth <= 640;
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
@@ -874,7 +691,11 @@
         video.srcObject = stream;
         await video.play();
         
-        // Initialize MediaPipe Hands
+        resize();
+        window.addEventListener('resize', resize);
+        
+        loading.querySelector('p').textContent = 'Loading hand tracking...';
+        
         const hands = new Hands({
           locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
@@ -888,7 +709,6 @@
         
         hands.onResults(onHandResults);
         
-        // Start camera processing
         const camera = new Camera(video, {
           onFrame: async () => {
             await hands.send({ image: video });
@@ -899,10 +719,11 @@
         
         await camera.start();
         
-        loading.style.display = 'none';
+        loading.classList.add('hidden');
         
-        // Start render loop
-        render();
+        // Update start button
+        document.getElementById('startBtn').textContent = '● Running';
+        document.getElementById('startBtn').classList.add('active');
         
       } catch (err) {
         console.error(err);
@@ -911,12 +732,13 @@
     }
     
     // UI Controls
+    document.getElementById('startBtn').addEventListener('click', init);
+    
     document.querySelectorAll('[id^="scale"]').forEach(btn => {
       btn.addEventListener('click', function() {
         document.querySelectorAll('[id^="scale"]').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         currentScale = this.id.replace('scale', '').toLowerCase();
-        createScaleDisplay();
       });
     });
     
@@ -944,8 +766,15 @@
       baseOctave = parseInt(this.value);
     });
     
-    // Start button
-    document.getElementById('startBtn').addEventListener('click', init);
+    // Initial canvas setup
+    canvas.width = 640;
+    canvas.height = 480;
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, 640, 480);
+    ctx.fillStyle = '#333';
+    ctx.font = '14px Space Grotesk';
+    ctx.textAlign = 'center';
+    ctx.fillText('Click "Start" to begin', 320, 240);
   </script>
 </body>
 </html>
