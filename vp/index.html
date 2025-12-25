@@ -258,8 +258,66 @@
       background: linear-gradient(135deg, var(--accent2), var(--accent1));
     }
     
+    /* Start overlay */
+    .start-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      gap: 20px;
+    }
+    
+    .start-overlay.hidden {
+      display: none;
+    }
+    
+    .start-title {
+      font-size: 36px;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent1), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .start-subtitle {
+      color: var(--text);
+      font-size: 16px;
+    }
+    
+    .start-hint {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    
+    .start-btn {
+      font-family: inherit;
+      font-size: 18px;
+      font-weight: 600;
+      padding: 18px 50px;
+      border: none;
+      border-radius: 100px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: var(--bg);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 20px;
+    }
+    
+    .start-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 40px rgba(0, 255, 255, 0.3);
+    }
+    
     /* Loading */
-    #loading {
+    .loading-spinner {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
@@ -282,7 +340,7 @@
     
     @keyframes spin { to { transform: rotate(360deg); } }
     
-    #loading p { color: var(--text-muted); font-size: 14px; }
+    .loading-spinner p { color: var(--text-muted); font-size: 14px; }
     
     /* Mobile responsive */
     @media (max-width: 640px) {
@@ -299,7 +357,14 @@
   </style>
 </head>
 <body>
-  <div id="loading">
+  <div id="startOverlay" class="start-overlay">
+    <h1 class="start-title">✨ AIR INSTRUMENT</h1>
+    <p class="start-subtitle">Play music with your hands in the air!</p>
+    <p class="start-hint">Right hand = Pitch | Left hand = Volume</p>
+    <button class="start-btn" id="startBtn">🎤 START</button>
+  </div>
+  
+  <div id="loading" class="loading-spinner" style="display: none;">
     <div class="spinner"></div>
     <p>Loading hand tracking...</p>
   </div>
@@ -368,6 +433,7 @@
     
     const canvas = document.getElementById('mainCanvas');
     const ctx = canvas.getContext('2d');
+    const startOverlay = document.getElementById('startOverlay');
     const loading = document.getElementById('loading');
     const video = document.createElement('video');
     video.playsInline = true;
@@ -782,6 +848,10 @@
     // Initialize
     async function init() {
       try {
+        // Hide start overlay, show loading
+        startOverlay.classList.add('hidden');
+        loading.style.display = 'flex';
+        
         resize();
         window.addEventListener('resize', resize);
         
@@ -874,8 +944,8 @@
       baseOctave = parseInt(this.value);
     });
     
-    // Start
-    init();
+    // Start button
+    document.getElementById('startBtn').addEventListener('click', init);
   </script>
 </body>
 </html>
