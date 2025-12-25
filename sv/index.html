@@ -187,6 +187,37 @@
       transition: height 0.05s ease;
     }
     
+    /* BPM display */
+    .bpm-display {
+      position: fixed;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--surface);
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      text-align: center;
+      z-index: 20;
+    }
+    
+    .bpm-value {
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent1), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .bpm-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+    
     /* Start overlay */
     .start-overlay {
       position: fixed;
@@ -239,6 +270,31 @@
       box-shadow: 0 10px 40px rgba(255, 0, 110, 0.3);
     }
     
+    /* Color theme selector */
+    .theme-selector {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    
+    .theme-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    
+    .theme-btn:hover { transform: scale(1.2); }
+    .theme-btn.active { border-color: white; }
+    
+    .theme-neon { background: linear-gradient(135deg, #ff006e, #8338ec); }
+    .theme-ocean { background: linear-gradient(135deg, #0077b6, #00b4d8); }
+    .theme-fire { background: linear-gradient(135deg, #ff4500, #ffd700); }
+    .theme-forest { background: linear-gradient(135deg, #2d6a4f, #40916c); }
+    .theme-mono { background: linear-gradient(135deg, #fff, #666); }
+    
     /* Mobile responsive */
     @media (max-width: 640px) {
       header { 
@@ -257,6 +313,11 @@
         left: 12px;
         height: 150px;
       }
+      .bpm-display {
+        right: 12px;
+        padding: 12px;
+      }
+      .bpm-value { font-size: 24px; }
       .start-title { font-size: 24px; }
     }
   </style>
@@ -279,6 +340,19 @@
       <button class="btn active" id="modeCircle">Circle</button>
       <button class="btn" id="modeBars">Bars</button>
       <button class="btn" id="modeParticles">Particles</button>
+      <button class="btn" id="modeSpiral">Spiral</button>
+      <button class="btn" id="modeTerrain">Terrain</button>
+      
+      <div class="divider"></div>
+      
+      <div class="theme-selector">
+        <span class="slider-label">Theme</span>
+        <div class="theme-btn theme-neon active" data-theme="neon"></div>
+        <div class="theme-btn theme-ocean" data-theme="ocean"></div>
+        <div class="theme-btn theme-fire" data-theme="fire"></div>
+        <div class="theme-btn theme-forest" data-theme="forest"></div>
+        <div class="theme-btn theme-mono" data-theme="mono"></div>
+      </div>
       
       <div class="divider"></div>
       
@@ -287,10 +361,7 @@
         <input type="range" id="sensitivity" min="0.5" max="3" step="0.1" value="1.5">
       </div>
       
-      <div class="slider">
-        <span class="slider-label">Smoothing</span>
-        <input type="range" id="smoothing" min="0" max="0.95" step="0.05" value="0.8">
-      </div>
+      <button class="btn" id="toggleMirror">Mirror: OFF</button>
     </div>
     
     <div class="stage">
@@ -300,17 +371,23 @@
     <div class="volume-meter">
       <div class="volume-fill" id="volumeFill"></div>
     </div>
+    
+    <div class="bpm-display">
+      <div class="bpm-value" id="bpmValue">--</div>
+      <div class="bpm-label">BPM</div>
+    </div>
   </div>
 
   <script>
     // ============================================================
-    // Sound Visualizer
+    // Sound Visualizer - Enhanced & Optimized
     // ============================================================
     
     const canvas = document.getElementById('visualizerCanvas');
     const ctx = canvas.getContext('2d');
     const startOverlay = document.getElementById('startOverlay');
     const volumeFill = document.getElementById('volumeFill');
+    const bpmValueEl = document.getElementById('bpmValue');
     
     let audioContext;
     let analyser;
@@ -319,51 +396,143 @@
     let isRunning = false;
     
     // Settings
-    let visualMode = 'circle'; // wave, circle, bars, particles
+    let visualMode = 'circle';
     let sensitivity = 1.5;
-    let smoothing = 0.8;
+    let mirrorMode = false;
+    let colorTheme = 'neon';
     
-    // Particles for particle mode
-    let particles = [];
-    const MAX_PARTICLES = 300;
+    // Color themes
+    const THEMES = {
+      neon: ['#ff006e', '#8338ec', '#3a86ff', '#06ffa5', '#ffbe0b'],
+      ocean: ['#03045e', '#0077b6', '#00b4d8', '#90e0ef', '#caf0f8'],
+      fire: ['#ff4500', '#ff6b35', '#f7931e', '#ffd700', '#fff8dc'],
+      forest: ['#1b4332', '#2d6a4f', '#40916c', '#52b788', '#95d5b2'],
+      mono: ['#ffffff', '#cccccc', '#999999', '#666666', '#333333']
+    };
     
-    // Colors
-    const colors = [
-      '#ff006e',
-      '#8338ec',
-      '#3a86ff',
-      '#06ffa5',
-      '#ffbe0b'
-    ];
+    let colors = THEMES.neon;
+    
+    // Optimized particle system with object pooling
+    const PARTICLE_POOL_SIZE = 150;
+    let particlePool = [];
+    let activeParticles = [];
+    let particleIndex = 0;
     
     class Particle {
-      constructor(x, y, size, color, velocity) {
+      constructor() {
+        this.reset();
+      }
+      
+      reset() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.size = 0;
+        this.color = colors[0];
+        this.life = 0;
+        this.maxLife = 1;
+        this.active = false;
+      }
+      
+      init(x, y, size, color, vx, vy, life) {
         this.x = x;
         this.y = y;
         this.size = size;
         this.color = color;
-        this.velocity = velocity;
-        this.life = 1;
-        this.decay = 0.01 + Math.random() * 0.02;
+        this.vx = vx;
+        this.vy = vy;
+        this.life = life;
+        this.maxLife = life;
+        this.active = true;
       }
       
       update() {
-        this.x += this.velocity.x;
-        this.y += this.velocity.y;
-        this.life -= this.decay;
-        this.velocity.x *= 0.99;
-        this.velocity.y *= 0.99;
+        if (!this.active) return false;
+        
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= 0.016;
+        this.vx *= 0.98;
+        this.vy *= 0.98;
+        
+        if (this.life <= 0) {
+          this.active = false;
+          return false;
+        }
+        return true;
       }
       
       draw() {
-        ctx.globalAlpha = this.life;
+        if (!this.active) return;
+        
+        const alpha = this.life / this.maxLife;
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = this.color;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
         ctx.fill();
-        ctx.globalAlpha = 1;
       }
     }
+    
+    // Initialize particle pool
+    function initParticlePool() {
+      particlePool = [];
+      activeParticles = [];
+      for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
+        particlePool.push(new Particle());
+      }
+    }
+    
+    // Get a particle from pool
+    function getParticle() {
+      // Find inactive particle
+      for (let i = 0; i < particlePool.length; i++) {
+        if (!particlePool[i].active) {
+          return particlePool[i];
+        }
+      }
+      // Pool exhausted, return null
+      return null;
+    }
+    
+    // BPM detection
+    let beatHistory = [];
+    let lastBeatTime = 0;
+    let estimatedBPM = 0;
+    
+    function detectBeat(volume) {
+      const now = Date.now();
+      const threshold = 0.4;
+      
+      if (volume > threshold && now - lastBeatTime > 200) {
+        if (lastBeatTime > 0) {
+          const interval = now - lastBeatTime;
+          beatHistory.push(interval);
+          
+          if (beatHistory.length > 8) {
+            beatHistory.shift();
+          }
+          
+          if (beatHistory.length >= 4) {
+            const avgInterval = beatHistory.reduce((a, b) => a + b, 0) / beatHistory.length;
+            estimatedBPM = Math.round(60000 / avgInterval);
+            estimatedBPM = Math.max(60, Math.min(200, estimatedBPM));
+            bpmValueEl.textContent = estimatedBPM;
+          }
+        }
+        lastBeatTime = now;
+        return true;
+      }
+      return false;
+    }
+    
+    // Spiral state
+    let spiralAngle = 0;
+    
+    // Terrain state
+    let terrainHistory = [];
+    const TERRAIN_HISTORY_SIZE = 100;
     
     function resize() {
       canvas.width = window.innerWidth;
@@ -380,9 +549,11 @@
         source.connect(analyser);
         
         analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = smoothing;
+        analyser.smoothingTimeConstant = 0.8;
         bufferLength = analyser.frequencyBinCount;
         dataArray = new Uint8Array(bufferLength);
+        
+        initParticlePool();
         
         isRunning = true;
         startOverlay.classList.add('hidden');
@@ -403,16 +574,26 @@
       return (sum / bufferLength) / 255;
     }
     
+    function getFrequencyBands() {
+      const bass = dataArray.slice(0, Math.floor(bufferLength * 0.1));
+      const mid = dataArray.slice(Math.floor(bufferLength * 0.1), Math.floor(bufferLength * 0.5));
+      const high = dataArray.slice(Math.floor(bufferLength * 0.5));
+      
+      const avgBass = bass.reduce((a, b) => a + b, 0) / bass.length / 255;
+      const avgMid = mid.reduce((a, b) => a + b, 0) / mid.length / 255;
+      const avgHigh = high.reduce((a, b) => a + b, 0) / high.length / 255;
+      
+      return { bass: avgBass, mid: avgMid, high: avgHigh };
+    }
+    
     function drawWave() {
       const width = canvas.width;
       const height = canvas.height;
       const centerY = height / 2;
       
-      // Background fade
       ctx.fillStyle = 'rgba(10, 10, 10, 0.1)';
       ctx.fillRect(0, 0, width, height);
       
-      // Draw multiple wave layers
       for (let layer = 0; layer < 3; layer++) {
         ctx.beginPath();
         
@@ -454,13 +635,11 @@
       const centerY = height / 2;
       const baseRadius = Math.min(width, height) * 0.2;
       
-      // Background fade
       ctx.fillStyle = 'rgba(10, 10, 10, 0.15)';
       ctx.fillRect(0, 0, width, height);
       
       const avgVolume = getAverageVolume();
       
-      // Draw multiple rings
       for (let ring = 0; ring < 3; ring++) {
         const ringRadius = baseRadius + ring * 40;
         
@@ -498,9 +677,8 @@
         ctx.globalAlpha = 1;
       }
       
-      // Center glow
       const glowGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, baseRadius);
-      glowGradient.addColorStop(0, `rgba(255, 0, 110, ${avgVolume * 0.5})`);
+      glowGradient.addColorStop(0, `${colors[0]}${Math.floor(avgVolume * 128).toString(16).padStart(2, '0')}`);
       glowGradient.addColorStop(1, 'transparent');
       
       ctx.fillStyle = glowGradient;
@@ -513,7 +691,6 @@
       const width = canvas.width;
       const height = canvas.height;
       
-      // Clear
       ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
       ctx.fillRect(0, 0, width, height);
       
@@ -529,22 +706,20 @@
         const x = i * (barWidth + 2);
         const y = height - barHeight;
         
-        // Color based on frequency
-        const hue = (i / barCount) * 180 + 280; // Purple to cyan
-        const saturation = 80 + value * 20;
-        const lightness = 50 + value * 20;
-        
+        const colorIndex = Math.floor((i / barCount) * colors.length);
         const gradient = ctx.createLinearGradient(x, y, x, height);
-        gradient.addColorStop(0, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
-        gradient.addColorStop(1, `hsl(${hue + 30}, ${saturation}%, ${lightness - 20}%)`);
+        gradient.addColorStop(0, colors[colorIndex % colors.length]);
+        gradient.addColorStop(1, colors[(colorIndex + 1) % colors.length]);
         
         ctx.fillStyle = gradient;
         ctx.fillRect(x, y, barWidth, barHeight);
         
-        // Reflection
-        ctx.globalAlpha = 0.3;
-        ctx.fillRect(x, height, barWidth, -barHeight * 0.3);
-        ctx.globalAlpha = 1;
+        // Mirror effect
+        if (mirrorMode) {
+          ctx.globalAlpha = 0.3;
+          ctx.fillRect(x, height, barWidth, -barHeight * 0.3);
+          ctx.globalAlpha = 1;
+        }
       }
     }
     
@@ -554,63 +729,179 @@
       const centerX = width / 2;
       const centerY = height / 2;
       
-      // Background fade
-      ctx.fillStyle = 'rgba(10, 10, 10, 0.1)';
+      // Fade background
+      ctx.fillStyle = 'rgba(10, 10, 10, 0.08)';
       ctx.fillRect(0, 0, width, height);
       
       const avgVolume = getAverageVolume();
+      const bands = getFrequencyBands();
+      const isBeat = detectBeat(bands.bass);
       
-      // Spawn new particles based on volume
-      if (avgVolume > 0.1 && particles.length < MAX_PARTICLES) {
-        const spawnCount = Math.floor(avgVolume * 10 * sensitivity);
+      // Spawn particles based on volume (limited rate)
+      if (avgVolume > 0.1) {
+        const spawnCount = Math.min(3, Math.floor(avgVolume * 5 * sensitivity));
         
         for (let i = 0; i < spawnCount; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const speed = avgVolume * 10 + Math.random() * 5;
-          
-          // Find frequency peak for color
-          let maxIndex = 0;
-          let maxVal = 0;
-          for (let j = 0; j < bufferLength; j++) {
-            if (dataArray[j] > maxVal) {
-              maxVal = dataArray[j];
-              maxIndex = j;
-            }
+          const particle = getParticle();
+          if (particle) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = avgVolume * 8 + Math.random() * 4;
+            const colorIndex = Math.floor(Math.random() * colors.length);
+            
+            particle.init(
+              centerX,
+              centerY,
+              4 + avgVolume * 12,
+              colors[colorIndex],
+              Math.cos(angle) * speed,
+              Math.sin(angle) * speed,
+              1 + Math.random() * 0.5
+            );
           }
-          const colorIndex = Math.floor((maxIndex / bufferLength) * colors.length);
-          
-          particles.push(new Particle(
-            centerX,
-            centerY,
-            3 + avgVolume * 10,
-            colors[colorIndex % colors.length],
-            {
-              x: Math.cos(angle) * speed,
-              y: Math.sin(angle) * speed
-            }
-          ));
         }
       }
       
       // Update and draw particles
-      particles = particles.filter(p => p.life > 0);
+      ctx.globalAlpha = 1;
+      for (const particle of particlePool) {
+        if (particle.active) {
+          particle.update();
+          particle.draw();
+        }
+      }
+      ctx.globalAlpha = 1;
       
-      particles.forEach(p => {
-        p.update();
-        p.draw();
-      });
+      // Center pulse on beat
+      if (isBeat) {
+        const pulseRadius = 80 + avgVolume * 60;
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, pulseRadius);
+        gradient.addColorStop(0, colors[0] + '80');
+        gradient.addColorStop(0.5, colors[1] + '40');
+        gradient.addColorStop(1, 'transparent');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    function drawSpiral() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
       
-      // Center pulse
-      const pulseRadius = 50 + avgVolume * 100;
-      const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, pulseRadius);
-      gradient.addColorStop(0, `rgba(255, 0, 110, ${avgVolume * 0.5})`);
-      gradient.addColorStop(0.5, `rgba(131, 56, 236, ${avgVolume * 0.3})`);
-      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = 'rgba(10, 10, 10, 0.1)';
+      ctx.fillRect(0, 0, width, height);
       
-      ctx.fillStyle = gradient;
+      const avgVolume = getAverageVolume();
+      spiralAngle += 0.02 + avgVolume * 0.05;
+      
+      const arms = 5;
+      const pointsPerArm = 100;
+      
+      for (let arm = 0; arm < arms; arm++) {
+        ctx.beginPath();
+        
+        const armOffset = (arm / arms) * Math.PI * 2;
+        
+        for (let i = 0; i < pointsPerArm; i++) {
+          const t = i / pointsPerArm;
+          const dataIndex = Math.floor(t * bufferLength);
+          const amplitude = dataArray[dataIndex] / 255 * sensitivity;
+          
+          const radius = 50 + t * 200 + amplitude * 100;
+          const angle = spiralAngle + armOffset + t * Math.PI * 4;
+          
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        
+        const gradient = ctx.createLinearGradient(
+          centerX - 300, centerY - 300,
+          centerX + 300, centerY + 300
+        );
+        gradient.addColorStop(0, colors[arm % colors.length]);
+        gradient.addColorStop(1, colors[(arm + 1) % colors.length]);
+        
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 2 + avgVolume * 3;
+        ctx.stroke();
+      }
+      
+      // Center glow
+      const glowGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 100);
+      glowGradient.addColorStop(0, colors[0] + Math.floor(avgVolume * 200).toString(16).padStart(2, '0'));
+      glowGradient.addColorStop(1, 'transparent');
+      
+      ctx.fillStyle = glowGradient;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, 100, 0, Math.PI * 2);
       ctx.fill();
+    }
+    
+    function drawTerrain() {
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, width, height);
+      
+      // Add current frame to history
+      const currentFrame = [];
+      for (let i = 0; i < bufferLength; i++) {
+        currentFrame.push(dataArray[i] / 255 * sensitivity);
+      }
+      terrainHistory.unshift(currentFrame);
+      
+      if (terrainHistory.length > TERRAIN_HISTORY_SIZE) {
+        terrainHistory.pop();
+      }
+      
+      // Draw terrain from history
+      const rows = terrainHistory.length;
+      const cols = bufferLength;
+      const rowHeight = height / (TERRAIN_HISTORY_SIZE * 0.7);
+      const colWidth = width / cols;
+      
+      for (let row = rows - 1; row >= 0; row--) {
+        const frame = terrainHistory[row];
+        const y = height * 0.8 - row * rowHeight;
+        const alpha = 1 - (row / TERRAIN_HISTORY_SIZE) * 0.8;
+        
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        
+        for (let col = 0; col < cols; col++) {
+          const x = col * colWidth;
+          const amplitude = frame[col] * 150;
+          ctx.lineTo(x, y - amplitude);
+        }
+        
+        ctx.lineTo(width, y);
+        
+        const colorIndex = Math.floor((row / TERRAIN_HISTORY_SIZE) * colors.length);
+        const gradient = ctx.createLinearGradient(0, y - 150, 0, y);
+        gradient.addColorStop(0, colors[colorIndex % colors.length] + Math.floor(alpha * 255).toString(16).padStart(2, '0'));
+        gradient.addColorStop(1, colors[(colorIndex + 1) % colors.length] + '00');
+        
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = alpha;
+        ctx.fill();
+        
+        ctx.strokeStyle = colors[colorIndex % colors.length];
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      
+      ctx.globalAlpha = 1;
     }
     
     function animate() {
@@ -618,11 +909,9 @@
       
       analyser.getByteFrequencyData(dataArray);
       
-      // Update volume meter
       const avgVolume = getAverageVolume();
       volumeFill.style.height = (avgVolume * 100 * sensitivity) + '%';
       
-      // Draw based on mode
       switch (visualMode) {
         case 'wave':
           drawWave();
@@ -636,6 +925,12 @@
         case 'particles':
           drawParticles();
           break;
+        case 'spiral':
+          drawSpiral();
+          break;
+        case 'terrain':
+          drawTerrain();
+          break;
       }
       
       requestAnimationFrame(animate);
@@ -644,57 +939,62 @@
     // UI Controls
     document.getElementById('startBtn').addEventListener('click', initAudio);
     
-    document.getElementById('modeWave').addEventListener('click', function() {
-      visualMode = 'wave';
-      updateModeButtons();
-    });
-    
-    document.getElementById('modeCircle').addEventListener('click', function() {
-      visualMode = 'circle';
-      updateModeButtons();
-    });
-    
-    document.getElementById('modeBars').addEventListener('click', function() {
-      visualMode = 'bars';
-      updateModeButtons();
-    });
-    
-    document.getElementById('modeParticles').addEventListener('click', function() {
-      visualMode = 'particles';
-      particles = []; // Reset particles
-      updateModeButtons();
+    const modeButtons = ['Wave', 'Circle', 'Bars', 'Particles', 'Spiral', 'Terrain'];
+    modeButtons.forEach(mode => {
+      document.getElementById('mode' + mode).addEventListener('click', function() {
+        visualMode = mode.toLowerCase();
+        updateModeButtons();
+        
+        // Clear canvas on mode switch
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Reset mode-specific state
+        if (visualMode === 'terrain') {
+          terrainHistory = [];
+        }
+        if (visualMode === 'particles') {
+          initParticlePool();
+        }
+      });
     });
     
     function updateModeButtons() {
       document.querySelectorAll('.controls .btn').forEach(btn => {
-        btn.classList.remove('active');
+        if (btn.id.startsWith('mode')) {
+          btn.classList.remove('active');
+        }
       });
-      document.getElementById('mode' + visualMode.charAt(0).toUpperCase() + visualMode.slice(1)).classList.add('active');
-      
-      // Clear canvas on mode switch
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const activeBtn = document.getElementById('mode' + visualMode.charAt(0).toUpperCase() + visualMode.slice(1));
+      if (activeBtn) activeBtn.classList.add('active');
     }
+    
+    // Theme selector
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        colorTheme = this.dataset.theme;
+        colors = THEMES[colorTheme];
+      });
+    });
     
     document.getElementById('sensitivity').addEventListener('input', function() {
       sensitivity = parseFloat(this.value);
     });
     
-    document.getElementById('smoothing').addEventListener('input', function() {
-      smoothing = parseFloat(this.value);
-      if (analyser) {
-        analyser.smoothingTimeConstant = smoothing;
-      }
+    document.getElementById('toggleMirror').addEventListener('click', function() {
+      mirrorMode = !mirrorMode;
+      this.textContent = 'Mirror: ' + (mirrorMode ? 'ON' : 'OFF');
+      this.classList.toggle('active', mirrorMode);
     });
     
     // Initialize
     resize();
     window.addEventListener('resize', resize);
     
-    // Initial black background
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   </script>
 </body>
 </html>
-
