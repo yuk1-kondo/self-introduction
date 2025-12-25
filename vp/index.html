@@ -329,9 +329,9 @@
   </style>
 </head>
 <body>
-  <div id="loading">
+  <div id="loading" class="hidden">
     <div class="spinner"></div>
-    <p>Click Start to begin</p>
+    <p>Initializing...</p>
   </div>
   
   <div class="app">
@@ -674,6 +674,8 @@
       if (isStarted) return;
       isStarted = true;
       
+      // Show loading spinner
+      loading.classList.remove('hidden');
       loading.querySelector('p').textContent = 'Initializing camera...';
       
       try {
