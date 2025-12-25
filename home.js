@@ -141,6 +141,10 @@ class EffectNode {
         this.y = Math.random() * height;
         this.vx = (Math.random() - 0.5) * 1.0;
         this.vy = (Math.random() - 0.5) * 1.0;
+        this.targetX = Math.random() * width;
+        this.targetY = Math.random() * height;
+        this.wanderTimer = 0;
+        this.wanderInterval = 2 + Math.random() * 2; // seconds
         
         this.radius = EFFECT_NODE_RADIUS;
         this.targetRadius = EFFECT_NODE_RADIUS;
@@ -153,19 +157,39 @@ class EffectNode {
         // Keep inside the new viewport on resize
         this.x = clamp(this.x, this.radius, width - this.radius);
         this.y = clamp(this.y, this.radius, height - this.radius);
+        this.targetX = clamp(this.targetX, this.radius, width - this.radius);
+        this.targetY = clamp(this.targetY, this.radius, height - this.radius);
     }
 
     update() {
-        // Gentle free roaming with slight wander
-        this.pulsePhase += 0.02;
-        this.vx += (Math.sin(this.pulsePhase + this.index) * 0.05);
-        this.vy += (Math.cos(this.pulsePhase * 0.8 + this.index) * 0.05);
-        this.vx *= 0.99;
-        this.vy *= 0.99;
+        // Wander target update
+        const dt = 0.016;
+        this.wanderTimer -= dt;
+        if (this.wanderTimer <= 0) {
+            this.targetX = clamp(Math.random() * width, this.radius, width - this.radius);
+            this.targetY = clamp(Math.random() * height, this.radius, height - this.radius);
+            this.wanderInterval = 2 + Math.random() * 2; // 2-4s
+            this.wanderTimer = this.wanderInterval;
+        }
         
-        // Clamp speed
+        // Steering toward target with slight sway
+        const dx = this.targetX - this.x;
+        const dy = this.targetY - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
+        const steerStrength = 0.08;
+        this.vx += (dx / dist) * steerStrength;
+        this.vy += (dy / dist) * steerStrength;
+        
+        // Add subtle noise
+        this.pulsePhase += 0.02;
+        this.vx += Math.sin(this.pulsePhase + this.index) * 0.02;
+        this.vy += Math.cos(this.pulsePhase * 0.8 + this.index) * 0.02;
+        
+        // Damping and speed clamp
+        this.vx *= 0.98;
+        this.vy *= 0.98;
         const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-        const maxSpeed = 1.4;
+        const maxSpeed = 2.0;
         if (speed > maxSpeed) {
             this.vx = (this.vx / speed) * maxSpeed;
             this.vy = (this.vy / speed) * maxSpeed;
@@ -175,10 +199,10 @@ class EffectNode {
         this.y += this.vy;
         
         // Bounce on edges
-        if (this.x < this.radius) { this.x = this.radius; this.vx *= -0.8; }
-        if (this.x > width - this.radius) { this.x = width - this.radius; this.vx *= -0.8; }
-        if (this.y < this.radius) { this.y = this.radius; this.vy *= -0.8; }
-        if (this.y > height - this.radius) { this.y = height - this.radius; this.vy *= -0.8; }
+        if (this.x < this.radius) { this.x = this.radius; this.vx *= -0.9; }
+        if (this.x > width - this.radius) { this.x = width - this.radius; this.vx *= -0.9; }
+        if (this.y < this.radius) { this.y = this.radius; this.vy *= -0.9; }
+        if (this.y > height - this.radius) { this.y = height - this.radius; this.vy *= -0.9; }
         
         // Check hover
         if (mouse.x !== undefined) {
