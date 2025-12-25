@@ -260,7 +260,7 @@
     </div>
 
     <div id="hint" class="hint" style="display:none;">
-      ?? Use your finger to draw on the foggy window!
+      ☝️ Use your finger to draw on the foggy window!
     </div>
 
     <div id="status" class="status" style="display:none;">
@@ -480,7 +480,7 @@
       const isPointing = isOnlyIndexFingerUp(landmarks);
       
       if (isPointing) {
-        statusText.textContent = '?? Drawing...';
+        statusText.textContent = '✍️ Drawing...';
         const brushRadius = +brushSizeEl.value / 2;
         wipeFog(fingerTip.x, fingerTip.y, brushRadius);
         
@@ -506,11 +506,11 @@
         const pinkyFolded = isFingerFolded(landmarks, 20, 18, 17);
         
         if (!indexUp) {
-          statusText.textContent = '? Raise index finger';
+          statusText.textContent = '☝️ Raise index finger';
         } else if (!middleFolded || !ringFolded || !pinkyFolded) {
-          statusText.textContent = '?? Fold other fingers';
+          statusText.textContent = '✊ Fold other fingers';
         } else {
-          statusText.textContent = '?? Point to draw';
+          statusText.textContent = '👆 Point to draw';
         }
         lastFingerPos = null;
       }

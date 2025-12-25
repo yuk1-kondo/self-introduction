@@ -250,7 +250,7 @@
   <div class="app">
     <header>
       <div class="logo">WATER DROPS</div>
-      <div class="hint">? Fist = Anti-gravity | ? Swipe = Scatter</div>
+      <div class="hint">✊ Fist = Anti-gravity | 👆 Swipe = Scatter</div>
     </header>
     
     <div class="controls">
@@ -1279,10 +1279,10 @@
           const statusEl = document.getElementById('gestureStatus');
           if (fistDetected) {
             statusEl.classList.add('active');
-            statusEl.querySelector('span').textContent = '? Anti-gravity ON';
+            statusEl.querySelector('span').textContent = '✊ Anti-gravity ON';
           } else if (handPositions.length > 0) {
             statusEl.classList.remove('active');
-            statusEl.querySelector('span').textContent = '? Hand detected';
+            statusEl.querySelector('span').textContent = '✋ Hand detected';
           } else {
             statusEl.classList.remove('active');
             statusEl.querySelector('span').textContent = 'Hand tracking ready';

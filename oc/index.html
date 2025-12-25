@@ -264,7 +264,7 @@
     }
     
     .auto-status.ready::before {
-      content: '?';
+      content: 'âœ“';
       font-weight: 600;
     }
     
@@ -324,7 +324,7 @@
       
       <span class="divider"></span>
 
-      <button id="btnGesture" class="btn" disabled>Gesture ?</button>
+      <button id="btnGesture" class="btn" disabled>Gesture âœŠ</button>
     </div>
 
     <div id="status" class="status" style="display:none;">
@@ -390,8 +390,8 @@
     gl_Position = vec4(a_pos, 0.0, 1.0);
   }`;
 
-  // l•¨—Ìˆæ(=mask)‚É‚¾‚¯‘½’i‡¬‚µ‚½u”wŒi‚Á‚Û‚¢‚à‚Ìv‚ğ•`‚­
-  // mask‚ÍMediaPipe‚ÌsegmentationMaskil•¨=1‚É‹ß‚¢j
+  // äººç‰©é ˜åŸŸ(=mask)ã«ã ã‘éå»ãƒ•ãƒ¬ãƒ¼ãƒ ã‚’ã€ŒèƒŒæ™¯ã£ã½ãã—ãŸåƒã€ã‚’æç”»
+  // maskã¯MediaPipeã®segmentationMaskï¼ˆäººç‰©=1ã«è¿‘ã„ï¼‰
   const fsSrc = `#version 300 es
   precision highp float;
   in vec2 v_uv;
@@ -623,7 +623,7 @@
       if (!hands) initHands();
       gestureEnabled = true;
       statusEl.style.display = 'block';
-      btnGesture.textContent = '? Disable';
+      btnGesture.textContent = 'âœ“ Disable';
       updateCloakStatus();
     }
   }
@@ -929,12 +929,12 @@
       if (!hands) initHands();
       gestureEnabled = true;
       statusEl.style.display = 'block';
-      btnGesture.textContent = '? Disable';
+      btnGesture.textContent = 'âœ“ Disable';
       updateCloakStatus();
     } else {
       gestureEnabled = false;
       statusEl.style.display = 'none';
-      btnGesture.textContent = '? Gesture';
+      btnGesture.textContent = 'âœŠ Gesture';
       cloakEnabled = false;
       mixEl.value = 0.98;
       syncUI();
