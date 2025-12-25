@@ -23,12 +23,27 @@ const SMOOTHING_FACTOR = 0.2;
 const GATHER_STRENGTH = 0.5;
 const CAMERA_TIMEOUT_MS = 2000;
 const PINCH_THRESHOLD = 0.05;
+const EFFECT_NODE_RADIUS = 28;
+const EFFECT_NODE_HOVER_RADIUS = 38;
 
 const COLORS = ['#111111', '#333333', '#555555', '#777777'];
+
+// Effect Pages Data
+const EFFECT_PAGES = [
+    { id: 'pa', name: 'Pixel Art', icon: '■', url: '/pa/', color: '#4CAF50' },
+    { id: 'sv', name: 'Sound', icon: '♪', url: '/sv/', color: '#9C27B0' },
+    { id: 'vp', name: 'Air Music', icon: '♫', url: '/vp/', color: '#00BCD4' },
+    { id: 'wd', name: 'Water', icon: '◯', url: '/wd/', color: '#2196F3' },
+    { id: 'fg', name: 'Fog', icon: '≋', url: '/fg/', color: '#607D8B' },
+    { id: 'dm', name: 'Mirror', icon: '◇', url: '/dm/', color: '#E91E63' },
+    { id: 'oc', name: 'Cloak', icon: '◈', url: '/oc/', color: '#FF5722' },
+    { id: 'oo', name: 'Social', icon: '@', url: '/oo/', color: '#FFC107' }
+];
 
 // State
 let width, height;
 let particles = [];
+let effectNodes = [];
 let isMobile = false;
 let targetX, targetY;
 let isGathering = false;
@@ -102,6 +117,147 @@ class Particle {
     }
 }
 
+// ===========================
+// Effect Node Class
+// ===========================
+class EffectNode {
+    constructor(data, index, total) {
+        this.data = data;
+        this.index = index;
+        
+        // Position nodes in a circle around the center, avoiding UI area
+        this.angle = (index / total) * Math.PI * 2 - Math.PI / 2;
+        this.orbitRadius = Math.min(width, height) * 0.35;
+        this.baseX = width / 2 + Math.cos(this.angle) * this.orbitRadius;
+        this.baseY = height / 2 + Math.sin(this.angle) * this.orbitRadius;
+        
+        this.x = this.baseX;
+        this.y = this.baseY;
+        this.vx = (Math.random() - 0.5) * 0.3;
+        this.vy = (Math.random() - 0.5) * 0.3;
+        
+        this.radius = EFFECT_NODE_RADIUS;
+        this.targetRadius = EFFECT_NODE_RADIUS;
+        this.isHovered = false;
+        this.pulsePhase = Math.random() * Math.PI * 2;
+        this.glowIntensity = 0;
+    }
+
+    updatePosition() {
+        // Recalculate orbit based on current window size
+        this.orbitRadius = Math.min(width, height) * 0.35;
+        this.baseX = width / 2 + Math.cos(this.angle) * this.orbitRadius;
+        this.baseY = height / 2 + Math.sin(this.angle) * this.orbitRadius;
+    }
+
+    update() {
+        // Gentle floating motion
+        this.pulsePhase += 0.02;
+        const floatX = Math.sin(this.pulsePhase + this.index) * 15;
+        const floatY = Math.cos(this.pulsePhase * 0.7 + this.index * 2) * 10;
+        
+        // Drift towards base position with floating offset
+        const targetX = this.baseX + floatX;
+        const targetY = this.baseY + floatY;
+        
+        this.vx += (targetX - this.x) * 0.02;
+        this.vy += (targetY - this.y) * 0.02;
+        this.vx *= 0.95;
+        this.vy *= 0.95;
+        
+        this.x += this.vx;
+        this.y += this.vy;
+        
+        // Check hover
+        if (mouse.x !== undefined) {
+            const dx = mouse.x - this.x;
+            const dy = mouse.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            this.isHovered = dist < this.radius + 20;
+            
+            // Slight attraction/repulsion from mouse
+            if (dist < 150 && dist > 30) {
+                const force = (150 - dist) / 150 * 0.3;
+                this.vx += (dx / dist) * force;
+                this.vy += (dy / dist) * force;
+            }
+        } else {
+            this.isHovered = false;
+        }
+        
+        // Smooth radius transition
+        this.targetRadius = this.isHovered ? EFFECT_NODE_HOVER_RADIUS : EFFECT_NODE_RADIUS;
+        this.radius += (this.targetRadius - this.radius) * 0.15;
+        
+        // Glow intensity
+        this.glowIntensity += (this.isHovered ? 1 : 0 - this.glowIntensity) * 0.1;
+    }
+
+    draw() {
+        ctx.save();
+        
+        // Outer glow when hovered
+        if (this.glowIntensity > 0.01) {
+            const gradient = ctx.createRadialGradient(
+                this.x, this.y, this.radius * 0.5,
+                this.x, this.y, this.radius * 2
+            );
+            gradient.addColorStop(0, `${this.data.color}${Math.floor(this.glowIntensity * 40).toString(16).padStart(2, '0')}`);
+            gradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Main circle
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        
+        // Fill with gradient
+        const bgGradient = ctx.createRadialGradient(
+            this.x - this.radius * 0.3, this.y - this.radius * 0.3, 0,
+            this.x, this.y, this.radius
+        );
+        const alpha = this.isHovered ? 'ff' : 'cc';
+        bgGradient.addColorStop(0, `${this.data.color}${alpha}`);
+        bgGradient.addColorStop(1, `${this.data.color}99`);
+        ctx.fillStyle = bgGradient;
+        ctx.fill();
+        
+        // Border
+        ctx.strokeStyle = this.isHovered ? '#fff' : 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = this.isHovered ? 2 : 1;
+        ctx.stroke();
+        
+        // Icon
+        ctx.fillStyle = '#fff';
+        ctx.font = `${this.radius * 0.7}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.data.icon, this.x, this.y);
+        
+        // Label (show on hover)
+        if (this.isHovered) {
+            ctx.font = '600 11px Outfit, sans-serif';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(this.data.name, this.x, this.y + this.radius + 16);
+        }
+        
+        ctx.restore();
+    }
+
+    isPointInside(px, py) {
+        const dx = px - this.x;
+        const dy = py - this.y;
+        return Math.sqrt(dx * dx + dy * dy) < this.radius + 10;
+    }
+
+    navigate() {
+        window.location.href = this.data.url;
+    }
+}
+
 function burst() {
     if (mouse.x === undefined) return;
     particles.forEach(p => {
@@ -119,8 +275,14 @@ function init() {
     detectMobile();
     resize();
     particles = [];
+    effectNodes = [];
     const pCount = isMobile ? PARTICLE_COUNT_MOBILE : PARTICLE_COUNT_DESKTOP;
     for (let i = 0; i < pCount; i++) particles.push(new Particle());
+    
+    // Initialize effect nodes
+    EFFECT_PAGES.forEach((page, i) => {
+        effectNodes.push(new EffectNode(page, i, EFFECT_PAGES.length));
+    });
 }
 
 function resize() {
@@ -132,6 +294,9 @@ function resize() {
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     ctx.scale(dpr, dpr);
+    
+    // Update effect node positions
+    effectNodes.forEach(node => node.updatePosition());
 }
 
 function animate() {
@@ -170,8 +335,32 @@ function animate() {
             }
         });
     }
+    
+    // Draw connections between particles and effect nodes
+    effectNodes.forEach(node => {
+        particles.forEach(p => {
+            const dx = node.x - p.x;
+            const dy = node.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < CONNECTION_DISTANCE * 1.5) {
+                const alpha = (1 - dist / (CONNECTION_DISTANCE * 1.5)) * 0.1;
+                ctx.strokeStyle = `${node.data.color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+                ctx.beginPath();
+                ctx.moveTo(node.x, node.y);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+            }
+        });
+    });
 
     particles.forEach(p => { p.update(); p.draw(); });
+    
+    // Update and draw effect nodes
+    effectNodes.forEach(node => {
+        node.update();
+        node.draw();
+    });
+    
     drawHandVisuals();
     requestAnimationFrame(animate);
 }
@@ -198,6 +387,15 @@ function onResults(results) {
         } else if (isPinching) {
             isPinching = false;
             isGathering = false;
+            
+            // Check if pinch release is over an effect node
+            for (const node of effectNodes) {
+                if (node.isPointInside(mouse.x, mouse.y)) {
+                    node.navigate();
+                    return;
+                }
+            }
+            
             burst();
             cursorEl.style.transform = 'translate(-50%, -50%) scale(1)';
         }
@@ -335,7 +533,15 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden) cursorEl.style.opacity = '1'; 
 });
 
-window.addEventListener('mousedown', () => { 
+window.addEventListener('mousedown', (e) => { 
+    // Check if clicking on effect node
+    for (const node of effectNodes) {
+        if (node.isPointInside(e.clientX, e.clientY)) {
+            node.navigate();
+            return;
+        }
+    }
+    
     if (!isCameraActive()) { 
         isGathering = true; 
         cursorEl.style.transform = 'translate(-50%, -50%) scale(0.8)'; 
@@ -355,6 +561,15 @@ window.addEventListener('touchstart', (e) => {
     if (isCameraActive()) return;
     
     const touch = e.touches[0];
+    
+    // Check if tapping on effect node
+    for (const node of effectNodes) {
+        if (node.isPointInside(touch.clientX, touch.clientY)) {
+            node.navigate();
+            return;
+        }
+    }
+    
     mouse.x = touch.clientX;
     mouse.y = touch.clientY;
     isGathering = true;
