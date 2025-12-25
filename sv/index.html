@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Sound Visualizer</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111;
+      --border: #222;
+      --text: #fff;
+      --text-muted: #666;
+      --accent1: #ff006e;
+      --accent2: #8338ec;
+      --accent3: #3a86ff;
+      --accent4: #06ffa5;
+    }
+    
+    html, body { 
+      background: var(--bg);
+      color: var(--text); 
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    
+    .app { 
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+    
+    .logo {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      flex-wrap: wrap;
+      z-index: 10;
+    }
+    
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--text-muted);
+    }
+    
+    .btn.active {
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      border-color: transparent;
+      color: white;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      border-color: transparent;
+    }
+    
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+    
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+    
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 80px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent3));
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    .stage { 
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    #visualizerCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* Volume meter */
+    .volume-meter {
+      position: fixed;
+      left: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 200px;
+      background: var(--surface);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      z-index: 20;
+    }
+    
+    .volume-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: linear-gradient(to top, var(--accent4), var(--accent3), var(--accent1));
+      border-radius: 4px;
+      transition: height 0.05s ease;
+    }
+    
+    /* Start overlay */
+    .start-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      gap: 24px;
+    }
+    
+    .start-overlay.hidden {
+      display: none;
+    }
+    
+    .start-title {
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .start-subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    .start-btn {
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 16px 48px;
+      border: none;
+      border-radius: 100px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .start-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 40px rgba(255, 0, 110, 0.3);
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 640px) {
+      header { 
+        padding: 16px 20px; 
+        flex-direction: column;
+        gap: 8px;
+      }
+      .controls { 
+        padding: 12px 20px; 
+        gap: 8px; 
+        justify-content: center;
+      }
+      .btn { padding: 8px 14px; font-size: 12px; }
+      .divider { display: none; }
+      .volume-meter {
+        left: 12px;
+        height: 150px;
+      }
+      .start-title { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="start-overlay" id="startOverlay">
+    <h1 class="start-title">SOUND VISUALIZER</h1>
+    <p class="start-subtitle">Click to enable microphone and start the visual experience</p>
+    <button class="start-btn" id="startBtn">🎤 START</button>
+  </div>
+  
+  <div class="app">
+    <header>
+      <div class="logo">SOUND VISUALIZER</div>
+      <div class="hint">🎤 Make some noise!</div>
+    </header>
+    
+    <div class="controls">
+      <button class="btn" id="modeWave">Wave</button>
+      <button class="btn active" id="modeCircle">Circle</button>
+      <button class="btn" id="modeBars">Bars</button>
+      <button class="btn" id="modeParticles">Particles</button>
+      
+      <div class="divider"></div>
+      
+      <div class="slider">
+        <span class="slider-label">Sensitivity</span>
+        <input type="range" id="sensitivity" min="0.5" max="3" step="0.1" value="1.5">
+      </div>
+      
+      <div class="slider">
+        <span class="slider-label">Smoothing</span>
+        <input type="range" id="smoothing" min="0" max="0.95" step="0.05" value="0.8">
+      </div>
+    </div>
+    
+    <div class="stage">
+      <canvas id="visualizerCanvas"></canvas>
+    </div>
+    
+    <div class="volume-meter">
+      <div class="volume-fill" id="volumeFill"></div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // Sound Visualizer
+    // ============================================================
+    
+    const canvas = document.getElementById('visualizerCanvas');
+    const ctx = canvas.getContext('2d');
+    const startOverlay = document.getElementById('startOverlay');
+    const volumeFill = document.getElementById('volumeFill');
+    
+    let audioContext;
+    let analyser;
+    let dataArray;
+    let bufferLength;
+    let isRunning = false;
+    
+    // Settings
+    let visualMode = 'circle'; // wave, circle, bars, particles
+    let sensitivity = 1.5;
+    let smoothing = 0.8;
+    
+    // Particles for particle mode
+    let particles = [];
+    const MAX_PARTICLES = 300;
+    
+    // Colors
+    const colors = [
+      '#ff006e',
+      '#8338ec',
+      '#3a86ff',
+      '#06ffa5',
+      '#ffbe0b'
+    ];
+    
+    class Particle {
+      constructor(x, y, size, color, velocity) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.color = color;
+        this.velocity = velocity;
+        this.life = 1;
+        this.decay = 0.01 + Math.random() * 0.02;
+      }
+      
+      update() {
+        this.x += this.velocity.x;
+        this.y += this.velocity.y;
+        this.life -= this.decay;
+        this.velocity.x *= 0.99;
+        this.velocity.y *= 0.99;
+      }
+      
+      draw() {
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    async function initAudio() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = smoothing;
+        bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        
+        isRunning = true;
+        startOverlay.classList.add('hidden');
+        
+        animate();
+        
+      } catch (err) {
+        console.error('Audio error:', err);
+        alert('Could not access microphone. Please allow microphone access.');
+      }
+    }
+    
+    function getAverageVolume() {
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i];
+      }
+      return (sum / bufferLength) / 255;
+    }
+    
+    function drawWave() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerY = height / 2;
+      
+      // Background fade
+      ctx.fillStyle = 'rgba(10, 10, 10, 0.1)';
+      ctx.fillRect(0, 0, width, height);
+      
+      // Draw multiple wave layers
+      for (let layer = 0; layer < 3; layer++) {
+        ctx.beginPath();
+        
+        const gradient = ctx.createLinearGradient(0, 0, width, 0);
+        gradient.addColorStop(0, colors[layer]);
+        gradient.addColorStop(0.5, colors[layer + 1]);
+        gradient.addColorStop(1, colors[(layer + 2) % colors.length]);
+        
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 3 - layer;
+        ctx.globalAlpha = 1 - layer * 0.3;
+        
+        const sliceWidth = width / bufferLength;
+        let x = 0;
+        
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0 * sensitivity;
+          const y = centerY + (v - 1) * (height / 4) * (1 + layer * 0.3);
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+          
+          x += sliceWidth;
+        }
+        
+        ctx.stroke();
+      }
+      
+      ctx.globalAlpha = 1;
+    }
+    
+    function drawCircle() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const baseRadius = Math.min(width, height) * 0.2;
+      
+      // Background fade
+      ctx.fillStyle = 'rgba(10, 10, 10, 0.15)';
+      ctx.fillRect(0, 0, width, height);
+      
+      const avgVolume = getAverageVolume();
+      
+      // Draw multiple rings
+      for (let ring = 0; ring < 3; ring++) {
+        const ringRadius = baseRadius + ring * 40;
+        
+        ctx.beginPath();
+        
+        for (let i = 0; i < bufferLength; i++) {
+          const angle = (i / bufferLength) * Math.PI * 2 - Math.PI / 2;
+          const amplitude = dataArray[i] / 255 * sensitivity;
+          const radius = ringRadius + amplitude * 100 * (1 - ring * 0.2);
+          
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        
+        ctx.closePath();
+        
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, ringRadius + 150);
+        gradient.addColorStop(0, colors[ring % colors.length] + '00');
+        gradient.addColorStop(0.5, colors[ring % colors.length] + '80');
+        gradient.addColorStop(1, colors[(ring + 1) % colors.length] + '40');
+        
+        ctx.strokeStyle = colors[ring % colors.length];
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = 0.1 + avgVolume * 0.2;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      
+      // Center glow
+      const glowGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, baseRadius);
+      glowGradient.addColorStop(0, `rgba(255, 0, 110, ${avgVolume * 0.5})`);
+      glowGradient.addColorStop(1, 'transparent');
+      
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, baseRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    function drawBars() {
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      // Clear
+      ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
+      ctx.fillRect(0, 0, width, height);
+      
+      const barCount = 64;
+      const barWidth = width / barCount - 2;
+      const step = Math.floor(bufferLength / barCount);
+      
+      for (let i = 0; i < barCount; i++) {
+        const dataIndex = i * step;
+        const value = dataArray[dataIndex] / 255 * sensitivity;
+        const barHeight = value * height * 0.7;
+        
+        const x = i * (barWidth + 2);
+        const y = height - barHeight;
+        
+        // Color based on frequency
+        const hue = (i / barCount) * 180 + 280; // Purple to cyan
+        const saturation = 80 + value * 20;
+        const lightness = 50 + value * 20;
+        
+        const gradient = ctx.createLinearGradient(x, y, x, height);
+        gradient.addColorStop(0, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
+        gradient.addColorStop(1, `hsl(${hue + 30}, ${saturation}%, ${lightness - 20}%)`);
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x, y, barWidth, barHeight);
+        
+        // Reflection
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(x, height, barWidth, -barHeight * 0.3);
+        ctx.globalAlpha = 1;
+      }
+    }
+    
+    function drawParticles() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      // Background fade
+      ctx.fillStyle = 'rgba(10, 10, 10, 0.1)';
+      ctx.fillRect(0, 0, width, height);
+      
+      const avgVolume = getAverageVolume();
+      
+      // Spawn new particles based on volume
+      if (avgVolume > 0.1 && particles.length < MAX_PARTICLES) {
+        const spawnCount = Math.floor(avgVolume * 10 * sensitivity);
+        
+        for (let i = 0; i < spawnCount; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = avgVolume * 10 + Math.random() * 5;
+          
+          // Find frequency peak for color
+          let maxIndex = 0;
+          let maxVal = 0;
+          for (let j = 0; j < bufferLength; j++) {
+            if (dataArray[j] > maxVal) {
+              maxVal = dataArray[j];
+              maxIndex = j;
+            }
+          }
+          const colorIndex = Math.floor((maxIndex / bufferLength) * colors.length);
+          
+          particles.push(new Particle(
+            centerX,
+            centerY,
+            3 + avgVolume * 10,
+            colors[colorIndex % colors.length],
+            {
+              x: Math.cos(angle) * speed,
+              y: Math.sin(angle) * speed
+            }
+          ));
+        }
+      }
+      
+      // Update and draw particles
+      particles = particles.filter(p => p.life > 0);
+      
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      
+      // Center pulse
+      const pulseRadius = 50 + avgVolume * 100;
+      const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, pulseRadius);
+      gradient.addColorStop(0, `rgba(255, 0, 110, ${avgVolume * 0.5})`);
+      gradient.addColorStop(0.5, `rgba(131, 56, 236, ${avgVolume * 0.3})`);
+      gradient.addColorStop(1, 'transparent');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    function animate() {
+      if (!isRunning) return;
+      
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Update volume meter
+      const avgVolume = getAverageVolume();
+      volumeFill.style.height = (avgVolume * 100 * sensitivity) + '%';
+      
+      // Draw based on mode
+      switch (visualMode) {
+        case 'wave':
+          drawWave();
+          break;
+        case 'circle':
+          drawCircle();
+          break;
+        case 'bars':
+          drawBars();
+          break;
+        case 'particles':
+          drawParticles();
+          break;
+      }
+      
+      requestAnimationFrame(animate);
+    }
+    
+    // UI Controls
+    document.getElementById('startBtn').addEventListener('click', initAudio);
+    
+    document.getElementById('modeWave').addEventListener('click', function() {
+      visualMode = 'wave';
+      updateModeButtons();
+    });
+    
+    document.getElementById('modeCircle').addEventListener('click', function() {
+      visualMode = 'circle';
+      updateModeButtons();
+    });
+    
+    document.getElementById('modeBars').addEventListener('click', function() {
+      visualMode = 'bars';
+      updateModeButtons();
+    });
+    
+    document.getElementById('modeParticles').addEventListener('click', function() {
+      visualMode = 'particles';
+      particles = []; // Reset particles
+      updateModeButtons();
+    });
+    
+    function updateModeButtons() {
+      document.querySelectorAll('.controls .btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.getElementById('mode' + visualMode.charAt(0).toUpperCase() + visualMode.slice(1)).classList.add('active');
+      
+      // Clear canvas on mode switch
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    document.getElementById('sensitivity').addEventListener('input', function() {
+      sensitivity = parseFloat(this.value);
+    });
+    
+    document.getElementById('smoothing').addEventListener('input', function() {
+      smoothing = parseFloat(this.value);
+      if (analyser) {
+        analyser.smoothingTimeConstant = smoothing;
+      }
+    });
+    
+    // Initialize
+    resize();
+    window.addEventListener('resize', resize);
+    
+    // Initial black background
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  </script>
+</body>
+</html>
+

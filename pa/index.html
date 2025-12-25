@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Pixel Art Camera</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --border: #0f3460;
+      --text: #e94560;
+      --text-light: #fff;
+      --accent: #e94560;
+      --accent-alt: #00fff5;
+    }
+    
+    html, body { 
+      background: var(--bg);
+      color: var(--text-light); 
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .app { 
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 2px solid var(--border);
+      background: var(--surface);
+    }
+    
+    .logo {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 14px;
+      color: var(--accent);
+      text-shadow: 2px 2px 0 var(--accent-alt);
+    }
+    
+    .hint {
+      font-size: 12px;
+      color: var(--text-light);
+      opacity: 0.7;
+    }
+    
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 32px;
+      border-bottom: 2px solid var(--border);
+      background: var(--surface);
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+      padding: 12px 16px;
+      border: 2px solid var(--border);
+      border-radius: 0;
+      background: var(--bg);
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.1s ease;
+      text-transform: uppercase;
+    }
+    
+    .btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+      transform: translate(-2px, -2px);
+      box-shadow: 4px 4px 0 var(--accent-alt);
+    }
+    
+    .btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+    
+    .divider {
+      width: 2px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+    
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider-label {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 8px;
+      color: var(--accent-alt);
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100px;
+      height: 8px;
+      background: var(--border);
+      border-radius: 0;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 0;
+      cursor: pointer;
+      border: 2px solid var(--accent-alt);
+    }
+    
+    .slider-value {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+      color: var(--accent);
+      min-width: 30px;
+    }
+    
+    .stage { 
+      flex: 1;
+      display: grid; 
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
+      position: relative;
+    }
+    
+    .canvas-container {
+      position: relative;
+      border: 4px solid var(--border);
+      box-shadow: 8px 8px 0 var(--accent), 12px 12px 0 var(--accent-alt);
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    
+    #pixelCanvas { 
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    
+    video { display: none; }
+    
+    /* Palette selector */
+    .palette-selector {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .palette-btn {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    
+    .palette-btn:hover {
+      transform: scale(1.2);
+    }
+    
+    .palette-btn.active {
+      border-color: var(--text-light);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    
+    .palette-gameboy { background: linear-gradient(135deg, #9bbc0f, #0f380f); }
+    .palette-nes { background: linear-gradient(135deg, #fcfcfc, #f83800, #0058f8); }
+    .palette-cga { background: linear-gradient(135deg, #ff55ff, #55ffff, #ffffff); }
+    .palette-mono { background: linear-gradient(135deg, #fff, #888, #000); }
+    .palette-sunset { background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb); }
+    .palette-vaporwave { background: linear-gradient(135deg, #ff71ce, #01cdfe, #05ffa1); }
+    
+    #loading {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .loading-text {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 14px;
+      color: var(--accent);
+      animation: blink 0.5s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
+    /* CRT effect overlay */
+    .crt-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+      background: 
+        repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.1) 0px,
+          rgba(0, 0, 0, 0.1) 1px,
+          transparent 1px,
+          transparent 2px
+        );
+      opacity: 0.3;
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 640px) {
+      header { 
+        padding: 16px 20px; 
+        flex-direction: column;
+        gap: 8px;
+      }
+      .logo { font-size: 11px; }
+      .hint { font-size: 9px; text-align: center; }
+      .controls { 
+        padding: 12px 20px; 
+        gap: 8px;
+        justify-content: center;
+      }
+      .btn { padding: 10px 12px; font-size: 8px; }
+      .slider { gap: 8px; }
+      input[type="range"] { width: 60px; }
+      .divider { display: none; }
+      .canvas-container {
+        box-shadow: 4px 4px 0 var(--accent), 6px 6px 0 var(--accent-alt);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <p class="loading-text">LOADING...</p>
+  </div>
+  
+  <div class="crt-overlay"></div>
+  
+  <div class="app">
+    <header>
+      <div class="logo">PIXEL ART CAM</div>
+      <div class="hint">Transform yourself into retro pixel art!</div>
+    </header>
+    
+    <div class="controls">
+      <div class="slider">
+        <span class="slider-label">SIZE</span>
+        <input type="range" id="pixelSize" min="2" max="32" value="8">
+        <span id="pixelVal" class="slider-value">8px</span>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="palette-selector">
+        <span class="slider-label">COLOR</span>
+        <div class="palette-btn palette-gameboy active" data-palette="gameboy" title="Game Boy"></div>
+        <div class="palette-btn palette-nes" data-palette="nes" title="NES"></div>
+        <div class="palette-btn palette-cga" data-palette="cga" title="CGA"></div>
+        <div class="palette-btn palette-mono" data-palette="mono" title="Mono"></div>
+        <div class="palette-btn palette-sunset" data-palette="sunset" title="Sunset"></div>
+        <div class="palette-btn palette-vaporwave" data-palette="vaporwave" title="Vaporwave"></div>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <button class="btn" id="toggleDither">DITHER: ON</button>
+      <button class="btn" id="saveBtn">📸 SAVE</button>
+    </div>
+    
+    <div class="stage">
+      <video id="video" playsinline></video>
+      <div class="canvas-container">
+        <canvas id="pixelCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // Pixel Art Camera
+    // ============================================================
+    
+    const video = document.getElementById('video');
+    const pixelCanvas = document.getElementById('pixelCanvas');
+    const loading = document.getElementById('loading');
+    const pixelCtx = pixelCanvas.getContext('2d');
+    
+    // Work canvas for processing
+    const workCanvas = document.createElement('canvas');
+    const workCtx = workCanvas.getContext('2d');
+    
+    // Settings
+    let pixelSize = 8;
+    let currentPalette = 'gameboy';
+    let ditherEnabled = true;
+    
+    // Color palettes (classic retro palettes)
+    const PALETTES = {
+      gameboy: [
+        [15, 56, 15],    // Darkest green
+        [48, 98, 48],    // Dark green
+        [139, 172, 15],  // Light green
+        [155, 188, 15]   // Lightest green
+      ],
+      nes: [
+        [0, 0, 0],       // Black
+        [252, 252, 252], // White
+        [248, 56, 0],    // Red
+        [0, 88, 248],    // Blue
+        [0, 168, 0],     // Green
+        [248, 184, 0],   // Yellow
+        [148, 0, 132],   // Purple
+        [0, 168, 248]    // Cyan
+      ],
+      cga: [
+        [0, 0, 0],       // Black
+        [255, 255, 255], // White
+        [255, 85, 255],  // Magenta
+        [85, 255, 255]   // Cyan
+      ],
+      mono: [
+        [0, 0, 0],
+        [85, 85, 85],
+        [170, 170, 170],
+        [255, 255, 255]
+      ],
+      sunset: [
+        [30, 30, 46],    // Dark
+        [255, 107, 107], // Coral
+        [254, 202, 87],  // Yellow
+        [72, 219, 251],  // Sky blue
+        [255, 159, 67],  // Orange
+        [238, 82, 83]    // Red
+      ],
+      vaporwave: [
+        [20, 20, 40],    // Dark purple
+        [255, 113, 206], // Pink
+        [1, 205, 254],   // Cyan
+        [5, 255, 161],   // Green
+        [185, 103, 255], // Purple
+        [255, 251, 150]  // Yellow
+      ]
+    };
+    
+    // Find nearest color in palette
+    function findNearestColor(r, g, b, palette) {
+      let minDist = Infinity;
+      let nearest = palette[0];
+      
+      for (const color of palette) {
+        // Weighted distance (human eye is more sensitive to green)
+        const dr = r - color[0];
+        const dg = g - color[1];
+        const db = b - color[2];
+        const dist = dr * dr * 0.299 + dg * dg * 0.587 + db * db * 0.114;
+        
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = color;
+        }
+      }
+      
+      return nearest;
+    }
+    
+    // Floyd-Steinberg dithering
+    function applyDithering(imageData, palette) {
+      const data = imageData.data;
+      const width = imageData.width;
+      const height = imageData.height;
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = (y * width + x) * 4;
+          
+          const oldR = data[idx];
+          const oldG = data[idx + 1];
+          const oldB = data[idx + 2];
+          
+          const [newR, newG, newB] = findNearestColor(oldR, oldG, oldB, palette);
+          
+          data[idx] = newR;
+          data[idx + 1] = newG;
+          data[idx + 2] = newB;
+          
+          const errR = oldR - newR;
+          const errG = oldG - newG;
+          const errB = oldB - newB;
+          
+          // Distribute error to neighboring pixels
+          const distributeError = (dx, dy, factor) => {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              const nidx = (ny * width + nx) * 4;
+              data[nidx] = Math.max(0, Math.min(255, data[nidx] + errR * factor));
+              data[nidx + 1] = Math.max(0, Math.min(255, data[nidx + 1] + errG * factor));
+              data[nidx + 2] = Math.max(0, Math.min(255, data[nidx + 2] + errB * factor));
+            }
+          };
+          
+          distributeError(1, 0, 7/16);
+          distributeError(-1, 1, 3/16);
+          distributeError(0, 1, 5/16);
+          distributeError(1, 1, 1/16);
+        }
+      }
+      
+      return imageData;
+    }
+    
+    // Simple color quantization (no dithering)
+    function quantizeColors(imageData, palette) {
+      const data = imageData.data;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        const [r, g, b] = findNearestColor(data[i], data[i + 1], data[i + 2], palette);
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+      
+      return imageData;
+    }
+    
+    // Render pixelated frame
+    function render() {
+      const palette = PALETTES[currentPalette];
+      
+      // Calculate dimensions maintaining aspect ratio
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const maxWidth = Math.min(640, window.innerWidth - 80);
+      const maxHeight = Math.min(480, window.innerHeight - 250);
+      
+      let displayWidth, displayHeight;
+      if (maxWidth / maxHeight > videoAspect) {
+        displayHeight = maxHeight;
+        displayWidth = displayHeight * videoAspect;
+      } else {
+        displayWidth = maxWidth;
+        displayHeight = displayWidth / videoAspect;
+      }
+      
+      // Pixel grid dimensions
+      const gridWidth = Math.floor(displayWidth / pixelSize);
+      const gridHeight = Math.floor(displayHeight / pixelSize);
+      
+      // Work canvas at pixel grid resolution
+      workCanvas.width = gridWidth;
+      workCanvas.height = gridHeight;
+      
+      // Draw video to work canvas (downscaled)
+      workCtx.save();
+      workCtx.scale(-1, 1); // Mirror
+      workCtx.drawImage(video, -gridWidth, 0, gridWidth, gridHeight);
+      workCtx.restore();
+      
+      // Get image data and apply color processing
+      let imageData = workCtx.getImageData(0, 0, gridWidth, gridHeight);
+      
+      if (ditherEnabled) {
+        imageData = applyDithering(imageData, palette);
+      } else {
+        imageData = quantizeColors(imageData, palette);
+      }
+      
+      workCtx.putImageData(imageData, 0, 0);
+      
+      // Output canvas at display size
+      pixelCanvas.width = gridWidth * pixelSize;
+      pixelCanvas.height = gridHeight * pixelSize;
+      
+      // Draw scaled up with pixelated rendering
+      pixelCtx.imageSmoothingEnabled = false;
+      pixelCtx.drawImage(workCanvas, 0, 0, pixelCanvas.width, pixelCanvas.height);
+      
+      requestAnimationFrame(render);
+    }
+    
+    // Initialize
+    async function init() {
+      try {
+        const isMobile = window.innerWidth <= 640;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: 'user', 
+            width: { ideal: isMobile ? 320 : 640 }, 
+            height: { ideal: isMobile ? 240 : 480 } 
+          }
+        });
+        
+        video.srcObject = stream;
+        await video.play();
+        
+        loading.style.display = 'none';
+        requestAnimationFrame(render);
+        
+      } catch (err) {
+        console.error(err);
+        loading.innerHTML = `<p class="loading-text">CAMERA ERROR</p>`;
+      }
+    }
+    
+    // UI Controls
+    document.getElementById('pixelSize').addEventListener('input', function() {
+      pixelSize = parseInt(this.value);
+      document.getElementById('pixelVal').textContent = pixelSize + 'px';
+    });
+    
+    document.querySelectorAll('.palette-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.palette-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentPalette = this.dataset.palette;
+      });
+    });
+    
+    document.getElementById('toggleDither').addEventListener('click', function() {
+      ditherEnabled = !ditherEnabled;
+      this.textContent = 'DITHER: ' + (ditherEnabled ? 'ON' : 'OFF');
+      this.classList.toggle('active', ditherEnabled);
+    });
+    
+    document.getElementById('saveBtn').addEventListener('click', function() {
+      const link = document.createElement('a');
+      link.download = 'pixel-art-' + Date.now() + '.png';
+      link.href = pixelCanvas.toDataURL('image/png');
+      link.click();
+    });
+    
+    // Start
+    init();
+  </script>
+</body>
+</html>
+

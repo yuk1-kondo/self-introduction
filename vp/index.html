@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Virtual Piano</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #0d0d0d;
+      --surface: #1a1a1a;
+      --border: #333;
+      --text: #fff;
+      --text-muted: #888;
+      --white-key: #fafafa;
+      --white-key-active: #e0e0e0;
+      --black-key: #1a1a1a;
+      --black-key-active: #333;
+      --accent: #ffd700;
+    }
+    
+    html, body { 
+      background: var(--bg);
+      color: var(--text); 
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    
+    .app { 
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    
+    .logo {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--text-muted);
+    }
+    
+    .btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+    
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 80px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    .stage { 
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    
+    .video-container {
+      position: relative;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    
+    #videoCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 8px;
+    }
+    
+    video { display: none; }
+    
+    /* Piano keyboard overlay */
+    .piano-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      pointer-events: none;
+      padding: 0 20px 20px;
+    }
+    
+    .piano-keys {
+      display: flex;
+      position: relative;
+      height: 180px;
+    }
+    
+    .white-key {
+      width: 60px;
+      height: 180px;
+      background: linear-gradient(to bottom, var(--white-key) 0%, #e8e8e8 100%);
+      border: 1px solid #ccc;
+      border-radius: 0 0 6px 6px;
+      margin: 0 2px;
+      position: relative;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      transition: all 0.05s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding-bottom: 10px;
+    }
+    
+    .white-key.active {
+      background: linear-gradient(to bottom, var(--white-key-active) 0%, #d0d0d0 100%);
+      transform: translateY(2px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .white-key .key-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      opacity: 0.7;
+    }
+    
+    .black-key {
+      width: 36px;
+      height: 110px;
+      background: linear-gradient(to bottom, #333 0%, var(--black-key) 100%);
+      border-radius: 0 0 4px 4px;
+      position: absolute;
+      z-index: 1;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      transition: all 0.05s ease;
+    }
+    
+    .black-key.active {
+      background: linear-gradient(to bottom, #444 0%, var(--black-key-active) 100%);
+      transform: translateY(2px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Hand indicator */
+    .hand-indicator {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.8;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 0 20px var(--accent);
+      transition: opacity 0.1s ease;
+    }
+    
+    .hand-indicator.hidden {
+      opacity: 0;
+    }
+    
+    /* Status */
+    .status {
+      position: fixed;
+      bottom: 220px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      padding: 10px 20px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      z-index: 100;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status.active {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    
+    /* Loading */
+    #loading {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      gap: 16px;
+    }
+    
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    #loading p { color: var(--text-muted); }
+    
+    /* Mobile responsive */
+    @media (max-width: 640px) {
+      header { padding: 16px 20px; flex-direction: column; gap: 8px; }
+      .controls { padding: 12px 20px; gap: 10px; justify-content: center; }
+      .btn { padding: 8px 14px; font-size: 12px; }
+      
+      .piano-overlay { height: 160px; }
+      .piano-keys { height: 140px; }
+      .white-key { width: 40px; height: 140px; }
+      .black-key { width: 24px; height: 85px; }
+      .white-key .key-label { font-size: 10px; }
+      
+      .status { bottom: 180px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Loading hand tracking...</p>
+  </div>
+  
+  <div class="app">
+    <header>
+      <div class="logo">🎹 VIRTUAL PIANO</div>
+      <div class="hint">Use your fingers to play the keys!</div>
+    </header>
+    
+    <div class="controls">
+      <div class="slider">
+        <span class="slider-label">Volume</span>
+        <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5">
+      </div>
+      
+      <button class="btn" id="soundPiano">Piano</button>
+      <button class="btn active" id="soundSynth">Synth</button>
+      <button class="btn" id="soundOrgan">Organ</button>
+    </div>
+    
+    <div class="stage">
+      <div class="video-container">
+        <video id="video" playsinline></video>
+        <canvas id="videoCanvas"></canvas>
+        <div class="hand-indicator hidden" id="leftHand"></div>
+        <div class="hand-indicator hidden" id="rightHand"></div>
+      </div>
+      
+      <div class="piano-overlay">
+        <div class="piano-keys" id="pianoKeys">
+          <!-- Keys will be generated by JavaScript -->
+        </div>
+      </div>
+    </div>
+    
+    <div class="status" id="status">
+      <span>👋 Show your hands to play</span>
+    </div>
+  </div>
+
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+  <script>
+    // ============================================================
+    // Virtual Piano with Hand Tracking
+    // ============================================================
+    
+    const video = document.getElementById('video');
+    const videoCanvas = document.getElementById('videoCanvas');
+    const videoCtx = videoCanvas.getContext('2d');
+    const pianoKeysContainer = document.getElementById('pianoKeys');
+    const loading = document.getElementById('loading');
+    const statusEl = document.getElementById('status');
+    const leftHandEl = document.getElementById('leftHand');
+    const rightHandEl = document.getElementById('rightHand');
+    
+    // Audio context
+    let audioContext;
+    let masterGain;
+    let soundType = 'synth'; // piano, synth, organ
+    let volume = 0.5;
+    
+    // Piano notes (one octave + extra keys)
+    const NOTES = [
+      { note: 'C4', freq: 261.63, type: 'white' },
+      { note: 'C#4', freq: 277.18, type: 'black', offset: 0 },
+      { note: 'D4', freq: 293.66, type: 'white' },
+      { note: 'D#4', freq: 311.13, type: 'black', offset: 1 },
+      { note: 'E4', freq: 329.63, type: 'white' },
+      { note: 'F4', freq: 349.23, type: 'white' },
+      { note: 'F#4', freq: 369.99, type: 'black', offset: 3 },
+      { note: 'G4', freq: 392.00, type: 'white' },
+      { note: 'G#4', freq: 415.30, type: 'black', offset: 4 },
+      { note: 'A4', freq: 440.00, type: 'white' },
+      { note: 'A#4', freq: 466.16, type: 'black', offset: 5 },
+      { note: 'B4', freq: 493.88, type: 'white' },
+      { note: 'C5', freq: 523.25, type: 'white' }
+    ];
+    
+    // Active oscillators for each note
+    const activeOscillators = new Map();
+    const keyElements = [];
+    let keyRects = []; // Store key positions for hit detection
+    
+    // Hand tracking
+    let hands;
+    let camera;
+    let lastFingerPositions = [];
+    
+    // Initialize Audio
+    function initAudio() {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioContext.createGain();
+      masterGain.gain.value = volume;
+      masterGain.connect(audioContext.destination);
+    }
+    
+    // Play a note
+    function playNote(noteData) {
+      if (!audioContext) initAudio();
+      if (audioContext.state === 'suspended') audioContext.resume();
+      
+      // Don't play if already playing
+      if (activeOscillators.has(noteData.note)) return;
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      // Set wave type based on sound selection
+      switch (soundType) {
+        case 'piano':
+          oscillator.type = 'triangle';
+          break;
+        case 'synth':
+          oscillator.type = 'sawtooth';
+          break;
+        case 'organ':
+          oscillator.type = 'sine';
+          break;
+      }
+      
+      oscillator.frequency.setValueAtTime(noteData.freq, audioContext.currentTime);
+      
+      // ADSR envelope
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.8, audioContext.currentTime + 0.01); // Attack
+      gainNode.gain.linearRampToValueAtTime(0.6, audioContext.currentTime + 0.1);  // Decay
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(masterGain);
+      
+      oscillator.start();
+      
+      activeOscillators.set(noteData.note, { oscillator, gainNode });
+    }
+    
+    // Stop a note
+    function stopNote(noteData) {
+      const active = activeOscillators.get(noteData.note);
+      if (!active) return;
+      
+      const { oscillator, gainNode } = active;
+      
+      // Release
+      gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.1);
+      
+      setTimeout(() => {
+        oscillator.stop();
+        oscillator.disconnect();
+        gainNode.disconnect();
+      }, 150);
+      
+      activeOscillators.delete(noteData.note);
+    }
+    
+    // Create piano keys
+    function createPianoKeys() {
+      const whiteKeys = NOTES.filter(n => n.type === 'white');
+      const blackKeys = NOTES.filter(n => n.type === 'black');
+      
+      const isMobile = window.innerWidth <= 640;
+      const whiteKeyWidth = isMobile ? 40 : 60;
+      const blackKeyWidth = isMobile ? 24 : 36;
+      
+      // Create white keys
+      whiteKeys.forEach((noteData, i) => {
+        const key = document.createElement('div');
+        key.className = 'white-key';
+        key.dataset.note = noteData.note;
+        
+        const label = document.createElement('span');
+        label.className = 'key-label';
+        label.textContent = noteData.note.replace('4', '').replace('5', '');
+        key.appendChild(label);
+        
+        pianoKeysContainer.appendChild(key);
+        keyElements.push({ element: key, noteData, type: 'white', index: i });
+      });
+      
+      // Create black keys
+      blackKeys.forEach(noteData => {
+        const key = document.createElement('div');
+        key.className = 'black-key';
+        key.dataset.note = noteData.note;
+        
+        // Position black keys between white keys
+        const leftOffset = (noteData.offset * (whiteKeyWidth + 4)) + (whiteKeyWidth - blackKeyWidth / 2) + 2;
+        key.style.left = leftOffset + 'px';
+        
+        pianoKeysContainer.appendChild(key);
+        keyElements.push({ element: key, noteData, type: 'black' });
+      });
+      
+      // Update key positions after DOM render
+      requestAnimationFrame(updateKeyRects);
+    }
+    
+    // Update key rectangles for hit detection
+    function updateKeyRects() {
+      keyRects = keyElements.map(({ element, noteData, type }) => {
+        const rect = element.getBoundingClientRect();
+        return { rect, noteData, type, element };
+      });
+    }
+    
+    // Check if a point hits a key
+    function checkKeyHit(x, y) {
+      // Check black keys first (they're on top)
+      for (const { rect, noteData, type, element } of keyRects.filter(k => k.type === 'black')) {
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          return { noteData, element };
+        }
+      }
+      
+      // Then check white keys
+      for (const { rect, noteData, type, element } of keyRects.filter(k => k.type === 'white')) {
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          return { noteData, element };
+        }
+      }
+      
+      return null;
+    }
+    
+    // Process hand results
+    function onHandResults(results) {
+      // Clear and draw video (mirrored)
+      videoCtx.save();
+      videoCtx.scale(-1, 1);
+      videoCtx.drawImage(results.image, -videoCanvas.width, 0, videoCanvas.width, videoCanvas.height);
+      videoCtx.restore();
+      
+      // Track which notes are currently being pressed
+      const currentlyPressed = new Set();
+      
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        statusEl.classList.add('active');
+        statusEl.querySelector('span').textContent = '🎹 Playing!';
+        
+        results.multiHandLandmarks.forEach((landmarks, handIndex) => {
+          // Get index finger tip (landmark 8)
+          const indexTip = landmarks[8];
+          
+          // Convert to screen coordinates (mirrored)
+          const x = (1 - indexTip.x) * videoCanvas.width;
+          const y = indexTip.y * videoCanvas.height;
+          
+          // Get absolute position
+          const canvasRect = videoCanvas.getBoundingClientRect();
+          const screenX = canvasRect.left + (x / videoCanvas.width) * canvasRect.width;
+          const screenY = canvasRect.top + (y / videoCanvas.height) * canvasRect.height;
+          
+          // Update hand indicator
+          const handEl = handIndex === 0 ? leftHandEl : rightHandEl;
+          handEl.classList.remove('hidden');
+          handEl.style.left = screenX + 'px';
+          handEl.style.top = screenY + 'px';
+          
+          // Draw finger position on canvas
+          videoCtx.beginPath();
+          videoCtx.arc(x, y, 15, 0, Math.PI * 2);
+          videoCtx.fillStyle = 'rgba(255, 215, 0, 0.6)';
+          videoCtx.fill();
+          videoCtx.strokeStyle = '#ffd700';
+          videoCtx.lineWidth = 3;
+          videoCtx.stroke();
+          
+          // Check for key hit
+          const hit = checkKeyHit(screenX, screenY);
+          if (hit) {
+            currentlyPressed.add(hit.noteData.note);
+            
+            // Play note if not already playing
+            if (!activeOscillators.has(hit.noteData.note)) {
+              playNote(hit.noteData);
+              hit.element.classList.add('active');
+            }
+          }
+          
+          // Draw hand skeleton
+          drawHandSkeleton(landmarks);
+        });
+      } else {
+        statusEl.classList.remove('active');
+        statusEl.querySelector('span').textContent = '👋 Show your hands to play';
+        leftHandEl.classList.add('hidden');
+        rightHandEl.classList.add('hidden');
+      }
+      
+      // Stop notes that are no longer being pressed
+      for (const [note, _] of activeOscillators) {
+        if (!currentlyPressed.has(note)) {
+          const noteData = NOTES.find(n => n.note === note);
+          if (noteData) {
+            stopNote(noteData);
+            const keyEl = keyElements.find(k => k.noteData.note === note);
+            if (keyEl) keyEl.element.classList.remove('active');
+          }
+        }
+      }
+    }
+    
+    // Draw hand skeleton
+    function drawHandSkeleton(landmarks) {
+      const connections = [
+        [0, 1], [1, 2], [2, 3], [3, 4],       // Thumb
+        [0, 5], [5, 6], [6, 7], [7, 8],       // Index
+        [0, 9], [9, 10], [10, 11], [11, 12],  // Middle
+        [0, 13], [13, 14], [14, 15], [15, 16], // Ring
+        [0, 17], [17, 18], [18, 19], [19, 20], // Pinky
+        [5, 9], [9, 13], [13, 17]              // Palm
+      ];
+      
+      videoCtx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+      videoCtx.lineWidth = 2;
+      
+      connections.forEach(([i, j]) => {
+        const start = landmarks[i];
+        const end = landmarks[j];
+        
+        videoCtx.beginPath();
+        videoCtx.moveTo((1 - start.x) * videoCanvas.width, start.y * videoCanvas.height);
+        videoCtx.lineTo((1 - end.x) * videoCanvas.width, end.y * videoCanvas.height);
+        videoCtx.stroke();
+      });
+      
+      // Draw joints
+      landmarks.forEach((point, i) => {
+        const x = (1 - point.x) * videoCanvas.width;
+        const y = point.y * videoCanvas.height;
+        const radius = [4, 8, 12, 16, 20].includes(i) ? 6 : 4; // Fingertips larger
+        
+        videoCtx.beginPath();
+        videoCtx.arc(x, y, radius, 0, Math.PI * 2);
+        videoCtx.fillStyle = [4, 8, 12, 16, 20].includes(i) ? '#ffd700' : 'rgba(255, 215, 0, 0.7)';
+        videoCtx.fill();
+      });
+    }
+    
+    // Initialize
+    async function init() {
+      try {
+        // Get camera
+        const isMobile = window.innerWidth <= 640;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: 'user', 
+            width: { ideal: isMobile ? 640 : 1280 }, 
+            height: { ideal: isMobile ? 480 : 720 } 
+          }
+        });
+        
+        video.srcObject = stream;
+        await video.play();
+        
+        // Set canvas size
+        videoCanvas.width = video.videoWidth;
+        videoCanvas.height = video.videoHeight;
+        
+        // Create piano keys
+        createPianoKeys();
+        
+        // Initialize MediaPipe Hands
+        hands = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        
+        hands.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.5
+        });
+        
+        hands.onResults(onHandResults);
+        
+        // Start camera processing
+        camera = new Camera(video, {
+          onFrame: async () => {
+            await hands.send({ image: video });
+          },
+          width: video.videoWidth,
+          height: video.videoHeight
+        });
+        
+        await camera.start();
+        
+        loading.style.display = 'none';
+        
+      } catch (err) {
+        console.error(err);
+        loading.innerHTML = `<p style="color: #ff6b6b;">Error: ${err.message}</p>`;
+      }
+    }
+    
+    // UI Controls
+    document.getElementById('volume').addEventListener('input', function() {
+      volume = parseFloat(this.value);
+      if (masterGain) {
+        masterGain.gain.value = volume;
+      }
+    });
+    
+    document.getElementById('soundPiano').addEventListener('click', function() {
+      soundType = 'piano';
+      updateSoundButtons();
+    });
+    
+    document.getElementById('soundSynth').addEventListener('click', function() {
+      soundType = 'synth';
+      updateSoundButtons();
+    });
+    
+    document.getElementById('soundOrgan').addEventListener('click', function() {
+      soundType = 'organ';
+      updateSoundButtons();
+    });
+    
+    function updateSoundButtons() {
+      document.querySelectorAll('.controls .btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('sound' + soundType.charAt(0).toUpperCase() + soundType.slice(1)).classList.add('active');
+    }
+    
+    // Update key rects on resize
+    window.addEventListener('resize', () => {
+      requestAnimationFrame(updateKeyRects);
+    });
+    
+    // Touch/click fallback for playing keys directly
+    pianoKeysContainer.addEventListener('pointerdown', (e) => {
+      const key = e.target.closest('.white-key, .black-key');
+      if (key) {
+        const noteData = NOTES.find(n => n.note === key.dataset.note);
+        if (noteData) {
+          if (!audioContext) initAudio();
+          if (audioContext.state === 'suspended') audioContext.resume();
+          playNote(noteData);
+          key.classList.add('active');
+        }
+      }
+    });
+    
+    pianoKeysContainer.addEventListener('pointerup', (e) => {
+      const key = e.target.closest('.white-key, .black-key');
+      if (key) {
+        const noteData = NOTES.find(n => n.note === key.dataset.note);
+        if (noteData) {
+          stopNote(noteData);
+          key.classList.remove('active');
+        }
+      }
+    });
+    
+    pianoKeysContainer.addEventListener('pointerleave', (e) => {
+      // Stop all notes when pointer leaves
+      keyElements.forEach(({ element, noteData }) => {
+        element.classList.remove('active');
+      });
+    });
+    
+    // Start
+    init();
+  </script>
+</body>
+</html>
+
