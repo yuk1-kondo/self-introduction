@@ -455,6 +455,8 @@
     let waveform = 'sawtooth';
     let reverbAmount = 0.3;
     let baseOctave = 4;
+    let rightGesture = 'none';
+    let leftGesture = 'none';
     
     // Scales
     const SCALES = {
@@ -476,6 +478,7 @@
     let smoothedVolume = 0;
     let targetPitch = 0;
     let targetVolume = 0;
+    let gestures = { left: 'none', right: 'none' };
     
     // Canvas dimensions
     let width, height;
@@ -536,6 +539,13 @@
       oscillator.start();
       
       reverbNode = { wet, dry };
+    }
+
+    function applyReverbMix(value) {
+      if (!reverbNode) return;
+      const v = Math.max(0, Math.min(1, value));
+      reverbNode.wet.gain.value = v;
+      reverbNode.dry.gain.value = 1 - v * 0.5;
     }
     
     // Update audio based on hand positions
@@ -616,10 +626,10 @@
           const y = palm.y;
           
           if (isRight) {
-            rightHand = { x, y, landmarks };
+            rightHand = { x, y, landmarks, isRight: true };
             targetPitch = y;
           } else {
-            leftHand = { x, y, landmarks };
+            leftHand = { x, y, landmarks, isRight: false };
             targetVolume = Math.max(0, 1 - y);
           }
           
@@ -644,9 +654,39 @@
         ctx.stroke();
       }
       
-      updateAudio();
+      updateGesturesAndAudio();
     }
     
+    // Gesture detection
+    function detectGesture(landmarks, isRight) {
+      const tip = [4, 8, 12, 16, 20];
+      const pip = [2, 6, 10, 14, 18];
+      
+      const thumbExtended = isRight
+        ? landmarks[tip[0]].x < landmarks[pip[0]].x
+        : landmarks[tip[0]].x > landmarks[pip[0]].x;
+      
+      const fingersExtended = [1, 2, 3, 4].map(idx => {
+        return landmarks[tip[idx]].y < landmarks[pip[idx]].y;
+      });
+      
+      const pinchDist = Math.hypot(
+        landmarks[4].x - landmarks[8].x,
+        landmarks[4].y - landmarks[8].y
+      );
+      
+      const pinch = pinchDist < 0.04;
+      const extendedCount = fingersExtended.filter(v => v).length + (thumbExtended ? 1 : 0);
+      const indexAndMiddle = fingersExtended[0] && fingersExtended[1];
+      const ringAndPinky = !fingersExtended[2] && !fingersExtended[3];
+      
+      if (pinch) return 'pinch';
+      if (extendedCount >= 4) return 'open';
+      if (indexAndMiddle && ringAndPinky) return 'peace';
+      if (extendedCount <= 1) return 'fist';
+      return 'neutral';
+    }
+
     // Draw hand skeleton
     function drawHandSkeleton(landmarks, color) {
       const connections = [
@@ -681,6 +721,33 @@
         ctx.fillStyle = [4, 8, 12, 16, 20].includes(i) ? color : color + '99';
         ctx.fill();
       });
+    }
+
+    function updateGesturesAndAudio() {
+      // Detect gestures
+      rightGesture = rightHand ? detectGesture(rightHand.landmarks, true) : 'none';
+      leftGesture = leftHand ? detectGesture(leftHand.landmarks, false) : 'none';
+      gestures.right = rightGesture;
+      gestures.left = leftGesture;
+      
+      // Map gestures to sound params
+      // Waveform: right hand
+      let targetWave = 'sine';
+      if (rightGesture === 'peace') targetWave = 'sawtooth';
+      else if (rightGesture === 'fist') targetWave = 'square';
+      // pinch -> keep current wave but can be used for future effects
+      
+      if (oscillator && oscillator.type !== targetWave) {
+        oscillator.type = targetWave;
+        waveform = targetWave;
+      }
+      
+      // Reverb: left pinch boosts
+      const gestureReverb = (leftGesture === 'pinch') ? Math.min(0.8, reverbAmount + 0.3) : reverbAmount;
+      applyReverbMix(gestureReverb);
+      
+      // Update audio gain/pitch etc.
+      updateAudio();
     }
     
     // Resize
@@ -792,10 +859,7 @@
     
     document.getElementById('reverb').addEventListener('input', function() {
       reverbAmount = parseFloat(this.value);
-      if (reverbNode) {
-        reverbNode.wet.gain.value = reverbAmount;
-        reverbNode.dry.gain.value = 1 - reverbAmount * 0.5;
-      }
+      applyReverbMix(reverbAmount);
     });
     
     document.getElementById('octave').addEventListener('input', function() {
