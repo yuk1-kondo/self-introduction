@@ -136,16 +136,11 @@ class EffectNode {
         this.data = data;
         this.index = index;
         
-        // Position nodes in a circle around the center, avoiding UI area
-        this.angle = (index / total) * Math.PI * 2 - Math.PI / 2;
-        this.orbitRadius = Math.min(width, height) * 0.35;
-        this.baseX = width / 2 + Math.cos(this.angle) * this.orbitRadius;
-        this.baseY = height / 2 + Math.sin(this.angle) * this.orbitRadius;
-        
-        this.x = this.baseX;
-        this.y = this.baseY;
-        this.vx = (Math.random() - 0.5) * 0.3;
-        this.vy = (Math.random() - 0.5) * 0.3;
+        // Free roaming initial position
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 1.0;
+        this.vy = (Math.random() - 0.5) * 1.0;
         
         this.radius = EFFECT_NODE_RADIUS;
         this.targetRadius = EFFECT_NODE_RADIUS;
@@ -155,29 +150,35 @@ class EffectNode {
     }
 
     updatePosition() {
-        // Recalculate orbit based on current window size
-        this.orbitRadius = Math.min(width, height) * 0.35;
-        this.baseX = width / 2 + Math.cos(this.angle) * this.orbitRadius;
-        this.baseY = height / 2 + Math.sin(this.angle) * this.orbitRadius;
+        // Keep inside the new viewport on resize
+        this.x = clamp(this.x, this.radius, width - this.radius);
+        this.y = clamp(this.y, this.radius, height - this.radius);
     }
 
     update() {
-        // Gentle floating motion
+        // Gentle free roaming with slight wander
         this.pulsePhase += 0.02;
-        const floatX = Math.sin(this.pulsePhase + this.index) * 15;
-        const floatY = Math.cos(this.pulsePhase * 0.7 + this.index * 2) * 10;
+        this.vx += (Math.sin(this.pulsePhase + this.index) * 0.05);
+        this.vy += (Math.cos(this.pulsePhase * 0.8 + this.index) * 0.05);
+        this.vx *= 0.99;
+        this.vy *= 0.99;
         
-        // Drift towards base position with floating offset
-        const targetX = this.baseX + floatX;
-        const targetY = this.baseY + floatY;
-        
-        this.vx += (targetX - this.x) * 0.02;
-        this.vy += (targetY - this.y) * 0.02;
-        this.vx *= 0.95;
-        this.vy *= 0.95;
+        // Clamp speed
+        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        const maxSpeed = 1.4;
+        if (speed > maxSpeed) {
+            this.vx = (this.vx / speed) * maxSpeed;
+            this.vy = (this.vy / speed) * maxSpeed;
+        }
         
         this.x += this.vx;
         this.y += this.vy;
+        
+        // Bounce on edges
+        if (this.x < this.radius) { this.x = this.radius; this.vx *= -0.8; }
+        if (this.x > width - this.radius) { this.x = width - this.radius; this.vx *= -0.8; }
+        if (this.y < this.radius) { this.y = this.radius; this.vy *= -0.8; }
+        if (this.y > height - this.radius) { this.y = height - this.radius; this.vy *= -0.8; }
         
         // Check hover
         if (mouse.x !== undefined) {
