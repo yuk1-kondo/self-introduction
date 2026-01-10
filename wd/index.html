@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Water Drops - Interactive Rain Effect</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" href="/favicon.ico">
@@ -31,6 +31,7 @@
       text-decoration: none;
       font-size: 12px;
       letter-spacing: 0.08em;
+      -webkit-backdrop-filter: blur(8px);
       backdrop-filter: blur(8px);
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
     }
@@ -51,6 +52,7 @@
       --border: #222;
       --text: #fff;
       --text-muted: #666;
+      --accent: #fff;
     }
     
     html, body { 
@@ -113,9 +115,25 @@
       border-color: #333;
     }
     
+    .btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    
     .btn.active {
       background: var(--text);
       color: var(--bg);
+    }
+    
+    .btn-primary {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+    
+    .btn-primary:hover {
+      opacity: 0.9;
+      background: var(--text);
     }
     
     .divider {
@@ -134,10 +152,12 @@
     .slider-label {
       font-size: 12px;
       color: var(--text-muted);
+      min-width: 40px;
     }
     
     input[type="range"] {
       -webkit-appearance: none;
+      appearance: none;
       width: 80px;
       height: 4px;
       background: var(--border);
@@ -152,6 +172,19 @@
       background: var(--text);
       border-radius: 50%;
       cursor: pointer;
+      transition: transform 0.1s;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    
+    .slider-value {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      min-width: 32px;
+      font-variant-numeric: tabular-nums;
     }
     
     .stage { 
@@ -197,6 +230,9 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      transition: all 0.2s ease;
+      max-width: calc(100% - 200px);
+      white-space: nowrap;
     }
     
     .status.active { 
@@ -270,6 +306,14 @@
         padding: 10px 16px; 
         font-size: 12px;
         bottom: 16px;
+        max-width: calc(100% - 120px);
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      
+      .back-home {
+        bottom: 14px;
+        left: 14px;
       }
     }
   </style>
@@ -289,8 +333,8 @@
     
     <div class="controls">
       <div class="slider">
-        <span class="slider-label">Rain</span>
-        <input type="range" id="rainAmount" min="0" max="100" value="50">
+        <label for="rainAmount" class="slider-label">Rain</label>
+        <input type="range" id="rainAmount" min="0" max="100" value="50" aria-label="Rain intensity">
       </div>
       <div class="divider"></div>
       <button class="btn" id="toggleRain">Pause</button>
@@ -497,7 +541,6 @@
         this.scale = scale;
         this.dropAlpha = dropAlpha;
         this.dropColor = dropColor;
-        this.scale = scale;
         
         this.options = Object.assign({
           minR: 10,
@@ -1117,6 +1160,9 @@
     }
     
     function generateTextures() {
+      // Check if video is ready
+      if (!video || video.readyState < 2 || video.videoWidth === 0) return;
+      
       // Draw camera to foreground (clear, for refraction)
       textureFgCtx.save();
       textureFgCtx.scale(-1, 1);
@@ -1138,6 +1184,12 @@
     // Main Loop
     // ============================================================
     function render() {
+      // Check if raindrops is initialized
+      if (!raindrops || !gl) {
+        requestAnimationFrame(render);
+        return;
+      }
+      
       // Update raindrops with hand interaction
       raindrops.update(handPositions);
       
@@ -1366,6 +1418,7 @@
     // UI Controls
     // ============================================================
     document.getElementById('toggleRain').addEventListener('click', function() {
+      if (!raindrops) return;
       isRaining = !isRaining;
       raindrops.options.raining = isRaining;
       this.textContent = isRaining ? 'Pause' : 'Resume';
@@ -1373,10 +1426,12 @@
     });
     
     document.getElementById('clearBtn').addEventListener('click', function() {
+      if (!raindrops) return;
       raindrops.clearDrops();
     });
     
     document.getElementById('rainAmount').addEventListener('input', function() {
+      if (!raindrops) return;
       rainIntensity = this.value / 100;
       raindrops.options.rainChance = 0.35 * rainIntensity;
       raindrops.options.dropletsRate = 50 * rainIntensity;

@@ -36,7 +36,8 @@ const EFFECT_PAGES = [
     { id: 'wd', name: 'Water', icon: '◯', url: '/wd/', color: '#2196F3' },
     { id: 'fg', name: 'Fog', icon: '≋', url: '/fg/', color: '#607D8B' },
     { id: 'dm', name: 'Mirror', icon: '◇', url: '/dm/', color: '#E91E63' },
-    { id: 'oc', name: 'Cloak', icon: '◈', url: '/oc/', color: '#FF5722' }
+    { id: 'oc', name: 'Cloak', icon: '◈', url: '/oc/', color: '#FF5722' },
+    { id: 'gl', name: 'Gesture Lab', icon: '✦', url: '/gl/', color: '#ffa575' }
 ];
 
 // Utility: HEX -> rgba string (avoid browser differences in #RRGGBBAA)
