@@ -5,6 +5,98 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const videoElement = document.getElementsByClassName('input_video')[0];
+const langToggle = document.getElementById('lang-toggle');
+
+const UI_TEXTS = {
+    ja: {
+        navAbout: '自己紹介',
+        navWork: '作品',
+        navContact: '連絡',
+        eyebrow: '理科教員志望 / 生成AI・教育・クリエイティブコーディング',
+        lead: '関西出身の理科教員志望です。教育とテクノロジーをつなぎ、生成AIやWeb表現を使って、学ぶ人が手を動かしながら理解できる体験を作っています。',
+        viewWork: '作品を見る',
+        readAbout: '自己紹介を読む',
+        contactMe: '連絡する',
+        factFocus: 'Focus',
+        factFocusValue: '教育 x 生成AI x 体験型学習',
+        factStrength: 'Strength',
+        factStrengthValue: 'アイデアを試作に落とす力',
+        factBase: 'Base',
+        factBaseValue: '関西 / 理科教育',
+        aboutKicker: 'About',
+        aboutTitle: '学びを「触れる体験」に変える',
+        aboutBody1: '理科教員を目指しながら、Web・生成AI・ハードウェアを組み合わせた制作に取り組んでいます。知識を説明するだけでなく、触って試して発見できる教材やアプリを作ることに関心があります。',
+        aboutBody2: 'Spresenseを使ったピクセルアートカメラ、Geminiを活用したストーリーテリングAI、MediaPipeによるジェスチャー操作など、アイデアを小さく試作して形にすることを大切にしています。',
+        skillsKicker: 'Skills',
+        skillsTitle: '用途で使い分ける技術',
+        workKicker: 'Work',
+        workTitle: '遊びながら試せる制作物',
+        workPixel: 'カメラ表現の実験',
+        workSound: '音とインタラクション',
+        workAir: '空中操作の音楽体験',
+        workWater: '雨滴と手の操作',
+        workFog: '曇りガラスを拭く体験',
+        workMirror: '歪みミラー表現',
+        workCloak: '光学迷彩の実験',
+        workGesture: 'ジェスチャー表現集',
+        achievementKicker: 'Achievement',
+        achievementTitle: 'Google Cloud Generative AI Leader',
+        achievementBody: '生成AIがビジネスや学びをどう変えるかを理解し、Google Cloud の生成AIサービスを活用するための基礎知識を身につけています。',
+        contactKicker: 'Contact',
+        contactTitle: '教育とテクノロジーの実験をご一緒できたら嬉しいです',
+        gestureHint: '背景の丸いノードから作品へ移動できます',
+        cameraEnable: '手で操作する',
+        cameraStop: 'カメラ停止',
+        cameraInitializing: '準備中...',
+        cameraDenied: 'カメラ不可',
+        cameraUnavailable: 'カメラ非対応'
+    },
+    en: {
+        navAbout: 'About',
+        navWork: 'Work',
+        navContact: 'Contact',
+        eyebrow: 'Science teacher trainee / Generative AI, education, creative coding',
+        lead: 'I am a science teacher trainee from Kansai. I connect education and technology to build hands-on learning experiences with generative AI and expressive web interfaces.',
+        viewWork: 'View Work',
+        readAbout: 'Read About',
+        contactMe: 'Contact',
+        factFocus: 'Focus',
+        factFocusValue: 'Education x GenAI x experiential learning',
+        factStrength: 'Strength',
+        factStrengthValue: 'Turning ideas into working prototypes',
+        factBase: 'Base',
+        factBaseValue: 'Kansai / Science education',
+        aboutKicker: 'About',
+        aboutTitle: 'Turning learning into something you can touch',
+        aboutBody1: 'While working toward becoming a science teacher, I create projects that combine the web, generative AI, and hardware. I am interested in tools and lessons that let learners discover ideas by trying them directly.',
+        aboutBody2: 'I value quick prototyping: a pixel-art camera with Spresense, storytelling AI with Gemini, and gesture interactions with MediaPipe are examples of how I turn ideas into usable experiences.',
+        skillsKicker: 'Skills',
+        skillsTitle: 'Tools grouped by purpose',
+        workKicker: 'Work',
+        workTitle: 'Interactive experiments to try',
+        workPixel: 'Camera expression experiment',
+        workSound: 'Sound and interaction',
+        workAir: 'Air-controlled music experience',
+        workWater: 'Raindrops and hand control',
+        workFog: 'Wipe a foggy glass surface',
+        workMirror: 'Distortion mirror expression',
+        workCloak: 'Optical camouflage experiment',
+        workGesture: 'Gesture expression lab',
+        achievementKicker: 'Achievement',
+        achievementTitle: 'Google Cloud Generative AI Leader',
+        achievementBody: 'I have foundational knowledge of how generative AI changes business and learning, and how to use Google Cloud generative AI services.',
+        contactKicker: 'Contact',
+        contactTitle: 'I would be glad to collaborate on experiments in education and technology',
+        gestureHint: 'Use the floating circles as playful shortcuts to work',
+        cameraEnable: 'Control by hand',
+        cameraStop: 'Stop camera',
+        cameraInitializing: 'Initializing...',
+        cameraDenied: 'Camera denied',
+        cameraUnavailable: 'Unavailable'
+    }
+};
+
+let currentLang = localStorage.getItem('preferredLang') || 'ja';
 
 // Custom Cursor
 const cursorEl = document.createElement('div');
@@ -13,20 +105,20 @@ cursorEl.style.opacity = '1';
 document.body.appendChild(cursorEl);
 
 // Config
-const PARTICLE_COUNT_DESKTOP = 80;
-const PARTICLE_COUNT_MOBILE = 40;
-const CONNECTION_DISTANCE = 140;
-const MOUSE_DISTANCE = 250;
-const PARTICLE_BASE_VELOCITY = 0.8;
-const SHOCKWAVE_FORCE = 15;
+const PARTICLE_COUNT_DESKTOP = 56;
+const PARTICLE_COUNT_MOBILE = 28;
+const CONNECTION_DISTANCE = 118;
+const MOUSE_DISTANCE = 190;
+const PARTICLE_BASE_VELOCITY = 0.45;
+const SHOCKWAVE_FORCE = 8;
 const SMOOTHING_FACTOR = 0.2;
-const GATHER_STRENGTH = 0.5;
+const GATHER_STRENGTH = 0.28;
 const CAMERA_TIMEOUT_MS = 2000;
 const PINCH_THRESHOLD = 0.05;
-const EFFECT_NODE_RADIUS = 28;
-const EFFECT_NODE_HOVER_RADIUS = 38;
+const EFFECT_NODE_RADIUS = 13;
+const EFFECT_NODE_HOVER_RADIUS = 21;
 
-const COLORS = ['#111111', '#333333', '#555555', '#777777'];
+const COLORS = ['#2b2b2b', '#5d5d55', '#8c8678', '#b7aa91'];
 
 // Effect Pages Data
 const EFFECT_PAGES = [
@@ -122,10 +214,11 @@ class Particle {
 
     draw() {
         ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.8;
+        ctx.globalAlpha = 0.34;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size * (Math.sin(Date.now() * 0.005 + this.x) * 0.5 + 1), 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 1;
     }
 }
 
@@ -140,8 +233,8 @@ class EffectNode {
         // Free roaming initial position
         this.x = Math.random() * width;
         this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 1.0;
-        this.vy = (Math.random() - 0.5) * 1.0;
+        this.vx = (Math.random() - 0.5) * 0.45;
+        this.vy = (Math.random() - 0.5) * 0.45;
         this.targetX = Math.random() * width;
         this.targetY = Math.random() * height;
         this.wanderTimer = 0;
@@ -177,7 +270,7 @@ class EffectNode {
         const dx = this.targetX - this.x;
         const dy = this.targetY - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
-        const steerStrength = 0.08;
+        const steerStrength = 0.035;
         this.vx += (dx / dist) * steerStrength;
         this.vy += (dy / dist) * steerStrength;
         
@@ -190,7 +283,7 @@ class EffectNode {
         this.vx *= 0.98;
         this.vy *= 0.98;
         const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-        const maxSpeed = 2.0;
+        const maxSpeed = 0.85;
         if (speed > maxSpeed) {
             this.vx = (this.vx / speed) * maxSpeed;
             this.vy = (this.vy / speed) * maxSpeed;
@@ -213,8 +306,8 @@ class EffectNode {
             this.isHovered = dist < this.radius + 20;
             
             // Slight attraction/repulsion from mouse
-            if (dist < 150 && dist > 30) {
-                const force = (150 - dist) / 150 * 0.3;
+            if (dist < 120 && dist > 26) {
+                const force = (120 - dist) / 120 * 0.08;
                 this.vx += (dx / dist) * force;
                 this.vy += (dy / dist) * force;
             }
@@ -239,7 +332,7 @@ class EffectNode {
                 this.x, this.y, this.radius * 0.5,
                 this.x, this.y, this.radius * 2
             );
-            gradient.addColorStop(0, hexToRgba(this.data.color, clamp(this.glowIntensity * 0.16, 0, 0.25)));
+            gradient.addColorStop(0, hexToRgba(this.data.color, clamp(this.glowIntensity * 0.12, 0, 0.18)));
             gradient.addColorStop(1, 'transparent');
             ctx.fillStyle = gradient;
             ctx.beginPath();
@@ -256,19 +349,19 @@ class EffectNode {
             this.x - this.radius * 0.3, this.y - this.radius * 0.3, 0,
             this.x, this.y, this.radius
         );
-        const baseAlpha = this.isHovered ? 0.95 : 0.8;
+        const baseAlpha = this.isHovered ? 0.82 : 0.24;
         bgGradient.addColorStop(0, hexToRgba(this.data.color, clamp(baseAlpha, 0, 1)));
-        bgGradient.addColorStop(1, hexToRgba(this.data.color, 0.6));
+        bgGradient.addColorStop(1, hexToRgba(this.data.color, this.isHovered ? 0.54 : 0.16));
         ctx.fillStyle = bgGradient;
         ctx.fill();
         
         // Border
-        ctx.strokeStyle = this.isHovered ? '#fff' : 'rgba(255,255,255,0.5)';
+        ctx.strokeStyle = this.isHovered ? '#fff' : 'rgba(255,255,255,0.45)';
         ctx.lineWidth = this.isHovered ? 2 : 1;
         ctx.stroke();
         
         // Icon
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = this.isHovered ? '#fff' : 'rgba(255,255,255,0.82)';
         ctx.font = `${this.radius * 0.7}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -340,7 +433,7 @@ function resize() {
 function animate() {
     updateInputPosition();
     
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fillStyle = 'rgba(247, 247, 244, 0.44)';
     ctx.fillRect(0, 0, width, height);
 
     ctx.lineWidth = 0.5;
@@ -350,7 +443,7 @@ function animate() {
             const dy = particles[i].y - particles[j].y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < CONNECTION_DISTANCE) {
-                ctx.strokeStyle = `rgba(0, 0, 0, ${(1 - dist / CONNECTION_DISTANCE) * 0.15})`;
+                ctx.strokeStyle = `rgba(0, 0, 0, ${(1 - dist / CONNECTION_DISTANCE) * 0.055})`;
                 ctx.beginPath();
                 ctx.moveTo(particles[i].x, particles[i].y);
                 ctx.lineTo(particles[j].x, particles[j].y);
@@ -365,7 +458,7 @@ function animate() {
             const dy = mouse.y - p.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < MOUSE_DISTANCE) {
-                ctx.strokeStyle = `rgba(0, 0, 0, ${(1 - dist / MOUSE_DISTANCE) * 0.2})`;
+                ctx.strokeStyle = `rgba(0, 0, 0, ${(1 - dist / MOUSE_DISTANCE) * 0.08})`;
                 ctx.beginPath();
                 ctx.moveTo(mouse.x, mouse.y);
                 ctx.lineTo(p.x, p.y);
@@ -495,12 +588,46 @@ function updateInputPosition() {
     }
 }
 
-// MediaPipe Hands
-const hands = new Hands({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
-hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
-hands.onResults(onResults);
+function applyLanguage(lang) {
+    currentLang = lang;
+    const texts = UI_TEXTS[currentLang];
+    document.documentElement.lang = currentLang;
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.dataset.i18n;
+        if (texts[key]) el.textContent = texts[key];
+    });
+    if (langToggle) {
+        langToggle.classList.toggle('lang-en-active', currentLang === 'en');
+    }
+    localStorage.setItem('preferredLang', currentLang);
+}
+
+if (langToggle) {
+    langToggle.addEventListener('click', () => {
+        applyLanguage(currentLang === 'ja' ? 'en' : 'ja');
+        if (cameraBtn) {
+            if (!supportsHandControl) {
+                cameraBtn.innerText = UI_TEXTS[currentLang].cameraUnavailable;
+            } else if (isCameraRunning) {
+                cameraBtn.innerText = UI_TEXTS[currentLang].cameraStop;
+            }
+        }
+    });
+}
+
+applyLanguage(currentLang);
+
+// MediaPipe Hands is optional. The portrait content must work without camera scripts.
+const supportsHandControl = typeof Hands !== 'undefined' && typeof Camera !== 'undefined';
+let hands = null;
+
+if (supportsHandControl) {
+    hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    hands.onResults(onResults);
+}
 
 // Camera Control
 const cameraBtn = document.getElementById('camera-btn');
@@ -508,7 +635,15 @@ let cameraInstance = null;
 let isCameraRunning = false;
 
 if (cameraBtn) {
+    if (!supportsHandControl) {
+        cameraBtn.innerText = UI_TEXTS[currentLang].cameraUnavailable;
+        cameraBtn.disabled = true;
+        cameraBtn.setAttribute('aria-disabled', 'true');
+    }
+
     cameraBtn.addEventListener('click', () => {
+        if (!supportsHandControl) return;
+
         if (isCameraRunning) {
             if (cameraInstance) {
                 cameraInstance.stop();
@@ -519,21 +654,21 @@ if (cameraBtn) {
             }
             isCameraRunning = false;
             cameraInstance = null;
-            cameraBtn.innerText = "Enable Camera Control";
+            cameraBtn.innerText = UI_TEXTS[currentLang].cameraEnable;
             lastHandDetectedTime = 0;
             return;
         }
 
-        cameraBtn.innerText = "Initializing...";
+        cameraBtn.innerText = UI_TEXTS[currentLang].cameraInitializing;
         try {
             cameraInstance = new Camera(videoElement, {
                 onFrame: async () => { if (isCameraRunning) await hands.send({ image: videoElement }); },
                 width: 640, height: 480
             });
             cameraInstance.start()
-                .then(() => { isCameraRunning = true; cameraBtn.innerText = "Stop Camera"; lastHandDetectedTime = Date.now(); })
-                .catch(err => { cameraBtn.innerText = "Camera Denied"; isCameraRunning = false; });
-        } catch (e) { cameraBtn.innerText = "Error"; isCameraRunning = false; }
+                .then(() => { isCameraRunning = true; cameraBtn.innerText = UI_TEXTS[currentLang].cameraStop; lastHandDetectedTime = Date.now(); })
+                .catch(err => { cameraBtn.innerText = UI_TEXTS[currentLang].cameraDenied; isCameraRunning = false; });
+        } catch (e) { cameraBtn.innerText = UI_TEXTS[currentLang].cameraUnavailable; isCameraRunning = false; }
     });
 }
 
@@ -571,7 +706,9 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden) cursorEl.style.opacity = '1'; 
 });
 
-window.addEventListener('mousedown', (e) => { 
+window.addEventListener('mousedown', (e) => {
+    if (e.target.closest('a, button')) return;
+
     // Check if clicking on effect node
     for (const node of effectNodes) {
         if (node.isPointInside(e.clientX, e.clientY)) {
@@ -597,6 +734,7 @@ window.addEventListener('mouseup', () => {
 // Touch Events for Mobile
 window.addEventListener('touchstart', (e) => {
     if (isCameraActive()) return;
+    if (e.target.closest('a, button')) return;
     
     const touch = e.touches[0];
     

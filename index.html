@@ -1,42 +1,145 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YUKI KONDO | Home</title>
+    <title>YUKI KONDO | Portrait</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="home.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- MediaPipe Dependencies -->
+    <!-- Optional MediaPipe dependencies for hand gesture mode -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
-        crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
-        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
-    <!-- Hidden video element for camera feed -->
     <video class="input_video" playsinline></video>
-    <canvas id="canvas"></canvas>
-    <div id="ui-layer">
-        <h1>YUKI KONDO</h1>
-        <p>Multi-Stack Developer & Designer</p>
-        <span class="btn-enter disabled">View Work →</span>
+    <canvas id="canvas" aria-hidden="true"></canvas>
+
+    <header class="site-header" aria-label="Site header">
+        <a class="brand" href="#top" aria-label="YUKI KONDO top">YUKI KONDO</a>
+        <nav class="site-nav" aria-label="Primary navigation">
+            <a href="#about" data-i18n="navAbout">自己紹介</a>
+            <a href="#work" data-i18n="navWork">作品</a>
+            <a href="#contact" data-i18n="navContact">連絡</a>
+        </nav>
+        <button id="lang-toggle" class="lang-toggle" type="button" aria-label="Switch language">
+            <span class="lang-ja">JA</span>
+            <span class="lang-divider">/</span>
+            <span class="lang-en">EN</span>
+        </button>
+    </header>
+
+    <main id="top" class="page-shell">
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="hero-copy">
+                <p class="eyebrow" data-i18n="eyebrow">理科教員志望 / 生成AI・教育・クリエイティブコーディング</p>
+                <h1 id="hero-title">YUKI KONDO</h1>
+                <p class="lead" data-i18n="lead">
+                    関西出身の理科教員志望です。教育とテクノロジーをつなぎ、生成AIやWeb表現を使って、学ぶ人が手を動かしながら理解できる体験を作っています。
+                </p>
+                <div class="hero-actions" aria-label="Primary actions">
+                    <a class="btn btn-primary" href="#work" data-i18n="viewWork">作品を見る</a>
+                    <a class="btn" href="#about" data-i18n="readAbout">自己紹介を読む</a>
+                    <a class="btn" href="mailto:t-kondoy@e.osakamanabi.jp" data-i18n="contactMe">連絡する</a>
+                </div>
+            </div>
+
+            <aside class="profile-panel" aria-label="Profile summary">
+                <img src="profile.png" alt="YUKI KONDO portrait" class="profile-image">
+                <dl class="profile-facts">
+                    <div>
+                        <dt data-i18n="factFocus">Focus</dt>
+                        <dd data-i18n="factFocusValue">教育 x 生成AI x 体験型学習</dd>
+                    </div>
+                    <div>
+                        <dt data-i18n="factStrength">Strength</dt>
+                        <dd data-i18n="factStrengthValue">アイデアを試作に落とす力</dd>
+                    </div>
+                    <div>
+                        <dt data-i18n="factBase">Base</dt>
+                        <dd data-i18n="factBaseValue">関西 / 理科教育</dd>
+                    </div>
+                </dl>
+            </aside>
+        </section>
+
+        <section id="about" class="section" aria-labelledby="about-title">
+            <p class="section-kicker" data-i18n="aboutKicker">About</p>
+            <h2 id="about-title" data-i18n="aboutTitle">学びを「触れる体験」に変える</h2>
+            <div class="about-grid">
+                <p data-i18n="aboutBody1">
+                    理科教員を目指しながら、Web・生成AI・ハードウェアを組み合わせた制作に取り組んでいます。知識を説明するだけでなく、触って試して発見できる教材やアプリを作ることに関心があります。
+                </p>
+                <p data-i18n="aboutBody2">
+                    Spresenseを使ったピクセルアートカメラ、Geminiを活用したストーリーテリングAI、MediaPipeによるジェスチャー操作など、アイデアを小さく試作して形にすることを大切にしています。
+                </p>
+            </div>
+        </section>
+
+        <section class="section" aria-labelledby="skills-title">
+            <p class="section-kicker" data-i18n="skillsKicker">Skills</p>
+            <h2 id="skills-title" data-i18n="skillsTitle">用途で使い分ける技術</h2>
+            <div class="skill-grid">
+                <article class="skill-card">
+                    <h3>Creative Coding</h3>
+                    <p>Canvas / WebGL / MediaPipe</p>
+                </article>
+                <article class="skill-card">
+                    <h3>Web / App</h3>
+                    <p>JavaScript / React / Node.js / HTML / CSS</p>
+                </article>
+                <article class="skill-card">
+                    <h3>AI / Hardware</h3>
+                    <p>Gemini API / Google Cloud / Spresense / Python</p>
+                </article>
+            </div>
+        </section>
+
+        <section id="work" class="section" aria-labelledby="work-title">
+            <p class="section-kicker" data-i18n="workKicker">Work</p>
+            <h2 id="work-title" data-i18n="workTitle">遊びながら試せる制作物</h2>
+            <div class="work-grid">
+                <a class="work-card" href="/pa/"><span>Pixel Art</span><small data-i18n="workPixel">カメラ表現の実験</small></a>
+                <a class="work-card" href="/sv/"><span>Sound</span><small data-i18n="workSound">音とインタラクション</small></a>
+                <a class="work-card" href="/vp/"><span>Air Music</span><small data-i18n="workAir">空中操作の音楽体験</small></a>
+                <a class="work-card" href="/wd/"><span>Water</span><small data-i18n="workWater">雨滴と手の操作</small></a>
+                <a class="work-card" href="/fg/"><span>Fog</span><small data-i18n="workFog">曇りガラスを拭く体験</small></a>
+                <a class="work-card" href="/dm/"><span>Mirror</span><small data-i18n="workMirror">歪みミラー表現</small></a>
+                <a class="work-card" href="/oc/"><span>Cloak</span><small data-i18n="workCloak">光学迷彩の実験</small></a>
+                <a class="work-card" href="/gl/"><span>Gesture Lab</span><small data-i18n="workGesture">ジェスチャー表現集</small></a>
+            </div>
+        </section>
+
+        <section class="section achievement-section" aria-labelledby="achievement-title">
+            <div>
+                <p class="section-kicker" data-i18n="achievementKicker">Achievement</p>
+                <h2 id="achievement-title" data-i18n="achievementTitle">Google Cloud Generative AI Leader</h2>
+                <p data-i18n="achievementBody">
+                    生成AIがビジネスや学びをどう変えるかを理解し、Google Cloud の生成AIサービスを活用するための基礎知識を身につけています。
+                </p>
+            </div>
+            <img src="genaileader_certification.png" alt="Google Cloud Generative AI Leader certification badge" class="badge-image">
+        </section>
+
+        <section id="contact" class="section contact-section" aria-labelledby="contact-title">
+            <p class="section-kicker" data-i18n="contactKicker">Contact</p>
+            <h2 id="contact-title" data-i18n="contactTitle">教育とテクノロジーの実験をご一緒できたら嬉しいです</h2>
+            <a class="btn btn-primary" href="mailto:t-kondoy@e.osakamanabi.jp">t-kondoy@e.osakamanabi.jp</a>
+        </section>
+    </main>
+
+    <div id="instructions" class="gesture-control">
+        <span data-i18n="gestureHint">背景の丸いノードから作品へ移動できます</span>
+        <button id="camera-btn" class="btn-text" type="button" data-i18n="cameraEnable">手で操作する</button>
     </div>
 
-    <div id="instructions">
-        Use your <strong>Index Finger</strong> to control particles<br>
-        <em>Pinch to gather, release to burst</em><br>
-        <button id="camera-btn" class="btn-text">Enable Camera Control</button>
-    </div>
-
-    <!-- Home Page Script (MediaPipe enabled) -->
     <script src="home.js"></script>
 </body>
 
