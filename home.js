@@ -1015,64 +1015,114 @@ function ensureRainRenderer() {
     return false;
 }
 
+function drawSnapshotText(ctx, element) {
+    if (!element || element.closest('.gesture-control')) return;
+    const rect = element.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > height || rect.right < 0 || rect.left > width) return;
+
+    const style = window.getComputedStyle(element);
+    const fontSize = Number.parseFloat(style.fontSize) || 16;
+    const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.35;
+    const color = style.color || '#161616';
+    const text = (element.innerText || element.textContent || '').trim();
+    if (!text) return;
+
+    ctx.save();
+    ctx.font = `${style.fontWeight || 400} ${fontSize}px ${style.fontFamily || 'sans-serif'}`;
+    ctx.fillStyle = color;
+    ctx.textAlign = style.textAlign === 'center' ? 'center' : style.textAlign === 'right' ? 'right' : 'left';
+    ctx.textBaseline = 'top';
+
+    const x = ctx.textAlign === 'center' ? rect.left + rect.width / 2 : ctx.textAlign === 'right' ? rect.right : rect.left;
+    let y = rect.top;
+    const maxWidth = Math.max(20, rect.width);
+
+    text.split('\n').forEach(rawLine => {
+        const words = rawLine.trim().split(/\s+/);
+        let line = '';
+        words.forEach(word => {
+            const testLine = line ? `${line} ${word}` : word;
+            if (ctx.measureText(testLine).width > maxWidth && line) {
+                ctx.fillText(line, x, y, maxWidth);
+                line = word;
+                y += lineHeight;
+            } else {
+                line = testLine;
+            }
+        });
+        if (line) {
+            ctx.fillText(line, x, y, maxWidth);
+            y += lineHeight;
+        }
+    });
+    ctx.restore();
+}
+
+function drawSnapshotBox(ctx, element) {
+    if (!element || element.closest('.gesture-control')) return;
+    const rect = element.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > height || rect.right < 0 || rect.left > width) return;
+    const style = window.getComputedStyle(element);
+    const bg = style.backgroundColor;
+    const border = style.borderTopColor;
+    const radius = Math.min(Number.parseFloat(style.borderTopLeftRadius) || 0, 28);
+
+    ctx.save();
+    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+        ctx.fillStyle = bg;
+        ctx.beginPath();
+        ctx.roundRect(rect.left, rect.top, rect.width, rect.height, radius);
+        ctx.fill();
+    }
+    if (border && style.borderTopWidth !== '0px') {
+        ctx.strokeStyle = border;
+        ctx.lineWidth = Math.max(1, Number.parseFloat(style.borderTopWidth) || 1);
+        ctx.beginPath();
+        ctx.roundRect(rect.left, rect.top, rect.width, rect.height, radius);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawSnapshotImage(ctx, img) {
+    if (!img || img.closest('.gesture-control') || !img.complete || img.naturalWidth === 0) return;
+    const rect = img.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > height || rect.right < 0 || rect.left > width) return;
+    try {
+        ctx.drawImage(img, rect.left, rect.top, rect.width, rect.height);
+    } catch (error) {
+        // Cross-origin or SVG images are skipped; text remains the important refraction target.
+    }
+}
+
 async function captureRainSnapshot() {
     if (rainSnapshotPromise) return rainSnapshotPromise;
 
     rainSnapshotPromise = (async () => {
         const snapshotWidth = Math.max(1, Math.floor(width));
         const snapshotHeight = Math.max(1, Math.floor(height));
-        const css = await fetch('home.css').then(response => response.text()).catch(() => '');
-        const headerClone = document.querySelector('.site-header')?.cloneNode(true);
-        const pageClone = document.querySelector('.page-shell')?.cloneNode(true);
-        const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
-
-        await Promise.all([
-            prepareSnapshotImages(headerClone),
-            prepareSnapshotImages(pageClone)
-        ]);
-
-        const markup = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="${snapshotWidth}" height="${snapshotHeight}" viewBox="0 0 ${width} ${height}">
-                <foreignObject width="${width}" height="${height}">
-                    <html xmlns="http://www.w3.org/1999/xhtml" lang="${document.documentElement.lang}">
-                        <head>
-                            <style>${css}</style>
-                            <style>
-                                html, body { width: ${width}px; height: ${height}px; margin: 0; overflow: hidden; }
-                                body::after { display: none !important; }
-                                .custom-cursor, .gesture-control, .rain-overlay, .input_video, #canvas { display: none !important; }
-                                .site-header { transform: translateX(-50%) !important; opacity: 1 !important; }
-                                .page-shell { opacity: 1 !important; transform: translateY(${-scrollTop}px); }
-                            </style>
-                        </head>
-                        <body>
-                            ${headerClone ? headerClone.outerHTML : ''}
-                            ${pageClone ? pageClone.outerHTML : ''}
-                        </body>
-                    </html>
-                </foreignObject>
-            </svg>
-        `;
-
-        let img;
-        if (window.location.protocol === 'file:') {
-            img = await loadRainImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`);
-        } else {
-            let url = '';
-            try {
-                const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
-                url = URL.createObjectURL(blob);
-                img = await loadRainImage(url);
-            } finally {
-                if (url) URL.revokeObjectURL(url);
-            }
-        }
-
         const snapshot = document.createElement('canvas');
         snapshot.width = snapshotWidth;
         snapshot.height = snapshotHeight;
         const snapshotCtx = snapshot.getContext('2d');
-        snapshotCtx.drawImage(img, 0, 0, snapshotWidth, snapshotHeight);
+
+        snapshotCtx.fillStyle = '#f7f7f4';
+        snapshotCtx.fillRect(0, 0, snapshotWidth, snapshotHeight);
+        const coolGlow = snapshotCtx.createRadialGradient(width * 0.75, height * 0.18, 0, width * 0.75, height * 0.18, 460);
+        coolGlow.addColorStop(0, 'rgba(119, 176, 206, 0.18)');
+        coolGlow.addColorStop(1, 'rgba(119, 176, 206, 0)');
+        snapshotCtx.fillStyle = coolGlow;
+        snapshotCtx.fillRect(0, 0, snapshotWidth, snapshotHeight);
+        const warmGlow = snapshotCtx.createRadialGradient(width * 0.12, height * 0.82, 0, width * 0.12, height * 0.82, 380);
+        warmGlow.addColorStop(0, 'rgba(222, 173, 108, 0.14)');
+        warmGlow.addColorStop(1, 'rgba(222, 173, 108, 0)');
+        snapshotCtx.fillStyle = warmGlow;
+        snapshotCtx.fillRect(0, 0, snapshotWidth, snapshotHeight);
+
+        document.querySelectorAll('.site-header, .btn, .profile-panel, .skill-card, .work-card').forEach(el => drawSnapshotBox(snapshotCtx, el));
+        document.querySelectorAll('img').forEach(img => drawSnapshotImage(snapshotCtx, img));
+        document.querySelectorAll('.brand, h1, h2, h3, p, dt, dd, a, small').forEach(el => drawSnapshotText(snapshotCtx, el));
+
         rainSnapshotCanvas = snapshot;
         return snapshot;
     })();
