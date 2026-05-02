@@ -166,6 +166,8 @@ let rainRenderer = null;
 let rainGl = null;
 let rainRenderMode = null;
 let rainSnapshotCanvas = null;
+let rainViewportSnapshotCanvas = null;
+let rainViewportSnapshotCtx = null;
 let rainSnapshotPromise = null;
 let rainAnimationFrame = null;
 let rainActive = false;
@@ -956,6 +958,11 @@ function resizeRainOverlay() {
         rainEngine.resize(rainCanvas.width, rainCanvas.height);
     }
     rainSnapshotCanvas = null;
+    rainViewportSnapshotCanvas = null;
+    rainViewportSnapshotCtx = null;
+    if (rainActive) {
+        refreshRainSnapshot();
+    }
 }
 
 function updateRainButton() {
@@ -1018,10 +1025,35 @@ function ensureRainRenderer() {
     return false;
 }
 
-function drawSnapshotText(ctx, element) {
-    if (!element || element.closest('.gesture-control')) return;
+function getDocumentSnapshotHeight() {
+    const doc = document.documentElement;
+    const body = document.body;
+    return Math.max(
+        height,
+        body?.scrollHeight || 0,
+        body?.offsetHeight || 0,
+        doc?.clientHeight || 0,
+        doc?.scrollHeight || 0,
+        doc?.offsetHeight || 0
+    );
+}
+
+function getSnapshotRect(element) {
     const rect = element.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > height || rect.right < 0 || rect.left > width) return;
+    return {
+        left: rect.left + window.scrollX,
+        top: rect.top + window.scrollY,
+        right: rect.right + window.scrollX,
+        bottom: rect.bottom + window.scrollY,
+        width: rect.width,
+        height: rect.height
+    };
+}
+
+function drawSnapshotText(ctx, element, snapshotWidth, snapshotHeight) {
+    if (!element || element.closest('.gesture-control')) return;
+    const rect = getSnapshotRect(element);
+    if (rect.bottom < 0 || rect.top > snapshotHeight || rect.right < 0 || rect.left > snapshotWidth) return;
 
     const style = window.getComputedStyle(element);
     const fontSize = Number.parseFloat(style.fontSize) || 16;
@@ -1061,10 +1093,10 @@ function drawSnapshotText(ctx, element) {
     ctx.restore();
 }
 
-function drawSnapshotBox(ctx, element) {
+function drawSnapshotBox(ctx, element, snapshotWidth, snapshotHeight) {
     if (!element || element.closest('.gesture-control')) return;
-    const rect = element.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > height || rect.right < 0 || rect.left > width) return;
+    const rect = getSnapshotRect(element);
+    if (rect.bottom < 0 || rect.top > snapshotHeight || rect.right < 0 || rect.left > snapshotWidth) return;
     const style = window.getComputedStyle(element);
     const bg = style.backgroundColor;
     const border = style.borderTopColor;
@@ -1087,10 +1119,10 @@ function drawSnapshotBox(ctx, element) {
     ctx.restore();
 }
 
-function drawSnapshotImage(ctx, img) {
+function drawSnapshotImage(ctx, img, snapshotWidth, snapshotHeight) {
     if (!img || img.closest('.gesture-control') || !img.complete || img.naturalWidth === 0) return;
-    const rect = img.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > height || rect.right < 0 || rect.left > width) return;
+    const rect = getSnapshotRect(img);
+    if (rect.bottom < 0 || rect.top > snapshotHeight || rect.right < 0 || rect.left > snapshotWidth) return;
     try {
         ctx.drawImage(img, rect.left, rect.top, rect.width, rect.height);
     } catch (error) {
@@ -1098,33 +1130,42 @@ function drawSnapshotImage(ctx, img) {
     }
 }
 
+function drawSnapshotBackground(ctx, snapshotWidth, snapshotHeight) {
+    ctx.fillStyle = '#f7f7f4';
+    ctx.fillRect(0, 0, snapshotWidth, snapshotHeight);
+
+    const coolGlow = ctx.createRadialGradient(snapshotWidth * 0.75, height * 0.18, 0, snapshotWidth * 0.75, height * 0.18, 460);
+    coolGlow.addColorStop(0, 'rgba(119, 176, 206, 0.18)');
+    coolGlow.addColorStop(1, 'rgba(119, 176, 206, 0)');
+    ctx.fillStyle = coolGlow;
+    ctx.fillRect(0, 0, snapshotWidth, snapshotHeight);
+
+    const warmGlow = ctx.createRadialGradient(snapshotWidth * 0.12, height * 0.82, 0, snapshotWidth * 0.12, height * 0.82, 380);
+    warmGlow.addColorStop(0, 'rgba(222, 173, 108, 0.14)');
+    warmGlow.addColorStop(1, 'rgba(222, 173, 108, 0)');
+    ctx.fillStyle = warmGlow;
+    ctx.fillRect(0, 0, snapshotWidth, snapshotHeight);
+}
+
 async function captureRainSnapshot() {
     if (rainSnapshotPromise) return rainSnapshotPromise;
 
     rainSnapshotPromise = (async () => {
+        if (document.fonts?.ready) {
+            await document.fonts.ready;
+        }
         const snapshotWidth = Math.max(1, Math.floor(width));
-        const snapshotHeight = Math.max(1, Math.floor(height));
+        const snapshotHeight = Math.max(1, Math.ceil(getDocumentSnapshotHeight()));
         const snapshot = document.createElement('canvas');
         snapshot.width = snapshotWidth;
         snapshot.height = snapshotHeight;
         const snapshotCtx = snapshot.getContext('2d');
 
-        snapshotCtx.fillStyle = '#f7f7f4';
-        snapshotCtx.fillRect(0, 0, snapshotWidth, snapshotHeight);
-        const coolGlow = snapshotCtx.createRadialGradient(width * 0.75, height * 0.18, 0, width * 0.75, height * 0.18, 460);
-        coolGlow.addColorStop(0, 'rgba(119, 176, 206, 0.18)');
-        coolGlow.addColorStop(1, 'rgba(119, 176, 206, 0)');
-        snapshotCtx.fillStyle = coolGlow;
-        snapshotCtx.fillRect(0, 0, snapshotWidth, snapshotHeight);
-        const warmGlow = snapshotCtx.createRadialGradient(width * 0.12, height * 0.82, 0, width * 0.12, height * 0.82, 380);
-        warmGlow.addColorStop(0, 'rgba(222, 173, 108, 0.14)');
-        warmGlow.addColorStop(1, 'rgba(222, 173, 108, 0)');
-        snapshotCtx.fillStyle = warmGlow;
-        snapshotCtx.fillRect(0, 0, snapshotWidth, snapshotHeight);
+        drawSnapshotBackground(snapshotCtx, snapshotWidth, snapshotHeight);
 
-        document.querySelectorAll('.site-header, .btn, .profile-panel, .skill-card, .work-card').forEach(el => drawSnapshotBox(snapshotCtx, el));
-        document.querySelectorAll('img').forEach(img => drawSnapshotImage(snapshotCtx, img));
-        document.querySelectorAll('.brand, h1, h2, h3, p, dt, dd, a, small').forEach(el => drawSnapshotText(snapshotCtx, el));
+        document.querySelectorAll('.site-header, .btn, .profile-panel, .skill-card, .work-card').forEach(el => drawSnapshotBox(snapshotCtx, el, snapshotWidth, snapshotHeight));
+        document.querySelectorAll('img').forEach(img => drawSnapshotImage(snapshotCtx, img, snapshotWidth, snapshotHeight));
+        document.querySelectorAll('.brand, h1, h2, h3, p, dt, dd, a, small').forEach(el => drawSnapshotText(snapshotCtx, el, snapshotWidth, snapshotHeight));
 
         rainSnapshotCanvas = snapshot;
         return snapshot;
@@ -1135,6 +1176,44 @@ async function captureRainSnapshot() {
     } finally {
         rainSnapshotPromise = null;
     }
+}
+
+async function refreshRainSnapshot() {
+    rainSnapshotCanvas = null;
+    rainViewportSnapshotCanvas = null;
+    rainViewportSnapshotCtx = null;
+    try {
+        await captureRainSnapshot();
+    } catch (error) {
+        console.warn('Rainman snapshot could not refresh.', error);
+    }
+}
+
+function getRainViewportSnapshot(snapshot) {
+    if (!snapshot) return null;
+    const viewportWidth = Math.max(1, Math.floor(width));
+    const viewportHeight = Math.max(1, Math.floor(height));
+    if (!rainViewportSnapshotCanvas || rainViewportSnapshotCanvas.width !== viewportWidth || rainViewportSnapshotCanvas.height !== viewportHeight) {
+        rainViewportSnapshotCanvas = document.createElement('canvas');
+        rainViewportSnapshotCanvas.width = viewportWidth;
+        rainViewportSnapshotCanvas.height = viewportHeight;
+        rainViewportSnapshotCtx = rainViewportSnapshotCanvas.getContext('2d');
+    }
+
+    const sourceY = clamp(window.scrollY, 0, Math.max(0, snapshot.height - viewportHeight));
+    rainViewportSnapshotCtx.clearRect(0, 0, viewportWidth, viewportHeight);
+    rainViewportSnapshotCtx.drawImage(
+        snapshot,
+        0,
+        sourceY,
+        Math.min(viewportWidth, snapshot.width),
+        Math.min(viewportHeight, snapshot.height - sourceY),
+        0,
+        0,
+        viewportWidth,
+        viewportHeight
+    );
+    return rainViewportSnapshotCanvas;
 }
 
 async function startRainman() {
@@ -1206,10 +1285,16 @@ function animateRain(now) {
     const dt = Math.max(1, now - rainLastFrame);
     rainLastFrame = now;
 
-    if (!rainEngine || !rainRenderer || !rainSnapshotCanvas) return;
+    if (!rainEngine || !rainRenderer || !rainSnapshotCanvas) {
+        rainAnimationFrame = requestAnimationFrame(animateRain);
+        return;
+    }
 
     rainEngine.update(dt);
-    rainRenderer.render(rainEngine.canvas, rainSnapshotCanvas);
+    const viewportSnapshot = getRainViewportSnapshot(rainSnapshotCanvas);
+    if (viewportSnapshot) {
+        rainRenderer.render(rainEngine.canvas, viewportSnapshot);
+    }
 
     rainAnimationFrame = requestAnimationFrame(animateRain);
 }
@@ -1415,6 +1500,9 @@ function applyLanguage(lang) {
     }
     updateRainButton();
     localStorage.setItem('preferredLang', currentLang);
+    if (rainActive) {
+        refreshRainSnapshot();
+    }
 }
 
 if (rainmanBtn) {
