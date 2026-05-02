@@ -164,13 +164,11 @@ let rainEngine = null;
 let rainImagesPromise = null;
 let rainRenderer = null;
 let rainGl = null;
-let rain2dCtx = null;
 let rainRenderMode = null;
 let rainSnapshotCanvas = null;
 let rainSnapshotPromise = null;
 let rainAnimationFrame = null;
 let rainActive = false;
-let rainUsesSnapshot = false;
 let rainLastFrame = 0;
 
 const mouse = { x: undefined, y: undefined };
@@ -208,22 +206,22 @@ class HomeRaindrops {
         this.dropAlpha = dropAlpha;
         this.dropColor = dropColor;
         this.options = Object.assign({
-            minR: 16,
-            maxR: 46,
+            minR: 10,
+            maxR: 40,
             maxDrops: 900,
-            rainChance: 0.34,
-            rainLimit: 6,
-            dropletsRate: 58,
-            dropletsSize: [2.4, 5.2],
+            rainChance: 0.3,
+            rainLimit: 3,
+            dropletsRate: 50,
+            dropletsSize: [2, 4],
             dropletsCleaningRadiusMultiplier: 0.43,
             raining: true,
             globalTimeScale: 1,
             trailRate: 1,
             autoShrink: true,
-            spawnArea: [-0.1, 0.9],
-            trailScaleRange: [0.22, 0.42],
+            spawnArea: [-0.1, 0.95],
+            trailScaleRange: [0.2, 0.5],
             collisionRadius: 0.65,
-            collisionRadiusIncrease: 0.0002,
+            collisionRadiusIncrease: 0.01,
             dropFallMultiplier: 1,
             collisionBoostMultiplier: 0.05,
             collisionBoost: 1
@@ -265,74 +263,28 @@ class HomeRaindrops {
     renderDropsGfx() {
         const dropSize = 64;
         this.dropsGfx = [];
-        const colorCanvas = document.createElement('canvas');
-        colorCanvas.width = dropSize;
-        colorCanvas.height = dropSize;
-        const colorCtx = colorCanvas.getContext('2d', { willReadFrequently: true });
-        colorCtx.drawImage(this.dropColor, 0, 0, dropSize, dropSize);
-        const colorData = colorCtx.getImageData(0, 0, dropSize, dropSize).data;
+        const dropBuffer = document.createElement('canvas');
+        dropBuffer.width = dropSize;
+        dropBuffer.height = dropSize;
+        const dropBufferCtx = dropBuffer.getContext('2d');
 
         for (let i = 0; i < 255; i++) {
             const drop = document.createElement('canvas');
             drop.width = dropSize;
             drop.height = dropSize;
             const dropCtx = drop.getContext('2d');
-            const depth = i / 255;
+
+            dropBufferCtx.clearRect(0, 0, dropSize, dropSize);
+            dropBufferCtx.globalCompositeOperation = 'source-over';
+            dropBufferCtx.drawImage(this.dropColor, 0, 0, dropSize, dropSize);
+            dropBufferCtx.globalCompositeOperation = 'screen';
+            dropBufferCtx.fillStyle = `rgba(0, 0, ${i}, 1)`;
+            dropBufferCtx.fillRect(0, 0, dropSize, dropSize);
 
             dropCtx.globalCompositeOperation = 'source-over';
             dropCtx.drawImage(this.dropAlpha, 0, 0, dropSize, dropSize);
             dropCtx.globalCompositeOperation = 'source-in';
-            dropCtx.fillStyle = `rgba(238, 248, 252, ${0.16 + depth * 0.2})`;
-            dropCtx.fillRect(0, 0, dropSize, dropSize);
-
-            const neutralNormal = dropCtx.createImageData(dropSize, dropSize);
-            const neutralPixels = neutralNormal.data;
-            for (let p = 0; p < colorData.length; p += 4) {
-                const r = colorData[p];
-                const g = colorData[p + 1];
-                const b = colorData[p + 2];
-                const normalX = (g - 128) / 128;
-                const normalY = (r - 128) / 128;
-                const normalStrength = Math.min(1, Math.sqrt(normalX * normalX + normalY * normalY));
-                const thickness = b / 255;
-                const edgeShade = normalStrength * 42;
-                const centerLight = Math.max(0, 1 - normalStrength) * 34 * thickness;
-                const shade = Math.max(182, Math.min(255, 226 + centerLight - edgeShade));
-
-                neutralPixels[p] = shade;
-                neutralPixels[p + 1] = Math.min(255, shade + 4);
-                neutralPixels[p + 2] = Math.min(255, shade + 6);
-                neutralPixels[p + 3] = Math.round((0.18 + depth * 0.34) * Math.max(0.18, thickness));
-            }
-
-            const neutralCanvas = document.createElement('canvas');
-            neutralCanvas.width = dropSize;
-            neutralCanvas.height = dropSize;
-            const neutralCtx = neutralCanvas.getContext('2d');
-            neutralCtx.putImageData(neutralNormal, 0, 0);
-            dropCtx.globalCompositeOperation = 'source-atop';
-            dropCtx.drawImage(neutralCanvas, 0, 0);
-
-            const highlight = dropCtx.createRadialGradient(22, 16, 2, 28, 24, 34);
-            highlight.addColorStop(0, `rgba(255, 255, 255, ${0.58 + depth * 0.16})`);
-            highlight.addColorStop(0.28, `rgba(255, 255, 255, ${0.22 + depth * 0.12})`);
-            highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            dropCtx.globalCompositeOperation = 'screen';
-            dropCtx.fillStyle = highlight;
-            dropCtx.fillRect(0, 0, dropSize, dropSize);
-
-            dropCtx.globalCompositeOperation = 'source-atop';
-            dropCtx.strokeStyle = `rgba(58, 78, 86, ${0.12 + depth * 0.1})`;
-            dropCtx.lineWidth = 1.2;
-            dropCtx.beginPath();
-            dropCtx.ellipse(32, 33, 24, 22, -0.2, 0, Math.PI * 2);
-            dropCtx.stroke();
-
-            dropCtx.strokeStyle = `rgba(255, 255, 255, ${0.2 + depth * 0.14})`;
-            dropCtx.lineWidth = 1;
-            dropCtx.beginPath();
-            dropCtx.arc(22, 18, 6, -0.8, 1.8);
-            dropCtx.stroke();
+            dropCtx.drawImage(dropBuffer, 0, 0, dropSize, dropSize);
 
             this.dropsGfx.push(drop);
         }
@@ -374,9 +326,7 @@ class HomeRaindrops {
         const pr = r * this.dropletsPixelDensity;
         const depthIndex = Math.floor(Math.random() * 128) + 50;
         if (this.dropsGfx[depthIndex]) {
-            ctx.globalAlpha = 0.58;
             ctx.drawImage(this.dropsGfx[depthIndex], px - pr, py - pr, pr * 2, pr * 2);
-            ctx.globalAlpha = 1;
         }
     }
 
@@ -391,7 +341,7 @@ class HomeRaindrops {
         d = Math.floor(d * (this.dropsGfx.length - 1));
 
         const yOffset = drop.r * gravityBulge * this.scale;
-        ctx.globalAlpha = 0.86;
+        ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
         ctx.drawImage(
             this.dropsGfx[d],
@@ -400,7 +350,6 @@ class HomeRaindrops {
             drop.r * 2 * scaleX * (drop.spreadX + 1) * this.scale,
             drop.r * 2 * scaleY * (drop.spreadY + 1) * this.scale
         );
-        ctx.globalAlpha = 1;
     }
 
     clearDroplets(x, y, r = 30) {
@@ -563,6 +512,14 @@ class HomeRaindrops {
 class RainShaderRenderer {
     constructor(gl) {
         this.gl = gl;
+        this.textureFg = document.createElement('canvas');
+        this.textureFg.width = 192;
+        this.textureFg.height = 128;
+        this.textureFgCtx = this.textureFg.getContext('2d');
+        this.textureBg = document.createElement('canvas');
+        this.textureBg.width = 384;
+        this.textureBg.height = 256;
+        this.textureBgCtx = this.textureBg.getContext('2d');
         this.program = this.createProgram();
         this.buffers = this.createBuffers();
         this.textures = {
@@ -658,12 +615,12 @@ class RainShaderRenderer {
                 float highlightY = (y - 0.5) * 2.0;
                 float highlightX = abs((x - 0.5) * 2.0);
                 float highlight = pow(max(0.0, highlightY * 0.8 + 0.2), 4.0) * (1.0 - highlightX * 0.5);
-                highlight *= d * 0.55;
+                highlight *= d * 0.6;
                 float edgeDist = length(refraction);
-                float fresnel = pow(edgeDist, 1.5) * 0.24;
-                vec3 finalColor = mix(refractedColor, bg.rgb * 1.06, fresnel * a);
-                finalColor = mix(finalColor, vec3(1.0), highlight * a * 0.45);
-                float caustic = (1.0 - edgeDist) * d * 0.12;
+                float fresnel = pow(edgeDist, 1.5) * 0.25;
+                vec3 finalColor = mix(refractedColor, bg.rgb * 1.1, fresnel * a);
+                finalColor = mix(finalColor, vec3(1.0), highlight * a * 0.5);
+                float caustic = (1.0 - edgeDist) * d * 0.15;
                 finalColor *= 1.0 + caustic;
                 gl_FragColor = blend(bg, vec4(finalColor, a));
             }
@@ -708,16 +665,27 @@ class RainShaderRenderer {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
     }
 
+    generateTextures(snapshot) {
+        this.textureFgCtx.clearRect(0, 0, this.textureFg.width, this.textureFg.height);
+        this.textureFgCtx.drawImage(snapshot, 0, 0, this.textureFg.width, this.textureFg.height);
+
+        this.textureBgCtx.clearRect(0, 0, this.textureBg.width, this.textureBg.height);
+        this.textureBgCtx.drawImage(snapshot, 0, 0, this.textureBg.width, this.textureBg.height);
+        this.textureBgCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.textureBgCtx.fillRect(0, 0, this.textureBg.width, this.textureBg.height);
+    }
+
     render(waterMap, snapshot) {
         const gl = this.gl;
+        this.generateTextures(snapshot);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.useProgram(this.program);
 
         this.updateTexture(this.textures.water, waterMap, 0);
-        this.updateTexture(this.textures.fg, snapshot, 1);
-        this.updateTexture(this.textures.bg, snapshot, 2);
+        this.updateTexture(this.textures.fg, this.textureFg, 1);
+        this.updateTexture(this.textures.bg, this.textureBg, 2);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
         gl.enableVertexAttribArray(this.locations.position);
@@ -730,11 +698,11 @@ class RainShaderRenderer {
         gl.uniform1i(this.locations.textureFg, 1);
         gl.uniform1i(this.locations.textureBg, 2);
         gl.uniform2f(this.locations.resolution, gl.canvas.width, gl.canvas.height);
-        gl.uniform1f(this.locations.minRefraction, 90.0);
-        gl.uniform1f(this.locations.refractionDelta, 250.0);
-        gl.uniform1f(this.locations.brightness, 1.03);
-        gl.uniform1f(this.locations.alphaMultiply, 18.0);
-        gl.uniform1f(this.locations.alphaSubtract, 5.0);
+        gl.uniform1f(this.locations.minRefraction, 256.0);
+        gl.uniform1f(this.locations.refractionDelta, 256.0);
+        gl.uniform1f(this.locations.brightness, 1.1);
+        gl.uniform1f(this.locations.alphaMultiply, 6.0);
+        gl.uniform1f(this.locations.alphaSubtract, 3.0);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 }
@@ -977,9 +945,8 @@ function burst() {
 function resizeRainOverlay() {
     if (!rainCanvas) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    rainCanvas.width = width * dpr;
-    rainCanvas.height = height * dpr;
+    rainCanvas.width = width;
+    rainCanvas.height = height;
     rainCanvas.style.width = `${width}px`;
     rainCanvas.style.height = `${height}px`;
     if (rainEngine) {
@@ -1042,26 +1009,16 @@ async function inlineSnapshotImages(root) {
     }));
 }
 
-function ensureRainRenderer(useShaderSnapshot = true) {
+function ensureRainRenderer() {
     if (!rainCanvas) return false;
-    if (rainRenderMode) {
-        return rainRenderMode === '2d' || useShaderSnapshot;
-    }
+    if (rainRenderMode === 'webgl') return true;
 
-    if (useShaderSnapshot) {
-        rainGl = rainCanvas.getContext('webgl', { alpha: true, premultipliedAlpha: false }) ||
-            rainCanvas.getContext('experimental-webgl', { alpha: true, premultipliedAlpha: false });
+    rainGl = rainCanvas.getContext('webgl', { alpha: true, premultipliedAlpha: false }) ||
+        rainCanvas.getContext('experimental-webgl', { alpha: true, premultipliedAlpha: false });
 
-        if (rainGl) {
-            rainRenderer = new RainShaderRenderer(rainGl);
-            rainRenderMode = 'webgl';
-            return true;
-        }
-    }
-
-    rain2dCtx = rainCanvas.getContext('2d');
-    if (rain2dCtx) {
-        rainRenderMode = '2d';
+    if (rainGl) {
+        rainRenderer = new RainShaderRenderer(rainGl);
+        rainRenderMode = 'webgl';
         return true;
     }
 
@@ -1072,9 +1029,8 @@ async function captureRainSnapshot() {
     if (rainSnapshotPromise) return rainSnapshotPromise;
 
     rainSnapshotPromise = (async () => {
-        const dpr = window.devicePixelRatio || 1;
-        const snapshotWidth = Math.max(1, Math.floor(width * dpr));
-        const snapshotHeight = Math.max(1, Math.floor(height * dpr));
+        const snapshotWidth = Math.max(1, Math.floor(width));
+        const snapshotHeight = Math.max(1, Math.floor(height));
         const css = await fetch('home.css').then(response => response.text()).catch(() => '');
         const headerClone = document.querySelector('.site-header')?.cloneNode(true);
         const pageClone = document.querySelector('.page-shell')?.cloneNode(true);
@@ -1108,15 +1064,7 @@ async function captureRainSnapshot() {
             </svg>
         `;
 
-        const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
-        let url = '';
-        let img;
-        try {
-            url = URL.createObjectURL(blob);
-            img = await loadRainImage(url);
-        } finally {
-            if (url) URL.revokeObjectURL(url);
-        }
+        const img = await loadRainImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`);
 
         const snapshot = document.createElement('canvas');
         snapshot.width = snapshotWidth;
@@ -1142,48 +1090,30 @@ async function startRainman() {
     updateRainButton();
 
     try {
-        const { dropAlpha, dropColor } = await loadRainImages();
-        let snapshot = null;
-        try {
-            snapshot = await captureRainSnapshot();
-        } catch (error) {
-            console.warn('Rainman snapshot capture failed; using surface fallback.', error);
-        }
+        const [{ dropAlpha, dropColor }, snapshot] = await Promise.all([
+            loadRainImages(),
+            captureRainSnapshot()
+        ]);
         if (!rainActive) return;
-        if (!ensureRainRenderer(Boolean(snapshot))) {
+        if (!ensureRainRenderer()) {
             throw new Error('No available rain renderer');
         }
-        const dropScale = window.devicePixelRatio || 1;
         rainEngine = new HomeRaindrops(rainCanvas.width, rainCanvas.height, 1, dropAlpha, dropColor, {
-            minR: (isMobile ? 16 : 20) * dropScale,
-            maxR: (isMobile ? 42 : 56) * dropScale,
-            rainChance: isMobile ? 0.28 : 0.35,
-            rainLimit: isMobile ? 4 : 6,
-            dropletsRate: isMobile ? 32 : 50,
-            dropletsSize: isMobile ? [2.5 * dropScale, 4.8 * dropScale] : [3 * dropScale, 5.5 * dropScale],
-            globalTimeScale: 1.05,
+            minR: 20,
+            maxR: 50,
+            rainChance: 0.35,
+            rainLimit: 6,
+            dropletsRate: 50,
+            dropletsSize: [3, 5.5],
             trailRate: 1,
-            trailScaleRange: [0.25, 0.38],
+            trailScaleRange: [0.25, 0.35],
             collisionRadiusIncrease: 0.0002
         });
-        for (let i = 0; i < (isMobile ? 18 : 36); i++) {
-            const drop = rainEngine.createDrop({
-                x: Math.random() * rainCanvas.width,
-                y: Math.random() * rainCanvas.height,
-                r: rainEngine.random(rainEngine.options.minR, rainEngine.options.maxR, n => Math.pow(n, 2)),
-                momentum: Math.random() * 2,
-                spreadX: Math.random() * 0.6,
-                spreadY: Math.random() * 0.6
-            });
-            if (drop) rainEngine.drops.push(drop);
-        }
         rainSnapshotCanvas = snapshot;
-        rainUsesSnapshot = Boolean(snapshot);
-        document.body.classList.toggle('rain-active', rainUsesSnapshot);
+        document.body.classList.add('rain-active');
     } catch (error) {
         console.warn('Rainman could not start.', error);
         rainActive = false;
-        rainUsesSnapshot = false;
         document.body.classList.remove('rain-active');
         rainCanvas.classList.remove('active');
         updateRainButton();
@@ -1196,7 +1126,6 @@ async function startRainman() {
 
 function stopRainman() {
     rainActive = false;
-    rainUsesSnapshot = false;
     document.body.classList.remove('rain-active');
     rainCanvas?.classList.remove('active');
     updateRainButton();
@@ -1206,11 +1135,9 @@ function stopRainman() {
         rainAnimationFrame = null;
     }
 
-    if (rainRenderMode === 'webgl' && rainGl) {
+    if (rainGl) {
         rainGl.clearColor(0, 0, 0, 0);
         rainGl.clear(rainGl.COLOR_BUFFER_BIT);
-    } else if (rainRenderMode === '2d' && rain2dCtx && rainCanvas) {
-        rain2dCtx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
     }
     if (rainEngine) {
         rainEngine.clearDrops();
@@ -1219,25 +1146,15 @@ function stopRainman() {
 }
 
 function animateRain(now) {
-    if (!rainActive) return;
+    if (!rainActive || !rainGl) return;
 
     const dt = Math.max(1, now - rainLastFrame);
     rainLastFrame = now;
 
-    if (!rainEngine) return;
+    if (!rainEngine || !rainRenderer || !rainSnapshotCanvas) return;
 
     rainEngine.update(dt);
-    if (rainRenderMode === 'webgl' && rainRenderer && rainSnapshotCanvas) {
-        rainRenderer.render(rainEngine.canvas, rainSnapshotCanvas);
-    } else if (rainRenderMode === '2d' && rain2dCtx && rainCanvas) {
-        rain2dCtx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
-        if (rainUsesSnapshot && rainSnapshotCanvas) {
-            rain2dCtx.drawImage(rainSnapshotCanvas, 0, 0, rainCanvas.width, rainCanvas.height);
-        }
-        rain2dCtx.globalAlpha = 0.82;
-        rain2dCtx.drawImage(rainEngine.canvas, 0, 0, rainCanvas.width, rainCanvas.height);
-        rain2dCtx.globalAlpha = 1;
-    }
+    rainRenderer.render(rainEngine.canvas, rainSnapshotCanvas);
 
     rainAnimationFrame = requestAnimationFrame(animateRain);
 }
