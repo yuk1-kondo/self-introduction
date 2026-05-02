@@ -4,8 +4,11 @@
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const rainCanvas = document.getElementById('rain-canvas');
+const rainGl = rainCanvas ? rainCanvas.getContext('webgl', { alpha: true, premultipliedAlpha: false }) : null;
 const videoElement = document.getElementsByClassName('input_video')[0];
 const langToggle = document.getElementById('lang-toggle');
+const rainmanBtn = document.getElementById('rainman-btn');
 
 const UI_TEXTS = {
     ja: {
@@ -45,6 +48,8 @@ const UI_TEXTS = {
         contactKicker: 'Contact',
         contactTitle: '教育とテクノロジーの実験をご一緒できたら嬉しいです',
         gestureHint: '背景の丸いノードから作品へ移動できます',
+        rainmanEnable: 'Rainman',
+        rainmanDisable: '晴れに戻す',
         cameraEnable: '手で操作する',
         cameraStop: 'カメラ停止',
         cameraInitializing: '準備中...',
@@ -88,6 +93,8 @@ const UI_TEXTS = {
         contactKicker: 'Contact',
         contactTitle: 'I would be glad to collaborate on experiments in education and technology',
         gestureHint: 'Use the floating circles as playful shortcuts to work',
+        rainmanEnable: 'Rainman',
+        rainmanDisable: 'Clear sky',
         cameraEnable: 'Control by hand',
         cameraStop: 'Stop camera',
         cameraInitializing: 'Initializing...',
@@ -154,6 +161,14 @@ let isGathering = false;
 let isPinching = false;
 let lastHandDetectedTime = 0;
 let latestResults = null;
+let rainEngine = null;
+let rainImagesPromise = null;
+let rainRenderer = null;
+let rainSnapshotCanvas = null;
+let rainSnapshotPromise = null;
+let rainAnimationFrame = null;
+let rainActive = false;
+let rainLastFrame = 0;
 
 const mouse = { x: undefined, y: undefined };
 
@@ -164,6 +179,561 @@ function detectMobile() {
 
 function isCameraActive() {
     return (Date.now() - lastHandDetectedTime) < CAMERA_TIMEOUT_MS;
+}
+
+const RainDropProto = {
+    x: 0,
+    y: 0,
+    r: 0,
+    spreadX: 0,
+    spreadY: 0,
+    momentum: 0,
+    momentumX: 0,
+    lastSpawn: 0,
+    nextSpawn: 0,
+    parent: null,
+    isNew: true,
+    killed: false,
+    shrink: 0
+};
+
+class HomeRaindrops {
+    constructor(w, h, scale, dropAlpha, dropColor, options = {}) {
+        this.width = w;
+        this.height = h;
+        this.scale = scale;
+        this.dropAlpha = dropAlpha;
+        this.dropColor = dropColor;
+        this.options = Object.assign({
+            minR: 16,
+            maxR: 46,
+            maxDrops: 900,
+            rainChance: 0.34,
+            rainLimit: 6,
+            dropletsRate: 58,
+            dropletsSize: [2.4, 5.2],
+            dropletsCleaningRadiusMultiplier: 0.43,
+            raining: true,
+            globalTimeScale: 1,
+            trailRate: 1,
+            autoShrink: true,
+            spawnArea: [-0.1, 0.9],
+            trailScaleRange: [0.22, 0.42],
+            collisionRadius: 0.65,
+            collisionRadiusIncrease: 0.0002,
+            dropFallMultiplier: 1,
+            collisionBoostMultiplier: 0.05,
+            collisionBoost: 1
+        }, options);
+        this.drops = [];
+        this.dropletsPixelDensity = 1;
+        this.dropletsCounter = 0;
+        this.textureCleaningIterations = 0;
+        this.lastRender = null;
+        this.init();
+    }
+
+    get deltaR() {
+        return this.options.maxR - this.options.minR;
+    }
+
+    get area() {
+        return (this.width * this.height) / this.scale;
+    }
+
+    get areaMultiplier() {
+        return Math.sqrt(this.area / (1024 * 768));
+    }
+
+    init() {
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.ctx = this.canvas.getContext('2d');
+
+        this.droplets = document.createElement('canvas');
+        this.droplets.width = this.width * this.dropletsPixelDensity;
+        this.droplets.height = this.height * this.dropletsPixelDensity;
+        this.dropletsCtx = this.droplets.getContext('2d');
+
+        this.renderDropsGfx();
+    }
+
+    renderDropsGfx() {
+        const dropSize = 64;
+        this.dropsGfx = [];
+        const colorCanvas = document.createElement('canvas');
+        colorCanvas.width = dropSize;
+        colorCanvas.height = dropSize;
+        const colorCtx = colorCanvas.getContext('2d', { willReadFrequently: true });
+        colorCtx.drawImage(this.dropColor, 0, 0, dropSize, dropSize);
+        const colorData = colorCtx.getImageData(0, 0, dropSize, dropSize).data;
+
+        for (let i = 0; i < 255; i++) {
+            const drop = document.createElement('canvas');
+            drop.width = dropSize;
+            drop.height = dropSize;
+            const dropCtx = drop.getContext('2d');
+            const depth = i / 255;
+
+            dropCtx.globalCompositeOperation = 'source-over';
+            dropCtx.drawImage(this.dropAlpha, 0, 0, dropSize, dropSize);
+            dropCtx.globalCompositeOperation = 'source-in';
+            dropCtx.fillStyle = `rgba(238, 248, 252, ${0.16 + depth * 0.2})`;
+            dropCtx.fillRect(0, 0, dropSize, dropSize);
+
+            const neutralNormal = dropCtx.createImageData(dropSize, dropSize);
+            const neutralPixels = neutralNormal.data;
+            for (let p = 0; p < colorData.length; p += 4) {
+                const r = colorData[p];
+                const g = colorData[p + 1];
+                const b = colorData[p + 2];
+                const normalX = (g - 128) / 128;
+                const normalY = (r - 128) / 128;
+                const normalStrength = Math.min(1, Math.sqrt(normalX * normalX + normalY * normalY));
+                const thickness = b / 255;
+                const edgeShade = normalStrength * 42;
+                const centerLight = Math.max(0, 1 - normalStrength) * 34 * thickness;
+                const shade = Math.max(182, Math.min(255, 226 + centerLight - edgeShade));
+
+                neutralPixels[p] = shade;
+                neutralPixels[p + 1] = Math.min(255, shade + 4);
+                neutralPixels[p + 2] = Math.min(255, shade + 6);
+                neutralPixels[p + 3] = Math.round((0.18 + depth * 0.34) * Math.max(0.18, thickness));
+            }
+
+            const neutralCanvas = document.createElement('canvas');
+            neutralCanvas.width = dropSize;
+            neutralCanvas.height = dropSize;
+            const neutralCtx = neutralCanvas.getContext('2d');
+            neutralCtx.putImageData(neutralNormal, 0, 0);
+            dropCtx.globalCompositeOperation = 'source-atop';
+            dropCtx.drawImage(neutralCanvas, 0, 0);
+
+            const highlight = dropCtx.createRadialGradient(22, 16, 2, 28, 24, 34);
+            highlight.addColorStop(0, `rgba(255, 255, 255, ${0.58 + depth * 0.16})`);
+            highlight.addColorStop(0.28, `rgba(255, 255, 255, ${0.22 + depth * 0.12})`);
+            highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            dropCtx.globalCompositeOperation = 'screen';
+            dropCtx.fillStyle = highlight;
+            dropCtx.fillRect(0, 0, dropSize, dropSize);
+
+            dropCtx.globalCompositeOperation = 'source-atop';
+            dropCtx.strokeStyle = `rgba(58, 78, 86, ${0.12 + depth * 0.1})`;
+            dropCtx.lineWidth = 1.2;
+            dropCtx.beginPath();
+            dropCtx.ellipse(32, 33, 24, 22, -0.2, 0, Math.PI * 2);
+            dropCtx.stroke();
+
+            dropCtx.strokeStyle = `rgba(255, 255, 255, ${0.2 + depth * 0.14})`;
+            dropCtx.lineWidth = 1;
+            dropCtx.beginPath();
+            dropCtx.arc(22, 18, 6, -0.8, 1.8);
+            dropCtx.stroke();
+
+            this.dropsGfx.push(drop);
+        }
+
+        this.clearDropletsGfx = document.createElement('canvas');
+        this.clearDropletsGfx.width = 128;
+        this.clearDropletsGfx.height = 128;
+        const clearCtx = this.clearDropletsGfx.getContext('2d');
+        clearCtx.fillStyle = '#000';
+        clearCtx.beginPath();
+        clearCtx.arc(64, 64, 64, 0, Math.PI * 2);
+        clearCtx.fill();
+    }
+
+    resize(w, h) {
+        this.width = w;
+        this.height = h;
+        this.canvas.width = w;
+        this.canvas.height = h;
+        this.droplets.width = w * this.dropletsPixelDensity;
+        this.droplets.height = h * this.dropletsPixelDensity;
+        this.drops = this.drops.filter(drop => drop.x < w && drop.y < h + drop.r);
+    }
+
+    random(from, to, interpolation) {
+        if (interpolation === undefined) return from + Math.random() * (to - from);
+        return from + interpolation(Math.random()) * (to - from);
+    }
+
+    createDrop(options) {
+        if (this.drops.length >= this.options.maxDrops * this.areaMultiplier) return null;
+        return Object.assign(Object.create(RainDropProto), options);
+    }
+
+    drawDroplet(x, y, r) {
+        const ctx = this.dropletsCtx;
+        const px = x * this.dropletsPixelDensity;
+        const py = y * this.dropletsPixelDensity;
+        const pr = r * this.dropletsPixelDensity;
+        const depthIndex = Math.floor(Math.random() * 128) + 50;
+        if (this.dropsGfx[depthIndex]) {
+            ctx.globalAlpha = 0.58;
+            ctx.drawImage(this.dropsGfx[depthIndex], px - pr, py - pr, pr * 2, pr * 2);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    drawDrop(ctx, drop) {
+        const speed = Math.abs(drop.momentum);
+        const speedStretch = 1 + Math.min(speed * 0.015, 0.4);
+        const scaleX = 1 / Math.sqrt(speedStretch);
+        const scaleY = 1.5 * speedStretch;
+        const gravityBulge = Math.min(drop.r / this.options.maxR, 1) * 0.1;
+        let d = Math.max(0, Math.min(1, ((drop.r - this.options.minR) / this.deltaR) * 0.9));
+        d *= 1 / (((drop.spreadX + drop.spreadY) * 0.5) + 1);
+        d = Math.floor(d * (this.dropsGfx.length - 1));
+
+        const yOffset = drop.r * gravityBulge * this.scale;
+        ctx.globalAlpha = 0.86;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(
+            this.dropsGfx[d],
+            (drop.x - drop.r * scaleX * (drop.spreadX + 1)) * this.scale,
+            (drop.y - drop.r * scaleY * (drop.spreadY + 1)) * this.scale + yOffset,
+            drop.r * 2 * scaleX * (drop.spreadX + 1) * this.scale,
+            drop.r * 2 * scaleY * (drop.spreadY + 1) * this.scale
+        );
+        ctx.globalAlpha = 1;
+    }
+
+    clearDroplets(x, y, r = 30) {
+        const ctx = this.dropletsCtx;
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.drawImage(
+            this.clearDropletsGfx,
+            (x - r) * this.dropletsPixelDensity * this.scale,
+            (y - r) * this.dropletsPixelDensity * this.scale,
+            r * 2 * this.dropletsPixelDensity * this.scale,
+            r * 2 * this.dropletsPixelDensity * this.scale * 1.5
+        );
+        ctx.globalCompositeOperation = 'source-over';
+    }
+
+    updateRain(timeScale) {
+        const rainDrops = [];
+        const limit = this.options.rainLimit * timeScale * this.areaMultiplier;
+        let count = 0;
+        while (Math.random() < this.options.rainChance * timeScale * this.areaMultiplier && count < limit) {
+            count++;
+            const r = this.random(this.options.minR, this.options.maxR, n => Math.pow(n, 3));
+            const rainDrop = this.createDrop({
+                x: Math.random() * this.width / this.scale,
+                y: this.random((this.height / this.scale) * this.options.spawnArea[0], (this.height / this.scale) * this.options.spawnArea[1]),
+                r,
+                momentum: 1 + ((r - this.options.minR) * 0.1) + Math.random() * 2,
+                spreadX: 1.5,
+                spreadY: 1.5
+            });
+            if (rainDrop !== null) rainDrops.push(rainDrop);
+        }
+        return rainDrops;
+    }
+
+    updateDroplets(timeScale) {
+        if (this.textureCleaningIterations > 0) {
+            this.textureCleaningIterations -= 1 * timeScale;
+            this.dropletsCtx.globalCompositeOperation = 'destination-out';
+            this.dropletsCtx.fillStyle = `rgba(0,0,0,${0.05 * timeScale})`;
+            this.dropletsCtx.fillRect(0, 0, this.droplets.width, this.droplets.height);
+            this.dropletsCtx.globalCompositeOperation = 'source-over';
+        }
+
+        this.dropletsCounter += this.options.dropletsRate * timeScale * this.areaMultiplier;
+        while (this.dropletsCounter >= 1) {
+            this.dropletsCounter--;
+            this.drawDroplet(
+                Math.random() * this.width / this.scale,
+                Math.random() * this.height / this.scale,
+                this.random(this.options.dropletsSize[0], this.options.dropletsSize[1], n => n * n)
+            );
+        }
+        this.ctx.drawImage(this.droplets, 0, 0, this.width, this.height);
+    }
+
+    updateDrops(timeScale) {
+        let newDrops = [];
+        this.updateDroplets(timeScale);
+        newDrops = newDrops.concat(this.updateRain(timeScale));
+
+        this.drops.sort((a, b) => ((a.y * (this.width / this.scale)) + a.x) - ((b.y * (this.width / this.scale)) + b.x));
+
+        this.drops.forEach((drop, i) => {
+            if (drop.killed) return;
+
+            if (Math.random() < (drop.r - this.options.minR * this.options.dropFallMultiplier) * (0.1 / this.deltaR) * timeScale) {
+                drop.momentum += Math.random() * (drop.r / this.options.maxR) * 4;
+            }
+            if (this.options.autoShrink && drop.r <= this.options.minR && Math.random() < 0.05 * timeScale) {
+                drop.shrink += 0.01;
+            }
+
+            drop.r -= drop.shrink * timeScale;
+            if (drop.r <= 0) drop.killed = true;
+
+            drop.lastSpawn += drop.momentum * timeScale * this.options.trailRate;
+            if (drop.lastSpawn > drop.nextSpawn) {
+                const trailDrop = this.createDrop({
+                    x: drop.x + this.random(-drop.r, drop.r) * 0.1,
+                    y: drop.y - drop.r * 0.01,
+                    r: drop.r * this.random(this.options.trailScaleRange[0], this.options.trailScaleRange[1]),
+                    spreadY: drop.momentum * 0.1,
+                    parent: drop
+                });
+                if (trailDrop !== null) {
+                    newDrops.push(trailDrop);
+                    drop.r *= Math.pow(0.97, timeScale);
+                    drop.lastSpawn = 0;
+                    drop.nextSpawn = this.random(this.options.minR, this.options.maxR) - drop.momentum * 2 * this.options.trailRate + (this.options.maxR - drop.r);
+                }
+            }
+
+            drop.spreadX *= Math.pow(0.4, timeScale);
+            drop.spreadY *= Math.pow(0.7, timeScale);
+
+            const moved = drop.momentum > 0;
+            if (moved) {
+                drop.y += drop.momentum * this.options.globalTimeScale;
+                drop.x += drop.momentumX * this.options.globalTimeScale;
+                if (drop.y > this.height / this.scale + drop.r) drop.killed = true;
+            }
+
+            const checkCollision = (moved || drop.isNew) && !drop.killed;
+            drop.isNew = false;
+            if (checkCollision) {
+                this.drops.slice(i + 1, i + 70).forEach(drop2 => {
+                    if (drop === drop2 || drop.r <= drop2.r || drop.parent === drop2 || drop2.parent === drop || drop2.killed) return;
+                    const dx = drop2.x - drop.x;
+                    const dy = drop2.y - drop.y;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < (drop.r + drop2.r) * (this.options.collisionRadius + drop.momentum * this.options.collisionRadiusIncrease * timeScale)) {
+                        const a1 = Math.PI * drop.r * drop.r;
+                        const a2 = Math.PI * drop2.r * drop2.r;
+                        drop.r = Math.min(Math.sqrt((a1 + a2 * 0.8) / Math.PI), this.options.maxR);
+                        drop.momentumX += dx * 0.1;
+                        drop.spreadX = 0;
+                        drop.spreadY = 0;
+                        drop2.killed = true;
+                        drop.momentum = Math.max(drop2.momentum, Math.min(40, drop.momentum + drop.r * this.options.collisionBoostMultiplier + this.options.collisionBoost));
+                    }
+                });
+            }
+
+            drop.momentum -= Math.max(1, (this.options.minR * 0.5) - drop.momentum) * 0.1 * timeScale;
+            if (drop.momentum < 0) drop.momentum = 0;
+            drop.momentumX *= Math.pow(0.7, timeScale);
+
+            if (!drop.killed) {
+                newDrops.push(drop);
+                if (moved && this.options.dropletsRate > 0) {
+                    this.clearDroplets(drop.x, drop.y, drop.r * this.options.dropletsCleaningRadiusMultiplier);
+                }
+                this.drawDrop(this.ctx, drop);
+            }
+        });
+
+        this.drops = newDrops;
+    }
+
+    update() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        const now = Date.now();
+        if (this.lastRender === null) this.lastRender = now;
+        let timeScale = (now - this.lastRender) / ((1 / 60) * 1000);
+        if (timeScale > 1.1) timeScale = 1.1;
+        timeScale *= this.options.globalTimeScale;
+        this.lastRender = now;
+        this.updateDrops(timeScale);
+    }
+
+    clearDrops() {
+        this.drops.forEach(drop => {
+            drop.shrink = 0.12 + Math.random() * 0.45;
+        });
+        this.textureCleaningIterations = 50;
+    }
+}
+
+class RainShaderRenderer {
+    constructor(gl) {
+        this.gl = gl;
+        this.program = this.createProgram();
+        this.buffers = this.createBuffers();
+        this.textures = {
+            water: this.createTexture(),
+            fg: this.createTexture(),
+            bg: this.createTexture()
+        };
+        this.locations = {
+            position: gl.getAttribLocation(this.program, 'a_position'),
+            texCoord: gl.getAttribLocation(this.program, 'a_texCoord'),
+            waterMap: gl.getUniformLocation(this.program, 'u_waterMap'),
+            textureFg: gl.getUniformLocation(this.program, 'u_textureFg'),
+            textureBg: gl.getUniformLocation(this.program, 'u_textureBg'),
+            resolution: gl.getUniformLocation(this.program, 'u_resolution'),
+            minRefraction: gl.getUniformLocation(this.program, 'u_minRefraction'),
+            refractionDelta: gl.getUniformLocation(this.program, 'u_refractionDelta'),
+            brightness: gl.getUniformLocation(this.program, 'u_brightness'),
+            alphaMultiply: gl.getUniformLocation(this.program, 'u_alphaMultiply'),
+            alphaSubtract: gl.getUniformLocation(this.program, 'u_alphaSubtract')
+        };
+    }
+
+    createShader(type, source) {
+        const gl = this.gl;
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            throw new Error(gl.getShaderInfoLog(shader) || 'Shader compile failed');
+        }
+        return shader;
+    }
+
+    createProgram() {
+        const gl = this.gl;
+        const vert = this.createShader(gl.VERTEX_SHADER, `
+            precision mediump float;
+            attribute vec2 a_position;
+            attribute vec2 a_texCoord;
+            varying vec2 v_texCoord;
+            void main() {
+                gl_Position = vec4(a_position, 0.0, 1.0);
+                v_texCoord = a_texCoord;
+            }
+        `);
+        const frag = this.createShader(gl.FRAGMENT_SHADER, `
+            precision mediump float;
+            uniform sampler2D u_waterMap;
+            uniform sampler2D u_textureFg;
+            uniform sampler2D u_textureBg;
+            varying vec2 v_texCoord;
+            uniform vec2 u_resolution;
+            uniform float u_minRefraction;
+            uniform float u_refractionDelta;
+            uniform float u_brightness;
+            uniform float u_alphaMultiply;
+            uniform float u_alphaSubtract;
+
+            vec2 texCoord() {
+                return vec2(gl_FragCoord.x, u_resolution.y - gl_FragCoord.y) / u_resolution;
+            }
+
+            vec2 pixel() {
+                return vec2(1.0, 1.0) / u_resolution;
+            }
+
+            vec4 blend(vec4 bg, vec4 fg) {
+                vec3 bgm = bg.rgb * bg.a;
+                vec3 fgm = fg.rgb * fg.a;
+                float ia = 1.0 - fg.a;
+                float a = fg.a + bg.a * ia;
+                vec3 rgb = a != 0.0 ? (fgm + bgm * ia) / a : vec3(0.0);
+                return vec4(rgb, a);
+            }
+
+            void main() {
+                vec2 uv = texCoord();
+                vec4 bg = texture2D(u_textureBg, uv);
+                vec4 cur = texture2D(u_waterMap, uv);
+                float d = cur.b;
+                float x = cur.g;
+                float y = cur.r;
+                float a = clamp(cur.a * u_alphaMultiply - u_alphaSubtract, 0.0, 1.0);
+                vec2 refraction = (vec2(x, y) - 0.5) * 2.0;
+                float refractionStrength = u_minRefraction + d * u_refractionDelta;
+                vec2 refractionR = uv + pixel() * refraction * refractionStrength * 0.97;
+                vec2 refractionG = uv + pixel() * refraction * refractionStrength;
+                vec2 refractionB = uv + pixel() * refraction * refractionStrength * 1.03;
+                float texR = texture2D(u_textureFg, refractionR).r;
+                float texG = texture2D(u_textureFg, refractionG).g;
+                float texB = texture2D(u_textureFg, refractionB).b;
+                vec3 refractedColor = vec3(texR, texG, texB) * u_brightness;
+                float highlightY = (y - 0.5) * 2.0;
+                float highlightX = abs((x - 0.5) * 2.0);
+                float highlight = pow(max(0.0, highlightY * 0.8 + 0.2), 4.0) * (1.0 - highlightX * 0.5);
+                highlight *= d * 0.55;
+                float edgeDist = length(refraction);
+                float fresnel = pow(edgeDist, 1.5) * 0.24;
+                vec3 finalColor = mix(refractedColor, bg.rgb * 1.06, fresnel * a);
+                finalColor = mix(finalColor, vec3(1.0), highlight * a * 0.45);
+                float caustic = (1.0 - edgeDist) * d * 0.12;
+                finalColor *= 1.0 + caustic;
+                gl_FragColor = blend(bg, vec4(finalColor, a));
+            }
+        `);
+        const program = gl.createProgram();
+        gl.attachShader(program, vert);
+        gl.attachShader(program, frag);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            throw new Error(gl.getProgramInfoLog(program) || 'Program link failed');
+        }
+        return program;
+    }
+
+    createBuffers() {
+        const gl = this.gl;
+        const position = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, position);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+        const texCoord = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, texCoord);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0]), gl.STATIC_DRAW);
+        return { position, texCoord };
+    }
+
+    createTexture() {
+        const gl = this.gl;
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        return texture;
+    }
+
+    updateTexture(texture, source, unit) {
+        const gl = this.gl;
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    }
+
+    render(waterMap, snapshot) {
+        const gl = this.gl;
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.useProgram(this.program);
+
+        this.updateTexture(this.textures.water, waterMap, 0);
+        this.updateTexture(this.textures.fg, snapshot, 1);
+        this.updateTexture(this.textures.bg, snapshot, 2);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
+        gl.enableVertexAttribArray(this.locations.position);
+        gl.vertexAttribPointer(this.locations.position, 2, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.texCoord);
+        gl.enableVertexAttribArray(this.locations.texCoord);
+        gl.vertexAttribPointer(this.locations.texCoord, 2, gl.FLOAT, false, 0, 0);
+
+        gl.uniform1i(this.locations.waterMap, 0);
+        gl.uniform1i(this.locations.textureFg, 1);
+        gl.uniform1i(this.locations.textureBg, 2);
+        gl.uniform2f(this.locations.resolution, gl.canvas.width, gl.canvas.height);
+        gl.uniform1f(this.locations.minRefraction, 90.0);
+        gl.uniform1f(this.locations.refractionDelta, 250.0);
+        gl.uniform1f(this.locations.brightness, 1.03);
+        gl.uniform1f(this.locations.alphaMultiply, 18.0);
+        gl.uniform1f(this.locations.alphaSubtract, 5.0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
 }
 
 class Particle {
@@ -401,6 +971,196 @@ function burst() {
     });
 }
 
+function resizeRainOverlay() {
+    if (!rainCanvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    rainCanvas.width = width * dpr;
+    rainCanvas.height = height * dpr;
+    rainCanvas.style.width = `${width}px`;
+    rainCanvas.style.height = `${height}px`;
+    if (rainEngine) {
+        rainEngine.resize(rainCanvas.width, rainCanvas.height);
+    }
+    rainSnapshotCanvas = null;
+}
+
+function updateRainButton() {
+    if (!rainmanBtn) return;
+    rainmanBtn.textContent = UI_TEXTS[currentLang][rainActive ? 'rainmanDisable' : 'rainmanEnable'];
+    rainmanBtn.classList.toggle('active', rainActive);
+    rainmanBtn.setAttribute('aria-pressed', String(rainActive));
+}
+
+function loadRainImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load ${src}`));
+        img.src = src;
+    });
+}
+
+function loadRainImages() {
+    if (!rainImagesPromise) {
+        rainImagesPromise = Promise.all([
+            loadRainImage('wd/img/drop-alpha.png'),
+            loadRainImage('wd/img/drop-color.png')
+        ]).then(([dropAlpha, dropColor]) => ({ dropAlpha, dropColor }));
+    }
+    return rainImagesPromise;
+}
+
+async function captureRainSnapshot() {
+    if (rainSnapshotPromise) return rainSnapshotPromise;
+
+    rainSnapshotPromise = (async () => {
+        const dpr = window.devicePixelRatio || 1;
+        const snapshotWidth = Math.max(1, Math.floor(width * dpr));
+        const snapshotHeight = Math.max(1, Math.floor(height * dpr));
+        const css = await fetch('home.css').then(response => response.text()).catch(() => '');
+        const headerClone = document.querySelector('.site-header')?.cloneNode(true);
+        const pageClone = document.querySelector('.page-shell')?.cloneNode(true);
+        const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+
+        [headerClone, pageClone].forEach(root => {
+            if (!root) return;
+            root.querySelectorAll('img').forEach(img => {
+                img.setAttribute('src', new URL(img.getAttribute('src'), window.location.href).href);
+            });
+        });
+
+        const markup = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="${snapshotWidth}" height="${snapshotHeight}" viewBox="0 0 ${width} ${height}">
+                <foreignObject width="${width}" height="${height}">
+                    <html xmlns="http://www.w3.org/1999/xhtml" lang="${document.documentElement.lang}">
+                        <head>
+                            <style>${css}</style>
+                            <style>
+                                html, body { width: ${width}px; height: ${height}px; margin: 0; overflow: hidden; }
+                                body::after { display: none !important; }
+                                .custom-cursor, .gesture-control, .rain-overlay, .input_video, #canvas { display: none !important; }
+                                .site-header { transform: translateX(-50%) !important; opacity: 1 !important; }
+                                .page-shell { opacity: 1 !important; transform: translateY(${-scrollTop}px); }
+                            </style>
+                        </head>
+                        <body>
+                            ${headerClone ? headerClone.outerHTML : ''}
+                            ${pageClone ? pageClone.outerHTML : ''}
+                        </body>
+                    </html>
+                </foreignObject>
+            </svg>
+        `;
+
+        const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const img = await loadRainImage(url);
+        URL.revokeObjectURL(url);
+
+        const snapshot = document.createElement('canvas');
+        snapshot.width = snapshotWidth;
+        snapshot.height = snapshotHeight;
+        const snapshotCtx = snapshot.getContext('2d');
+        snapshotCtx.drawImage(img, 0, 0, snapshotWidth, snapshotHeight);
+        rainSnapshotCanvas = snapshot;
+        return snapshot;
+    })();
+
+    try {
+        return await rainSnapshotPromise;
+    } finally {
+        rainSnapshotPromise = null;
+    }
+}
+
+async function startRainman() {
+    if (!rainCanvas || !rainGl || rainActive) return;
+
+    rainActive = true;
+    rainCanvas.classList.add('active');
+    updateRainButton();
+
+    try {
+        const [{ dropAlpha, dropColor }, snapshot] = await Promise.all([
+            loadRainImages(),
+            captureRainSnapshot()
+        ]);
+        if (!rainActive) return;
+        if (!rainRenderer) rainRenderer = new RainShaderRenderer(rainGl);
+        const dropScale = window.devicePixelRatio || 1;
+        rainEngine = new HomeRaindrops(rainCanvas.width, rainCanvas.height, 1, dropAlpha, dropColor, {
+            minR: (isMobile ? 16 : 20) * dropScale,
+            maxR: (isMobile ? 42 : 56) * dropScale,
+            rainChance: isMobile ? 0.28 : 0.35,
+            rainLimit: isMobile ? 4 : 6,
+            dropletsRate: isMobile ? 32 : 50,
+            dropletsSize: isMobile ? [2.5 * dropScale, 4.8 * dropScale] : [3 * dropScale, 5.5 * dropScale],
+            globalTimeScale: 1.05,
+            trailRate: 1,
+            trailScaleRange: [0.25, 0.38],
+            collisionRadiusIncrease: 0.0002
+        });
+        for (let i = 0; i < (isMobile ? 18 : 36); i++) {
+            const drop = rainEngine.createDrop({
+                x: Math.random() * rainCanvas.width,
+                y: Math.random() * rainCanvas.height,
+                r: rainEngine.random(rainEngine.options.minR, rainEngine.options.maxR, n => Math.pow(n, 2)),
+                momentum: Math.random() * 2,
+                spreadX: Math.random() * 0.6,
+                spreadY: Math.random() * 0.6
+            });
+            if (drop) rainEngine.drops.push(drop);
+        }
+        rainSnapshotCanvas = snapshot;
+        document.body.classList.add('rain-active');
+    } catch (error) {
+        rainActive = false;
+        document.body.classList.remove('rain-active');
+        rainCanvas.classList.remove('active');
+        updateRainButton();
+        return;
+    }
+
+    rainLastFrame = performance.now();
+    animateRain(rainLastFrame);
+}
+
+function stopRainman() {
+    rainActive = false;
+    document.body.classList.remove('rain-active');
+    rainCanvas?.classList.remove('active');
+    updateRainButton();
+
+    if (rainAnimationFrame) {
+        cancelAnimationFrame(rainAnimationFrame);
+        rainAnimationFrame = null;
+    }
+
+    if (rainGl) {
+        rainGl.clearColor(0, 0, 0, 0);
+        rainGl.clear(rainGl.COLOR_BUFFER_BIT);
+    }
+    if (rainEngine) {
+        rainEngine.clearDrops();
+    }
+    rainEngine = null;
+}
+
+function animateRain(now) {
+    if (!rainActive || !rainGl) return;
+
+    const dt = Math.max(1, now - rainLastFrame);
+    rainLastFrame = now;
+
+    if (!rainEngine || !rainRenderer || !rainSnapshotCanvas) return;
+
+    rainEngine.update(dt);
+    rainRenderer.render(rainEngine.canvas, rainSnapshotCanvas);
+
+    rainAnimationFrame = requestAnimationFrame(animateRain);
+}
+
 function init() {
     detectMobile();
     resize();
@@ -425,6 +1185,7 @@ function resize() {
     canvas.style.height = `${height}px`;
     ctx.setTransform(1, 0, 0, 1, 0, 0); // reset before scaling to avoid cumulative scale
     ctx.scale(dpr, dpr);
+    resizeRainOverlay();
     
     // Update effect node positions
     effectNodes.forEach(node => node.updatePosition());
@@ -599,7 +1360,16 @@ function applyLanguage(lang) {
     if (langToggle) {
         langToggle.classList.toggle('lang-en-active', currentLang === 'en');
     }
+    updateRainButton();
     localStorage.setItem('preferredLang', currentLang);
+}
+
+if (rainmanBtn) {
+    rainmanBtn.addEventListener('click', () => {
+        if (rainActive) stopRainman();
+        else startRainman();
+    });
+    updateRainButton();
 }
 
 if (langToggle) {

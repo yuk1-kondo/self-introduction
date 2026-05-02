@@ -90,6 +90,22 @@ canvas {
     pointer-events: none;
 }
 
+.rain-overlay {
+    z-index: 36;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+}
+
+.rain-overlay.active {
+    opacity: 1;
+    background: rgba(244, 249, 251, 0.03);
+}
+
+body.rain-active .page-shell,
+body.rain-active .site-header {
+    opacity: 0;
+}
+
 .input_video {
     position: fixed;
     top: 0;
@@ -304,7 +320,7 @@ h3 {
 .profile-image {
     display: block;
     width: min(100%, 270px);
-    aspect-ratio: 1 / 1;
+    max-height: 280px;
     margin: 0 0 28px auto;
     border-radius: 0;
     object-fit: contain;
@@ -460,7 +476,7 @@ h3 {
     position: fixed;
     right: 22px;
     bottom: 22px;
-    z-index: 12;
+    z-index: 48;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -493,6 +509,18 @@ h3 {
     font-size: 0.78rem;
     font-weight: 700;
     transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.btn-text-secondary {
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--text-color);
+}
+
+.btn-text-secondary:hover,
+.btn-text-secondary:focus-visible,
+.btn-text-secondary.active {
+    background: #6d8794;
+    color: white;
 }
 
 .btn-text:hover,
@@ -530,9 +558,24 @@ h3 {
     box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8), 0 0 0 6px #000;
 }
 
+@media (max-width: 1100px) {
+    .page-shell {
+        width: min(100% - 36px, 960px);
+    }
+
+    .hero {
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 48px;
+    }
+
+    .work-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 900px) {
     .site-header {
-        align-items: flex-start;
+        align-items: center;
         border-radius: 18px;
     }
 
@@ -553,19 +596,23 @@ h3 {
     }
 
     .profile-panel {
-        max-width: 420px;
+        max-width: none;
         padding-left: 0;
         border-left: 0;
+        display: grid;
+        grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+        align-items: center;
+        gap: 28px;
     }
 
     .profile-image {
-        margin-right: auto;
-        margin-left: 0;
+        width: 100%;
+        max-height: 230px;
+        margin: 0;
     }
 
     .about-grid,
     .skill-grid,
-    .work-grid,
     .achievement-section {
         grid-template-columns: 1fr;
     }
@@ -612,17 +659,23 @@ h3 {
 
     .page-shell {
         width: calc(100% - 24px);
-        padding-top: 100px;
-        padding-bottom: 104px;
+        padding-top: 92px;
+        padding-bottom: 144px;
+    }
+
+    .hero {
+        gap: 34px;
+        padding-bottom: 38px;
     }
 
     h1 {
-        font-size: clamp(2.8rem, 16vw, 4rem);
+        font-size: clamp(2.75rem, 15vw, 4rem);
+        line-height: 0.96;
     }
 
     .lead {
-        font-size: 1rem;
-        line-height: 1.8;
+        font-size: 0.98rem;
+        line-height: 1.75;
     }
 
     .hero-actions {
@@ -635,12 +688,29 @@ h3 {
         padding: 42px 0;
     }
 
+    .profile-panel {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .profile-image {
+        width: min(72vw, 250px);
+        max-height: 250px;
+    }
+
+    .work-grid {
+        grid-template-columns: 1fr;
+    }
+
     .skill-card,
     .work-card {
         min-height: 116px;
     }
 
     .gesture-control {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
         right: 12px;
         bottom: 12px;
         left: 12px;
@@ -650,5 +720,33 @@ h3 {
 
     .gesture-control span {
         font-size: 0.72rem;
+    }
+
+    .btn-text {
+        padding: 8px 10px;
+        font-size: 0.72rem;
+    }
+}
+
+@media (max-width: 430px) {
+    .site-header {
+        gap: 10px;
+    }
+
+    .brand {
+        max-width: 130px;
+        white-space: normal;
+        line-height: 1.15;
+    }
+
+    .gesture-control {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 9px;
+    }
+
+    .gesture-control span {
+        grid-column: 1 / -1;
+        padding-left: 0;
     }
 }
