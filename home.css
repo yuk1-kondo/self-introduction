@@ -393,6 +393,11 @@ h3 {
     line-height: 1.9;
 }
 
+.about-grid p:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    max-width: 880px;
+}
+
 .skill-grid,
 .work-grid {
     display: grid;
