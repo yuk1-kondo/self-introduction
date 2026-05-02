@@ -990,13 +990,18 @@ function blobToDataURL(blob) {
     });
 }
 
-async function inlineSnapshotImages(root) {
+async function prepareSnapshotImages(root) {
     if (!root) return;
+    const shouldInline = window.location.protocol === 'file:';
     const images = Array.from(root.querySelectorAll('img'));
     await Promise.all(images.map(async img => {
         const src = img.getAttribute('src');
         if (!src) return;
         const absoluteSrc = new URL(src, window.location.href).href;
+        if (!shouldInline) {
+            img.setAttribute('src', absoluteSrc);
+            return;
+        }
         try {
             const response = await fetch(absoluteSrc);
             if (!response.ok) throw new Error(`Image request failed: ${absoluteSrc}`);
@@ -1037,8 +1042,8 @@ async function captureRainSnapshot() {
         const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
 
         await Promise.all([
-            inlineSnapshotImages(headerClone),
-            inlineSnapshotImages(pageClone)
+            prepareSnapshotImages(headerClone),
+            prepareSnapshotImages(pageClone)
         ]);
 
         const markup = `
@@ -1064,7 +1069,19 @@ async function captureRainSnapshot() {
             </svg>
         `;
 
-        const img = await loadRainImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`);
+        let img;
+        if (window.location.protocol === 'file:') {
+            img = await loadRainImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`);
+        } else {
+            let url = '';
+            try {
+                const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
+                url = URL.createObjectURL(blob);
+                img = await loadRainImage(url);
+            } finally {
+                if (url) URL.revokeObjectURL(url);
+            }
+        }
 
         const snapshot = document.createElement('canvas');
         snapshot.width = snapshotWidth;
