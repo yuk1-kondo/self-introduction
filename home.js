@@ -5,7 +5,6 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const rainCanvas = document.getElementById('rain-canvas');
-const rainGl = rainCanvas ? rainCanvas.getContext('webgl', { alpha: true, premultipliedAlpha: false }) : null;
 const videoElement = document.getElementsByClassName('input_video')[0];
 const langToggle = document.getElementById('lang-toggle');
 const rainmanBtn = document.getElementById('rainman-btn');
@@ -164,10 +163,14 @@ let latestResults = null;
 let rainEngine = null;
 let rainImagesPromise = null;
 let rainRenderer = null;
+let rainGl = null;
+let rain2dCtx = null;
+let rainRenderMode = null;
 let rainSnapshotCanvas = null;
 let rainSnapshotPromise = null;
 let rainAnimationFrame = null;
 let rainActive = false;
+let rainUsesSnapshot = false;
 let rainLastFrame = 0;
 
 const mouse = { x: undefined, y: undefined };
@@ -1011,6 +1014,60 @@ function loadRainImages() {
     return rainImagesPromise;
 }
 
+function blobToDataURL(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function inlineSnapshotImages(root) {
+    if (!root) return;
+    const images = Array.from(root.querySelectorAll('img'));
+    await Promise.all(images.map(async img => {
+        const src = img.getAttribute('src');
+        if (!src) return;
+        const absoluteSrc = new URL(src, window.location.href).href;
+        try {
+            const response = await fetch(absoluteSrc);
+            if (!response.ok) throw new Error(`Image request failed: ${absoluteSrc}`);
+            const blob = await response.blob();
+            img.setAttribute('src', await blobToDataURL(blob));
+        } catch (error) {
+            img.removeAttribute('src');
+            img.style.visibility = 'hidden';
+        }
+    }));
+}
+
+function ensureRainRenderer(useShaderSnapshot = true) {
+    if (!rainCanvas) return false;
+    if (rainRenderMode) {
+        return rainRenderMode === '2d' || useShaderSnapshot;
+    }
+
+    if (useShaderSnapshot) {
+        rainGl = rainCanvas.getContext('webgl', { alpha: true, premultipliedAlpha: false }) ||
+            rainCanvas.getContext('experimental-webgl', { alpha: true, premultipliedAlpha: false });
+
+        if (rainGl) {
+            rainRenderer = new RainShaderRenderer(rainGl);
+            rainRenderMode = 'webgl';
+            return true;
+        }
+    }
+
+    rain2dCtx = rainCanvas.getContext('2d');
+    if (rain2dCtx) {
+        rainRenderMode = '2d';
+        return true;
+    }
+
+    return false;
+}
+
 async function captureRainSnapshot() {
     if (rainSnapshotPromise) return rainSnapshotPromise;
 
@@ -1023,12 +1080,10 @@ async function captureRainSnapshot() {
         const pageClone = document.querySelector('.page-shell')?.cloneNode(true);
         const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
 
-        [headerClone, pageClone].forEach(root => {
-            if (!root) return;
-            root.querySelectorAll('img').forEach(img => {
-                img.setAttribute('src', new URL(img.getAttribute('src'), window.location.href).href);
-            });
-        });
+        await Promise.all([
+            inlineSnapshotImages(headerClone),
+            inlineSnapshotImages(pageClone)
+        ]);
 
         const markup = `
             <svg xmlns="http://www.w3.org/2000/svg" width="${snapshotWidth}" height="${snapshotHeight}" viewBox="0 0 ${width} ${height}">
@@ -1054,9 +1109,14 @@ async function captureRainSnapshot() {
         `;
 
         const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const img = await loadRainImage(url);
-        URL.revokeObjectURL(url);
+        let url = '';
+        let img;
+        try {
+            url = URL.createObjectURL(blob);
+            img = await loadRainImage(url);
+        } finally {
+            if (url) URL.revokeObjectURL(url);
+        }
 
         const snapshot = document.createElement('canvas');
         snapshot.width = snapshotWidth;
@@ -1075,19 +1135,24 @@ async function captureRainSnapshot() {
 }
 
 async function startRainman() {
-    if (!rainCanvas || !rainGl || rainActive) return;
+    if (!rainCanvas || rainActive) return;
 
     rainActive = true;
     rainCanvas.classList.add('active');
     updateRainButton();
 
     try {
-        const [{ dropAlpha, dropColor }, snapshot] = await Promise.all([
-            loadRainImages(),
-            captureRainSnapshot()
-        ]);
+        const { dropAlpha, dropColor } = await loadRainImages();
+        let snapshot = null;
+        try {
+            snapshot = await captureRainSnapshot();
+        } catch (error) {
+            console.warn('Rainman snapshot capture failed; using surface fallback.', error);
+        }
         if (!rainActive) return;
-        if (!rainRenderer) rainRenderer = new RainShaderRenderer(rainGl);
+        if (!ensureRainRenderer(Boolean(snapshot))) {
+            throw new Error('No available rain renderer');
+        }
         const dropScale = window.devicePixelRatio || 1;
         rainEngine = new HomeRaindrops(rainCanvas.width, rainCanvas.height, 1, dropAlpha, dropColor, {
             minR: (isMobile ? 16 : 20) * dropScale,
@@ -1113,9 +1178,12 @@ async function startRainman() {
             if (drop) rainEngine.drops.push(drop);
         }
         rainSnapshotCanvas = snapshot;
-        document.body.classList.add('rain-active');
+        rainUsesSnapshot = Boolean(snapshot);
+        document.body.classList.toggle('rain-active', rainUsesSnapshot);
     } catch (error) {
+        console.warn('Rainman could not start.', error);
         rainActive = false;
+        rainUsesSnapshot = false;
         document.body.classList.remove('rain-active');
         rainCanvas.classList.remove('active');
         updateRainButton();
@@ -1128,6 +1196,7 @@ async function startRainman() {
 
 function stopRainman() {
     rainActive = false;
+    rainUsesSnapshot = false;
     document.body.classList.remove('rain-active');
     rainCanvas?.classList.remove('active');
     updateRainButton();
@@ -1137,9 +1206,11 @@ function stopRainman() {
         rainAnimationFrame = null;
     }
 
-    if (rainGl) {
+    if (rainRenderMode === 'webgl' && rainGl) {
         rainGl.clearColor(0, 0, 0, 0);
         rainGl.clear(rainGl.COLOR_BUFFER_BIT);
+    } else if (rainRenderMode === '2d' && rain2dCtx && rainCanvas) {
+        rain2dCtx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
     }
     if (rainEngine) {
         rainEngine.clearDrops();
@@ -1148,15 +1219,25 @@ function stopRainman() {
 }
 
 function animateRain(now) {
-    if (!rainActive || !rainGl) return;
+    if (!rainActive) return;
 
     const dt = Math.max(1, now - rainLastFrame);
     rainLastFrame = now;
 
-    if (!rainEngine || !rainRenderer || !rainSnapshotCanvas) return;
+    if (!rainEngine) return;
 
     rainEngine.update(dt);
-    rainRenderer.render(rainEngine.canvas, rainSnapshotCanvas);
+    if (rainRenderMode === 'webgl' && rainRenderer && rainSnapshotCanvas) {
+        rainRenderer.render(rainEngine.canvas, rainSnapshotCanvas);
+    } else if (rainRenderMode === '2d' && rain2dCtx && rainCanvas) {
+        rain2dCtx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
+        if (rainUsesSnapshot && rainSnapshotCanvas) {
+            rain2dCtx.drawImage(rainSnapshotCanvas, 0, 0, rainCanvas.width, rainCanvas.height);
+        }
+        rain2dCtx.globalAlpha = 0.82;
+        rain2dCtx.drawImage(rainEngine.canvas, 0, 0, rainCanvas.width, rainCanvas.height);
+        rain2dCtx.globalAlpha = 1;
+    }
 
     rainAnimationFrame = requestAnimationFrame(animateRain);
 }
