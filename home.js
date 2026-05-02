@@ -992,26 +992,11 @@ function blobToDataURL(blob) {
 
 async function prepareSnapshotImages(root) {
     if (!root) return;
-    const shouldInline = window.location.protocol === 'file:';
     const images = Array.from(root.querySelectorAll('img'));
-    await Promise.all(images.map(async img => {
-        const src = img.getAttribute('src');
-        if (!src) return;
-        const absoluteSrc = new URL(src, window.location.href).href;
-        if (!shouldInline) {
-            img.setAttribute('src', absoluteSrc);
-            return;
-        }
-        try {
-            const response = await fetch(absoluteSrc);
-            if (!response.ok) throw new Error(`Image request failed: ${absoluteSrc}`);
-            const blob = await response.blob();
-            img.setAttribute('src', await blobToDataURL(blob));
-        } catch (error) {
-            img.removeAttribute('src');
-            img.style.visibility = 'hidden';
-        }
-    }));
+    images.forEach(img => {
+        img.removeAttribute('src');
+        img.style.visibility = 'hidden';
+    });
 }
 
 function ensureRainRenderer() {
