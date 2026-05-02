@@ -15,32 +15,32 @@ const UI_TEXTS = {
         navWork: '作品',
         navContact: '連絡',
         eyebrow: '理科教員志望 / 生成AI・教育・クリエイティブコーディング',
-        lead: '関西出身の理科教員志望です。教育とテクノロジーをつなぎ、生成AIやWeb表現を使って、学ぶ人が手を動かしながら理解できる体験を作っています。',
+        lead: '関西出身の理科教員志望です。生成AI、Web表現、ハードウェアを組み合わせ、理科の学びを体験として理解できる教材やプロトタイプを制作しています。',
         viewWork: '作品を見る',
         readAbout: '自己紹介を読む',
         contactMe: '連絡する',
         factFocus: 'Focus',
         factFocusValue: '教育 x 生成AI x 体験型学習',
         factStrength: 'Strength',
-        factStrengthValue: 'アイデアを試作に落とす力',
+        factStrengthValue: '教材アイデアを動く試作に落とす力',
         factBase: 'Base',
         factBaseValue: '関西 / 理科教育',
         aboutKicker: 'About',
         aboutTitle: '学びを「触れる体験」に変える',
-        aboutBody1: '理科教員を目指しながら、Web・生成AI・ハードウェアを組み合わせた制作に取り組んでいます。知識を説明するだけでなく、触って試して発見できる教材やアプリを作ることに関心があります。',
-        aboutBody2: 'Spresenseを使ったピクセルアートカメラ、Geminiを活用したストーリーテリングAI、MediaPipeによるジェスチャー操作など、アイデアを小さく試作して形にすることを大切にしています。',
+        aboutBody1: '理科教員を目指しながら、Web・生成AI・ハードウェアを組み合わせた学習体験の制作に取り組んでいます。知識を説明するだけでなく、触って試して発見できる教材やアプリを作ることに関心があります。',
+        aboutBody2: 'Spresenseを使ったピクセルアートカメラ、Geminiを活用したストーリーテリングAI、MediaPipeによるジェスチャー操作など、教育現場で使える可能性を意識しながら小さく試作しています。',
         skillsKicker: 'Skills',
         skillsTitle: '用途で使い分ける技術',
         workKicker: 'Work',
-        workTitle: '遊びながら試せる制作物',
-        workPixel: 'カメラ表現の実験',
-        workSound: '音とインタラクション',
-        workAir: '空中操作の音楽体験',
-        workWater: '雨滴と手の操作',
-        workFog: '曇りガラスを拭く体験',
-        workMirror: '歪みミラー表現',
-        workCloak: '光学迷彩の実験',
-        workGesture: 'ジェスチャー表現集',
+        workTitle: '学習体験につながる制作物',
+        workPixel: 'カメラ表現と教材化の実験',
+        workSound: '音と身体操作の実験',
+        workAir: '空中操作による音楽体験',
+        workWater: '雨滴表現とインタラクション',
+        workFog: '曇りガラスを拭く体験設計',
+        workMirror: '映像の歪みを使った表現',
+        workCloak: '光学迷彩の表現実験',
+        workGesture: 'ジェスチャーUIの実験集',
         achievementKicker: 'Achievement',
         achievementTitle: 'Google Cloud Generative AI Leader',
         achievementBody: '生成AIがビジネスや学びをどう変えるかを理解し、Google Cloud の生成AIサービスを活用するための基礎知識を身につけています。',
@@ -60,32 +60,32 @@ const UI_TEXTS = {
         navWork: 'Work',
         navContact: 'Contact',
         eyebrow: 'Science teacher trainee / Generative AI, education, creative coding',
-        lead: 'I am a science teacher trainee from Kansai. I connect education and technology to build hands-on learning experiences with generative AI and expressive web interfaces.',
+        lead: 'I am a science teacher trainee from Kansai. I build learning prototypes that combine generative AI, web expression, and hardware so science concepts can be understood through hands-on experience.',
         viewWork: 'View Work',
         readAbout: 'Read About',
         contactMe: 'Contact',
         factFocus: 'Focus',
         factFocusValue: 'Education x GenAI x experiential learning',
         factStrength: 'Strength',
-        factStrengthValue: 'Turning ideas into working prototypes',
+        factStrengthValue: 'Turning learning ideas into working prototypes',
         factBase: 'Base',
         factBaseValue: 'Kansai / Science education',
         aboutKicker: 'About',
         aboutTitle: 'Turning learning into something you can touch',
-        aboutBody1: 'While working toward becoming a science teacher, I create projects that combine the web, generative AI, and hardware. I am interested in tools and lessons that let learners discover ideas by trying them directly.',
-        aboutBody2: 'I value quick prototyping: a pixel-art camera with Spresense, storytelling AI with Gemini, and gesture interactions with MediaPipe are examples of how I turn ideas into usable experiences.',
+        aboutBody1: 'While working toward becoming a science teacher, I create learning experiences that combine the web, generative AI, and hardware. I am interested in tools and lessons that let learners discover ideas by trying them directly.',
+        aboutBody2: 'I prototype with classroom use in mind: a pixel-art camera with Spresense, storytelling AI with Gemini, and gesture interactions with MediaPipe are examples of how I turn ideas into usable experiences.',
         skillsKicker: 'Skills',
         skillsTitle: 'Tools grouped by purpose',
         workKicker: 'Work',
-        workTitle: 'Interactive experiments to try',
-        workPixel: 'Camera expression experiment',
-        workSound: 'Sound and interaction',
+        workTitle: 'Projects connected to learning experiences',
+        workPixel: 'Camera expression and learning experiment',
+        workSound: 'Sound and embodied interaction',
         workAir: 'Air-controlled music experience',
-        workWater: 'Raindrops and hand control',
-        workFog: 'Wipe a foggy glass surface',
-        workMirror: 'Distortion mirror expression',
-        workCloak: 'Optical camouflage experiment',
-        workGesture: 'Gesture expression lab',
+        workWater: 'Raindrop rendering and interaction',
+        workFog: 'Foggy glass interaction design',
+        workMirror: 'Visual distortion expression',
+        workCloak: 'Optical camouflage expression',
+        workGesture: 'Gesture UI experiment lab',
         achievementKicker: 'Achievement',
         achievementTitle: 'Google Cloud Generative AI Leader',
         achievementBody: 'I have foundational knowledge of how generative AI changes business and learning, and how to use Google Cloud generative AI services.',
@@ -604,7 +604,10 @@ class RainShaderRenderer {
                 float y = cur.r;
                 float a = clamp(cur.a * u_alphaMultiply - u_alphaSubtract, 0.0, 1.0);
                 vec2 refraction = (vec2(x, y) - 0.5) * 2.0;
-                float refractionStrength = u_minRefraction + d * u_refractionDelta;
+                float thicknessMask = smoothstep(0.12, 0.72, d) * smoothstep(0.03, 0.42, a);
+                float edgeMask = smoothstep(0.18, 0.78, 1.0 - length(refraction));
+                float refractionMask = mix(0.38, 1.0, thicknessMask * edgeMask);
+                float refractionStrength = (u_minRefraction + d * u_refractionDelta) * refractionMask;
                 vec2 refractionR = uv + pixel() * refraction * refractionStrength * 0.97;
                 vec2 refractionG = uv + pixel() * refraction * refractionStrength;
                 vec2 refractionB = uv + pixel() * refraction * refractionStrength * 1.03;
@@ -698,8 +701,8 @@ class RainShaderRenderer {
         gl.uniform1i(this.locations.textureFg, 1);
         gl.uniform1i(this.locations.textureBg, 2);
         gl.uniform2f(this.locations.resolution, gl.canvas.width, gl.canvas.height);
-        gl.uniform1f(this.locations.minRefraction, 256.0);
-        gl.uniform1f(this.locations.refractionDelta, 256.0);
+        gl.uniform1f(this.locations.minRefraction, 140.0);
+        gl.uniform1f(this.locations.refractionDelta, 240.0);
         gl.uniform1f(this.locations.brightness, 1.1);
         gl.uniform1f(this.locations.alphaMultiply, 6.0);
         gl.uniform1f(this.locations.alphaSubtract, 3.0);
